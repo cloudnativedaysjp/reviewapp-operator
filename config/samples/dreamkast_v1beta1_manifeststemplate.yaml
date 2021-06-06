@@ -1,0 +1,7 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1beta1
+kind: ManifestsTemplate
+metadata:
+  name: manifeststemplate-sample
+spec:
+  # Add fields here
+  foo: bar
