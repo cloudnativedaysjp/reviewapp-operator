@@ -22,7 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 )
@@ -49,7 +51,46 @@ type ReviewAppReconciler struct {
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// your logic here
+	// list PRs
+
+	// for PR := range PRs
+
+	//// diff between PR.prNum and ReviewAppStatus.syncedArtifacts.appRepoPrNum
+	//// if no diff then continue
+
+	//// if new PR.prNum exists
+
+	////// fetch ReviewApp.infra.repository
+	////// create Application manifest from ApplicationTemplate
+	////// create manifests from ManifestsTemplate
+	////// push
+
+	////// set appRepoPrNum, applicationName, appRepoSha, infraRepoSha to ReviewAppStatus
+
+	//// elif less PR.prNum than ReviewAppStatus.syncedArtifacts.appRepoPrNum
+
+	////// fetch ReviewApp.infra.repository
+	////// delete Application manifest
+	////// delete manifests
+	////// push
+
+	////// delete element from ReviewAppStatus
+
+	//// endif
+
+	// endfor
+
+	// for artifact := range ReviewAppStatus.syncedArtifacts
+
+	//// status := check ArgoCD Applications Synced Status
+	//// if status.Sha == ReviewAppStatus.syncedArtifacts[].infraRepoSha && !ReviewAppStatus.syncedArtifacts[].notified
+
+	////// notify to PR in app repo
+	////// set ReviewAppStatus.syncedArtifacts[].notified = true
+
+	//// endif
+
+	// endfor
 
 	return ctrl.Result{}, nil
 }
@@ -58,5 +99,13 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1beta1.ReviewApp{}).
+		Watches(
+			&source.Kind{Type: &dreamkastv1beta1.ApplicationTemplate{}},
+			&handler.EnqueueRequestForObject{},
+		).
+		Watches(
+			&source.Kind{Type: &dreamkastv1beta1.ManifestsTemplate{}},
+			&handler.EnqueueRequestForObject{},
+		).
 		Complete(r)
 }
