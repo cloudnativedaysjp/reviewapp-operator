@@ -17,25 +17,91 @@ limitations under the License.
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ReviewAppSpec defines the desired state of ReviewApp
 type ReviewAppSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ReviewApp. Edit reviewapp_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// App is config of application repository
+	App ReviewAppSpecApp `json:"app,omitempty"`
+
+	// Infra is config of manifest repository
+	Infra ReviewAppSpecInfra `json:"infra,omitempty"`
+
+	// Variables is available to use input of Application & Manifest Template
+	Variables map[string]string `json:"variables,omitempty"`
+}
+
+type ReviewAppSpecApp struct {
+
+	// TODO
+	Repository string `json:"repository,omitempty"`
+
+	// GitSecret is secret for accessing Git remote-repo
+	GitSecret *corev1.SecretVolumeSource `json:"gitSecret,omitempty"`
+
+	// IgnoreLabels is TODO
+	IgnoreLabels []string `json:"ignoreLabels,omitempty"`
+
+	// IgnoreTitleExp is TODO
+	IgnoreTitleExp string `json:"ignoreTitleExp,omitempty"`
+}
+
+type ReviewAppSpecInfra struct {
+
+	// TODO
+	Repository string `json:"repository,omitempty"`
+
+	// GitSecret is secret for accessing Git remote-repo
+	GitSecret *corev1.SecretVolumeSource `json:"gitSecret,omitempty"`
+
+	Manifests ReviewAppSpecInfraManifests `json:"manifests,omitempty"`
+
+	ArgoCDApp ReviewAppSpecInfraArgoCDApp `json:"argocdApp,omitempty"`
+}
+
+type ReviewAppSpecInfraManifests struct {
+	// Templates is specifying list of ManifestTemplate resources
+	Templates []string `json:"templates,omitempty"`
+
+	// Dirpath is directory path of deploying TemplateManifests
+	// Allow Go-Template notation
+	Dirpath string `json:"dirpath,omitempty"`
+}
+
+type ReviewAppSpecInfraArgoCDApp struct {
+
+	// Template is specifying ApplicationTemplate resources
+	Template string `json:"template,omitempty"`
+
+	// Filepath is file path of deploying ApplicationTemplate
+	// Allow Go-Template notation
+	Filepath string `json:"filepath,omitempty"`
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	SyncedArtifacts []SyncedArtifact `json:"syncedArtifacts,omitempty"`
+}
+
+type SyncedArtifact struct {
+
+	// TODO
+	ApplicationName string `json:"applicationName,omitempty"`
+
+	// TODO
+	AppRepoPrNum uint `json:"appRepoPrNum,omitempty"`
+
+	// TODO
+	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
+
+	// TODO
+	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
+
+	// TODO
+	Notified bool `json:"notifid,omitempty"`
 }
 
 //+kubebuilder:object:root=true
