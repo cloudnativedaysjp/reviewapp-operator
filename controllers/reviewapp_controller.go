@@ -18,21 +18,28 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
+	"github.com/go-logr/logr"
+	errors_ "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
 type ReviewAppReconciler struct {
 	client.Client
+	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	Service *services.ReviewAppService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
@@ -49,48 +56,17 @@ type ReviewAppReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	var ra dreamkastv1beta1.ReviewApp
+	r.Log.Info(fmt.Sprintf("fetching %s resource", reflect.TypeOf(ra)))
+	if err := r.Get(ctx, req.NamespacedName, &ra); err != nil {
+		if errors_.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("%s not found", reflect.TypeOf(ra)))
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// list PRs
-
-	// for PR := range PRs
-
-	//// diff between PR.prNum and ReviewAppStatus.syncedArtifacts.appRepoPrNum
-	//// if no diff then continue
-
-	//// if new PR.prNum exists
-
-	////// fetch ReviewApp.infra.repository
-	////// create Application manifest from ApplicationTemplate
-	////// create manifests from ManifestsTemplate
-	////// push
-
-	////// set appRepoPrNum, applicationName, appRepoSha, infraRepoSha to ReviewAppStatus
-
-	//// elif less PR.prNum than ReviewAppStatus.syncedArtifacts.appRepoPrNum
-
-	////// fetch ReviewApp.infra.repository
-	////// delete Application manifest
-	////// delete manifests
-	////// push
-
-	////// delete element from ReviewAppStatus
-
-	//// endif
-
-	// endfor
-
-	// for artifact := range ReviewAppStatus.syncedArtifacts
-
-	//// status := check ArgoCD Applications Synced Status
-	//// if status.Sha == ReviewAppStatus.syncedArtifacts[].infraRepoSha && !ReviewAppStatus.syncedArtifacts[].notified
-
-	////// notify to PR in app repo
-	////// set ReviewAppStatus.syncedArtifacts[].notified = true
-
-	//// endif
-
-	// endfor
+	r.Service.ReconcileByPullRequest(ctx, &ra)
 
 	return ctrl.Result{}, nil
 }

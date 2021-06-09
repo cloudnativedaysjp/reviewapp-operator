@@ -9,6 +9,32 @@ rules:
 - apiGroups:
   - dreamkast.cloudnativedays.jp
   resources:
+  - reviewappinstances
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappinstances/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappinstances/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
   - reviewapps
   verbs:
   - create

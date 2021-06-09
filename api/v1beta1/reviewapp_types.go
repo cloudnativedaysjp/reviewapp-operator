@@ -31,7 +31,7 @@ type ReviewAppSpec struct {
 	Infra ReviewAppSpecInfra `json:"infra,omitempty"`
 
 	// Variables is available to use input of Application & Manifest Template
-	Variables map[string]string `json:"variables,omitempty"`
+	Variables []string `json:"variables,omitempty"`
 }
 
 type ReviewAppSpecApp struct {
@@ -39,8 +39,8 @@ type ReviewAppSpecApp struct {
 	// TODO
 	Repository string `json:"repository,omitempty"`
 
-	// GitSecret is secret for accessing Git remote-repo
-	GitSecret *corev1.SecretVolumeSource `json:"gitSecret,omitempty"`
+	// GitSecretRef is specifying secret for accessing Git remote-repo
+	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
 
 	// IgnoreLabels is TODO
 	IgnoreLabels []string `json:"ignoreLabels,omitempty"`
@@ -54,8 +54,8 @@ type ReviewAppSpecInfra struct {
 	// TODO
 	Repository string `json:"repository,omitempty"`
 
-	// GitSecret is secret for accessing Git remote-repo
-	GitSecret *corev1.SecretVolumeSource `json:"gitSecret,omitempty"`
+	// GitSecretRef is specifying secret for accessing Git remote-repo
+	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
 
 	Manifests ReviewAppSpecInfraManifests `json:"manifests,omitempty"`
 
@@ -64,7 +64,7 @@ type ReviewAppSpecInfra struct {
 
 type ReviewAppSpecInfraManifests struct {
 	// Templates is specifying list of ManifestTemplate resources
-	Templates []string `json:"templates,omitempty"`
+	Templates []string `json:"templatesName,omitempty"`
 
 	// Dirpath is directory path of deploying TemplateManifests
 	// Allow Go-Template notation
@@ -74,7 +74,7 @@ type ReviewAppSpecInfraManifests struct {
 type ReviewAppSpecInfraArgoCDApp struct {
 
 	// Template is specifying ApplicationTemplate resources
-	Template string `json:"template,omitempty"`
+	Template string `json:"templateName,omitempty"`
 
 	// Filepath is file path of deploying ApplicationTemplate
 	// Allow Go-Template notation
@@ -83,25 +83,6 @@ type ReviewAppSpecInfraArgoCDApp struct {
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
-	SyncedArtifacts []SyncedArtifact `json:"syncedArtifacts,omitempty"`
-}
-
-type SyncedArtifact struct {
-
-	// TODO
-	ApplicationName string `json:"applicationName,omitempty"`
-
-	// TODO
-	AppRepoPrNum uint `json:"appRepoPrNum,omitempty"`
-
-	// TODO
-	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
-
-	// TODO
-	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
-
-	// TODO
-	Notified bool `json:"notifid,omitempty"`
 }
 
 //+kubebuilder:object:root=true

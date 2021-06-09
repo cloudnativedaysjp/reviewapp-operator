@@ -5,8 +5,12 @@ go 1.16
 require (
 	github.com/argoproj/argo-cd v1.8.7
 	github.com/argoproj/gitops-engine v0.3.2 // indirect
+	github.com/go-logr/logr v0.3.0
+	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	google.golang.org/grpc v1.33.1 // indirect
 	k8s.io/api v0.20.4
 	k8s.io/apimachinery v0.20.4

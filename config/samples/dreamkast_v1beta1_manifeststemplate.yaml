@@ -2,6 +2,9 @@ apiVersion: dreamkast.cloudnativedays.jp/v1beta1
 kind: ManifestsTemplate
 metadata:
   name: manifeststemplate-sample
-spec:
-  # Add fields here
-  foo: bar
+data:
+  kustomization.yaml: |
+    apiVersion: kustomize.config.k8s.io/v1beta1
+    kind: Kustomization
+    bases:
+    - ../../base
