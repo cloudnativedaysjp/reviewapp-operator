@@ -66,9 +66,7 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	r.Service.ReconcileByPullRequest(ctx, &ra)
-
-	return ctrl.Result{}, nil
+	return r.Service.ReconcileByPullRequest(ctx, &ra)
 }
 
 // SetupWithManager sets up the controller with the Manager.

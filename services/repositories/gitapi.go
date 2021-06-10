@@ -1,11 +1,15 @@
 package repositories
 
-import "github.com/go-logr/logr"
+import (
+	"context"
+
+	"github.com/go-logr/logr"
+)
 
 type GitApiFactory interface {
-	NewRepository(string, string, logr.Logger) (GitApiRepository, error)
+	NewRepository(l logr.Logger, username, token string) (GitApiRepository, error)
 }
 
 type GitApiRepository interface {
-	// TODO
+	ListPullRequests(ctx context.Context, org, repo string) ([]ListPullRequestsOutput, error)
 }

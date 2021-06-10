@@ -34,7 +34,7 @@ import (
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
 	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructures/githubapi"
-	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructures/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructures/k8s_ra_client"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	//+kubebuilder:scaffold:imports
 )
@@ -89,7 +89,7 @@ func main() {
 		Service: services.NewReviewAppService(
 			mgr.GetClient(),
 			ctrl.Log,
-			kubernetes.KubernetesFactoryImpl{},
+			k8s_ra_client.KubernetesFactoryImpl{},
 			githubapi.GitApiFactoryImpl{},
 		),
 	}).SetupWithManager(mgr); err != nil {

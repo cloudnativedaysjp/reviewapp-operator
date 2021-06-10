@@ -66,7 +66,13 @@ spec:
                   ignoreTitleExp:
                     description: IgnoreTitleExp is TODO
                     type: string
+                  organization:
+                    description: TODO
+                    type: string
                   repository:
+                    description: TODO
+                    type: string
+                  username:
                     description: TODO
                     type: string
                 type: object
@@ -115,6 +121,9 @@ spec:
                           type: string
                         type: array
                     type: object
+                  organization:
+                    description: TODO
+                    type: string
                   repository:
                     description: TODO
                     type: string

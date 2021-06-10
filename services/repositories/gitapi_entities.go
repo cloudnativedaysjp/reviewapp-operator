@@ -1,5 +1,6 @@
 package repositories
 
 type ListPullRequestsOutput struct {
-	Number int
+	Number        int
+	HeadCommitSha string
 }

@@ -1,4 +1,4 @@
-package kubernetes
+package k8s_rai_client
 
 import (
 	"context"
@@ -17,8 +17,15 @@ type KubernetesInfra struct {
 	Log logr.Logger
 }
 
-func NewKubernetesInfra(c client.Client, l logr.Logger) *KubernetesInfra {
-	return &KubernetesInfra{c, l}
+func NewKubernetesInfra(c client.Client, l logr.Logger) (*KubernetesInfra, error) {
+	// this app depend on ArgoCD.
+	// return error if ArgoCD is not installed
+	var a argocd_application_v1alpha1.ApplicationList
+	if err := c.List(context.Background(), &a); err != nil {
+		return nil, err
+	}
+
+	return &KubernetesInfra{c, l}, nil
 }
 
 func (ki *KubernetesInfra) GetArgoCDApplicationStatus(ctx context.Context, namespacedName client.ObjectKey) (*repositories.ArgoCDStatusOutput, error) {

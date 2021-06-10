@@ -37,7 +37,13 @@ type ReviewAppSpec struct {
 type ReviewAppSpecApp struct {
 
 	// TODO
+	Organization string `json:"organization,omitempty"`
+
+	// TODO
 	Repository string `json:"repository,omitempty"`
+
+	// TODO
+	Username string `json:"username,omitempty"`
 
 	// GitSecretRef is specifying secret for accessing Git remote-repo
 	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
@@ -50,6 +56,9 @@ type ReviewAppSpecApp struct {
 }
 
 type ReviewAppSpecInfra struct {
+
+	// TODO
+	Organization string `json:"organization,omitempty"`
 
 	// TODO
 	Repository string `json:"repository,omitempty"`

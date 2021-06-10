@@ -8,6 +8,6 @@ import (
 
 type GitApiFactoryImpl struct{}
 
-func (kfi GitApiFactoryImpl) NewRepository(username, token string, l logr.Logger) (repositories.GitApiRepository, error) {
-	return NewGitHubApiInfra(username, token, l)
+func (kfi GitApiFactoryImpl) NewRepository(l logr.Logger, username, token string) (repositories.GitApiRepository, error) {
+	return NewGitHubApiInfra(l, username, token)
 }

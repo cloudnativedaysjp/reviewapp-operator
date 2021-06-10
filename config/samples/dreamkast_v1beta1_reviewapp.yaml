@@ -4,14 +4,16 @@ metadata:
   name: reviewapp-sample
 spec:
   app:
-    repository: https://github.com/ShotaKitazawa/reviewapp-operator-demo-app
+    organization: ShotaKitazawa
+    repository: reviewapp-operator-demo-app
     gitSecretRef:
       name: git-creds
       key: token
     ignoreLabels: []
     ignoreTitleExp: '^\[dreamkast-releasebot\]'
   infra:
-    repository: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
+    organization: ShotaKitazawa
+    repository: reviewapp-operator-demo-infra
     gitSecretRef:
       name: git-creds
       key: token
