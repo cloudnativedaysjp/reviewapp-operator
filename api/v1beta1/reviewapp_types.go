@@ -94,7 +94,16 @@ type ReviewAppSpecInfraArgoCDApp struct {
 type ReviewAppStatus struct {
 
 	// TODO
-	SyncedPullRequests []int `json:"syncedPullRequests,omitempty"`
+	SyncedPullRequests []ReviewAppStatusSyncedPullRequests `json:"syncedPullRequests,omitempty"`
+}
+
+type ReviewAppStatusSyncedPullRequests struct {
+
+	// TODO
+	Number int `json:"number,omitempty"`
+
+	// TODO
+	ReviewAppInstanceName string `json:"reviewAppInstanceName,omitempty"`
 }
 
 //+kubebuilder:object:root=true

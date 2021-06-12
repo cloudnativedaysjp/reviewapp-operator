@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,21 +52,39 @@ func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dream
 	}
 
 	// apply ReviewAppInstance
-	var syncedPullRequests []int
+	var syncedPullRequests []dreamkastv1beta1.ReviewAppStatusSyncedPullRequests
 	for _, pr := range prs {
 		// TODO: merge Template & generate ReviewAppInstance
-		rai := &dreamkastv1beta1.ReviewAppInstance{}
+		rai := &dreamkastv1beta1.ReviewAppInstance{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      ra.Name, // TODO: generate RAI name
+				Namespace: ra.Namespace,
+			},
+		}
 
-		if err := k8sRepo.ApplyReviewAppInstanceFromReviewApp(
-			ctx, types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace},
-			ra, rai,
-		); err != nil {
+		if err := k8sRepo.ApplyReviewAppInstanceFromReviewApp(ctx, rai, ra); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		syncedPullRequests = append(syncedPullRequests, pr.Number)
+		syncedPullRequests = append(syncedPullRequests, dreamkastv1beta1.ReviewAppStatusSyncedPullRequests{
+			Number:                pr.Number,
+			ReviewAppInstanceName: raiName,
+		})
 	}
-	// TODO: PR が close 済な ReviewAppInstance を削除する
+
+	// delete the ReviewAppInstance that associated PR has already been closed
+loop:
+	for _, a := range ra.Status.SyncedPullRequests {
+		for _, b := range syncedPullRequests {
+			if a.Number == b {
+				continue loop
+			}
+		}
+		// Status の方にしか存在しない
+		if err := k8sRepo.DeleteReviewAppInstance(ctx, types.NamespacedName{Name: a.ReviewAppInstanceName, Namespace: ra.Namespace}); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 	// syncedPullRequests
 	// ra.Status.SyncedPullRequests
 

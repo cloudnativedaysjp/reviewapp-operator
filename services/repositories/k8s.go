@@ -14,8 +14,9 @@ type KubernetesFactory interface {
 }
 
 type KubernetesRepository interface {
-	ApplyReviewAppInstanceFromReviewApp(ctx context.Context, namespacedName client.ObjectKey, ra *dreamkastv1beta1.ReviewApp, rai *dreamkastv1beta1.ReviewAppInstance) error
+	ApplyReviewAppInstanceFromReviewApp(ctx context.Context, rai *dreamkastv1beta1.ReviewAppInstance, ra *dreamkastv1beta1.ReviewApp) error
 	GetSecretValue(ctx context.Context, namespacedName client.ObjectKey, key string) (string, error)
 	GetArgoCDApplicationStatus(ctx context.Context, namespacedName client.ObjectKey) (*ArgoCDStatusOutput, error)
 	UpdateReviewAppStatus(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) error
+	DeleteReviewAppInstance(ctx context.Context, namespacedName client.ObjectKey) error
 }

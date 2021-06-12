@@ -43,11 +43,7 @@ func NewKubernetesInfra(c client.Client, l logr.Logger) (*KubernetesInfra, error
 	return &KubernetesInfra{c, l}, nil
 }
 
-func (ki *KubernetesInfra) ApplyReviewAppInstanceFromReviewApp(
-	ctx context.Context, namespacedName client.ObjectKey,
-	ra *dreamkastv1beta1.ReviewApp,
-	rai *dreamkastv1beta1.ReviewAppInstance,
-) error {
+func (ki *KubernetesInfra) ApplyReviewAppInstanceFromReviewApp(ctx context.Context, rai *dreamkastv1beta1.ReviewAppInstance, ra *dreamkastv1beta1.ReviewApp) error {
 	if _, err := ctrl.CreateOrUpdate(ctx, ki.Client, rai, func() (err error) {
 		if err := ctrl.SetControllerReference(ra, rai, ki.Scheme()); err != nil {
 			ki.Log.Error(err, "unable to set ownerReference from ReviewApp to ReviewAppInstance")
@@ -95,4 +91,8 @@ func (ki *KubernetesInfra) UpdateReviewAppStatus(ctx context.Context, ra *dreamk
 		return err
 	}
 	return nil
+}
+
+func (ki *KubernetesInfra) DeleteReviewAppInstance(ctx context.Context, namespacedName client.ObjectKey) error {
+	// TODO
 }

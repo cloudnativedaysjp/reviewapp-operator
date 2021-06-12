@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,7 +24,8 @@ import (
 type ApplicationTemplateSpec struct {
 
 	// Template is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	Template argocd_application_v1alpha1.Application `json:"template,omitempty"`
+	Template string `json:"template,omitempty"`
+	//Template argocd_application_v1alpha1.Application `json:"template,omitempty"`
 }
 
 // ApplicationTemplateStatus defines the observed state of ApplicationTemplate
