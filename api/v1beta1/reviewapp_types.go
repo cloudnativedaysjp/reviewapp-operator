@@ -92,6 +92,9 @@ type ReviewAppSpecInfraArgoCDApp struct {
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
+
+	// TODO
+	SyncedPullRequests []int `json:"syncedPullRequests,omitempty"`
 }
 
 //+kubebuilder:object:root=true

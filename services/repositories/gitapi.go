@@ -11,5 +11,5 @@ type GitApiFactory interface {
 }
 
 type GitApiRepository interface {
-	ListPullRequests(ctx context.Context, org, repo string) ([]ListPullRequestsOutput, error)
+	ListPullRequestsWithOpen(ctx context.Context, org, repo string) ([]ListPullRequestsOutput, error)
 }

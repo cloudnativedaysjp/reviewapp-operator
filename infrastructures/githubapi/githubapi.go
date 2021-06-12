@@ -30,9 +30,9 @@ func NewGitHubApiInfra(l logr.Logger, username, token string) (*GitHubApiInfra, 
 }
 
 // TODO: 検索条件を指定可能にする (例. label xxx が付与されている PR は対象外)
-func (ki *GitHubApiInfra) ListPullRequests(ctx context.Context, org, repo string) ([]repositories.ListPullRequestsOutput, error) {
+func (ki *GitHubApiInfra) ListPullRequestsWithOpen(ctx context.Context, org, repo string) ([]repositories.ListPullRequestsOutput, error) {
 	client := github.NewClient(oauth2.NewClient(ctx, ki.ts))
-	prs, _, err := client.PullRequests.List(ctx, org, repo, nil)
+	prs, _, err := client.PullRequests.List(ctx, org, repo, &github.PullRequestListOptions{State: "open"})
 	if err != nil {
 		return nil, err
 	}

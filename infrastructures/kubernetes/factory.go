@@ -1,4 +1,4 @@
-package k8s_rai_client
+package kubernetes
 
 import (
 	"github.com/go-logr/logr"
@@ -9,6 +9,6 @@ import (
 
 type KubernetesFactoryImpl struct{}
 
-func (kfi KubernetesFactoryImpl) NewRepository(c client.Client, l logr.Logger) (repositories.K8sReviewAppInstanceClientRepository, error) {
+func (kfi KubernetesFactoryImpl) NewRepository(c client.Client, l logr.Logger) (repositories.KubernetesRepository, error) {
 	return NewKubernetesInfra(c, l)
 }

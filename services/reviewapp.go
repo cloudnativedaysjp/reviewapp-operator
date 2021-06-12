@@ -17,11 +17,11 @@ type ReviewAppService struct {
 	client.Client
 	Log logr.Logger
 
-	K8sFactory    repositories.K8sReviewAppClientFactory
+	K8sFactory    repositories.KubernetesFactory
 	gitApiFactory repositories.GitApiFactory
 }
 
-func NewReviewAppService(c client.Client, l logr.Logger, k8sFactory repositories.K8sReviewAppClientFactory, gitApiFactory repositories.GitApiFactory) *ReviewAppService {
+func NewReviewAppService(c client.Client, l logr.Logger, k8sFactory repositories.KubernetesFactory, gitApiFactory repositories.GitApiFactory) *ReviewAppService {
 	return &ReviewAppService{c, l, k8sFactory, gitApiFactory}
 }
 
@@ -45,22 +45,35 @@ func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dream
 	}
 
 	// list PRs
-	prs, err := gitapiRepo.ListPullRequests(ctx, ra.Spec.App.Organization, ra.Spec.App.Repository)
+	prs, err := gitapiRepo.ListPullRequestsWithOpen(ctx, ra.Spec.App.Organization, ra.Spec.App.Repository)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// apply ReviewAppInstance
-	//for _, pr := range prs {
-	for range prs {
-		if err := k8sRepo.ApplyReviewAppInstance(
+	var syncedPullRequests []int
+	for _, pr := range prs {
+		// TODO: merge Template & generate ReviewAppInstance
+		rai := &dreamkastv1beta1.ReviewAppInstance{}
+
+		if err := k8sRepo.ApplyReviewAppInstanceFromReviewApp(
 			ctx, types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace},
+			ra, rai,
 		); err != nil {
 			return ctrl.Result{}, err
 		}
-	}
 
+		syncedPullRequests = append(syncedPullRequests, pr.Number)
+	}
 	// TODO: PR が close 済な ReviewAppInstance を削除する
+	// syncedPullRequests
+	// ra.Status.SyncedPullRequests
+
+	// update ReviewApp Status
+	ra.Status.SyncedPullRequests = syncedPullRequests
+	if err := k8sRepo.UpdateReviewAppStatus(ctx, ra); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
