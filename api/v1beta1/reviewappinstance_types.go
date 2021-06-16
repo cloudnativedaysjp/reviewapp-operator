@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,7 +30,7 @@ type ReviewAppInstanceSpec struct {
 	Infra ReviewAppSpecInfra `json:"infra,omitempty"`
 
 	// Application is manifest of ArgoCD Application resource
-	Application argocd_application_v1alpha1.Application `json:"template,omitempty"`
+	Application string `json:"application,omitempty"`
 
 	// Manifests
 	Manifests map[string]string `json:"manifests,omitempty"`

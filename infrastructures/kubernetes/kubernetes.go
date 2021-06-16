@@ -9,6 +9,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	errors_ "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -35,6 +36,7 @@ func NewKubernetesInfra(c client.Client, l logr.Logger) (*KubernetesInfra, error
 
 	// this app depend on ArgoCD.
 	// return error if ArgoCD Application CRD is not installed
+	// TODO: list に失敗する
 	var a argocd_application_v1alpha1.ApplicationList
 	if err := c.List(context.Background(), &a); err != nil {
 		return nil, err
@@ -94,5 +96,39 @@ func (ki *KubernetesInfra) UpdateReviewAppStatus(ctx context.Context, ra *dreamk
 }
 
 func (ki *KubernetesInfra) DeleteReviewAppInstance(ctx context.Context, namespacedName client.ObjectKey) error {
-	// TODO
+	rai := dreamkastv1beta1.ReviewAppInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespacedName.Name,
+			Namespace: namespacedName.Namespace,
+		},
+	}
+	if err := ki.Delete(ctx, &rai); err != nil {
+		ki.Log.Error(err, err.Error())
+		return err
+	}
+	return nil
+}
+
+func (ki *KubernetesInfra) GetApplicationTemplate(ctx context.Context, namespacedName client.ObjectKey) (*dreamkastv1beta1.ApplicationTemplate, error) {
+	var at dreamkastv1beta1.ApplicationTemplate
+	if err := ki.Client.Get(ctx, namespacedName, &at); err != nil {
+		if errors_.IsNotFound(err) {
+			ki.Log.Info(fmt.Sprintf("%s not found", reflect.TypeOf(at)))
+			return nil, err
+		}
+		return nil, client.IgnoreNotFound(err)
+	}
+	return &at, nil
+}
+
+func (ki *KubernetesInfra) GetManifestTemplate(ctx context.Context, namespacedName client.ObjectKey) (*dreamkastv1beta1.ManifestsTemplate, error) {
+	var mt dreamkastv1beta1.ManifestsTemplate
+	if err := ki.Client.Get(ctx, namespacedName, &mt); err != nil {
+		if errors_.IsNotFound(err) {
+			ki.Log.Info(fmt.Sprintf("%s not found", reflect.TypeOf(mt)))
+			return nil, err
+		}
+		return nil, client.IgnoreNotFound(err)
+	}
+	return &mt, nil
 }

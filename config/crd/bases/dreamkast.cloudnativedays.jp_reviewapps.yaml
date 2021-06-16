@@ -137,6 +137,19 @@ spec:
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
+            properties:
+              syncedPullRequests:
+                description: TODO
+                items:
+                  properties:
+                    number:
+                      description: TODO
+                      type: integer
+                    reviewAppInstanceName:
+                      description: TODO
+                      type: string
+                  type: object
+                type: array
             type: object
         type: object
     served: true
