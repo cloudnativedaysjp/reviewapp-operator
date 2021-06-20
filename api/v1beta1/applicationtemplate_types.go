@@ -34,6 +34,7 @@ type ApplicationTemplateStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=at
 //+kubebuilder:subresource:status
 
 // ApplicationTemplate is the Schema for the applicationtemplates API

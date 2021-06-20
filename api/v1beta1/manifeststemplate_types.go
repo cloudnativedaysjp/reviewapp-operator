@@ -27,6 +27,7 @@ type ManifestsTemplateStatus struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=mt
 //+kubebuilder:subresource:status
 
 // ManifestsTemplate is the Schema for the manifeststemplates API

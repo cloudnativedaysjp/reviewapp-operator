@@ -13,6 +13,8 @@ spec:
     kind: ManifestsTemplate
     listKind: ManifestsTemplateList
     plural: manifeststemplates
+    shortNames:
+    - mt
     singular: manifeststemplate
   scope: Namespaced
   versions:

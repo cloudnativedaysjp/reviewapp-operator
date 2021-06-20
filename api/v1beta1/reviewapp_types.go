@@ -73,7 +73,7 @@ type ReviewAppSpecInfra struct {
 
 type ReviewAppSpecInfraManifests struct {
 	// Templates is specifying list of ManifestTemplate resources
-	Templates []string `json:"templatesName,omitempty"`
+	Templates []NamespacedName `json:"templates,omitempty"`
 
 	// Dirpath is directory path of deploying TemplateManifests
 	// Allow Go-Template notation
@@ -83,7 +83,7 @@ type ReviewAppSpecInfraManifests struct {
 type ReviewAppSpecInfraArgoCDApp struct {
 
 	// Template is specifying ApplicationTemplate resources
-	Template string `json:"templateName,omitempty"`
+	Template NamespacedName `json:"template,omitempty"`
 
 	// Filepath is file path of deploying ApplicationTemplate
 	// Allow Go-Template notation
@@ -107,6 +107,7 @@ type ReviewAppStatusSyncedPullRequests struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
 
 // ReviewApp is the Schema for the reviewapps API

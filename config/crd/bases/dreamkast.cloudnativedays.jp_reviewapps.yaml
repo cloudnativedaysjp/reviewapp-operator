@@ -13,6 +13,8 @@ spec:
     kind: ReviewApp
     listKind: ReviewAppList
     plural: reviewapps
+    shortNames:
+    - ra
     singular: reviewapp
   scope: Namespaced
   versions:

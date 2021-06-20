@@ -5,9 +5,11 @@ go 1.16
 require (
 	github.com/argoproj/argo-cd v1.8.7
 	github.com/argoproj/gitops-engine v0.3.2 // indirect
+	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/go-logr/logr v0.3.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/google/wire v0.5.0 // indirect
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
@@ -16,7 +18,6 @@ require (
 	k8s.io/apimachinery v0.20.4
 	k8s.io/client-go v11.0.1-0.20190816222228-6d55c1b1f1ca+incompatible
 	sigs.k8s.io/controller-runtime v0.8.3
-	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (

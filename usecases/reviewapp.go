@@ -1,4 +1,4 @@
-package services
+package usecases
 
 import (
 	"context"
@@ -10,16 +10,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/yaml"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services/repositories"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 	"github.com/go-logr/logr"
 )
 
 type ReviewAppService struct {
 	client.Client
-	Log logr.Logger
+	logger logr.Logger
 
 	K8sFactory    repositories.KubernetesFactory
 	gitApiFactory repositories.GitApiFactory
@@ -30,11 +30,19 @@ func NewReviewAppService(c client.Client, l logr.Logger, k8sFactory repositories
 }
 
 func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
-	// init k8s repository for ReviewApp
-	k8sRepo, err := s.K8sFactory.NewRepository(s.Client, s.Log)
+	argocdApplicationRepo, err := wire.NewArgoCDApplication(s.logger, s.Client)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	reviewAppConfigRepo, err := wire.NewReviewAppConfig(s.logger, s.Client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	reviewAppInstanceRepo, err := wire.NewReviewAppInstance(s.logger, s.Client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	gitRemoteRepoServiceForApp, err := wire.NewGitRemoteRepoService(s.logger, s.Client, ra.Spec.App.Username)
 
 	// get Git AccessToken from Secret
 	token, err := k8sRepo.GetSecretValue(ctx, types.NamespacedName{Name: ra.Spec.App.GitSecretRef.Name, Namespace: ra.Namespace}, ra.Spec.App.GitSecretRef.Key)
@@ -66,12 +74,12 @@ func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dream
 		}
 
 		// merge Template & generate ReviewAppInstance
-		if err := s.mergeTemplate(ctx, k8sRepo, rai, ra); err != nil {
+		if err := s.mergeTemplate(ctx, k8sRepo, rai, ra, pr.Number); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// apply RAI
-		if err := k8sRepo.ApplyReviewAppInstanceFromReviewApp(ctx, rai, ra); err != nil {
+		if err := k8sRepo.ApplyReviewAppInstanceFromReviewApp(ctx, *rai, *ra); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -98,14 +106,20 @@ loop:
 
 	// update ReviewApp Status
 	ra.Status.SyncedPullRequests = syncedPullRequests
-	if err := k8sRepo.UpdateReviewAppStatus(ctx, ra); err != nil {
+	if err := k8sRepo.UpdateReviewAppStatus(ctx, *ra); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (s *ReviewAppService) mergeTemplate(ctx context.Context, k8sRepo repositories.KubernetesRepository, rai *dreamkastv1beta1.ReviewAppInstance, ra *dreamkastv1beta1.ReviewApp) error {
+func (s *ReviewAppService) mergeTemplate(
+	ctx context.Context,
+	k8sRepo repositories.KubernetesRepository,
+	rai *dreamkastv1beta1.ReviewAppInstance,
+	ra *dreamkastv1beta1.ReviewApp,
+	prNum int,
+) error {
 	// construct struct for template's value
 	vars := make(map[string]string)
 	for i, line := range ra.Spec.Variables {
@@ -117,10 +131,10 @@ func (s *ReviewAppService) mergeTemplate(ctx context.Context, k8sRepo repositori
 		vars[line[:idx]] = line[idx+1:]
 	}
 	v := &Value{
-		pull_request: pullRequest{
-			number: 0, //TODO
+		PullRequest: PullRequest{
+			Number: prNum,
 		},
-		variables: vars,
+		Variables: vars,
 	}
 
 	// get ApplicationTemplate resource from RA & set to ReviewAppInstance
@@ -128,17 +142,13 @@ func (s *ReviewAppService) mergeTemplate(ctx context.Context, k8sRepo repositori
 	if err != nil {
 		return err
 	}
-	buf, err := yaml.Marshal(&at)
-	if err != nil {
-		return err
-	}
-	rai.Spec.Application, err = v.templating(string(buf))
+	rai.Spec.Application, err = v.templating(at.Spec.Template)
 	if err != nil {
 		return err
 	}
 
 	// get ManifestTemplate resource from RA & set to ReviewAppInstance
-	var mts map[string]string
+	mts := make(map[string]string)
 	for _, mtName := range ra.Spec.Infra.Manifests.Templates {
 		mt, err := k8sRepo.GetManifestTemplate(ctx, types.NamespacedName{Name: mtName, Namespace: ra.Namespace})
 		if err != nil {
@@ -152,6 +162,7 @@ func (s *ReviewAppService) mergeTemplate(ctx context.Context, k8sRepo repositori
 			mts[key] = s
 		}
 	}
+	rai.Spec.Manifests = mts
 
 	// set ArgoCDApp.Filepath & Manifests.Dirpath to ReviewAppInstance
 	rai.Spec.Infra.ArgoCDApp.Filepath, err = v.templating(ra.Spec.Infra.ArgoCDApp.Filepath)

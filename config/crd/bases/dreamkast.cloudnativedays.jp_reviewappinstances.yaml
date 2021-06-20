@@ -13,6 +13,8 @@ spec:
     kind: ReviewAppInstance
     listKind: ReviewAppInstanceList
     plural: reviewappinstances
+    shortNames:
+    - rai
     singular: reviewappinstance
   scope: Namespaced
   versions:

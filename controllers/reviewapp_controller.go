@@ -26,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
@@ -60,7 +58,7 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	r.Log.Info(fmt.Sprintf("fetching %s resource", reflect.TypeOf(ra)))
 	if err := r.Get(ctx, req.NamespacedName, &ra); err != nil {
 		if errors_.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("%s not found", reflect.TypeOf(ra)))
+			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -73,13 +71,14 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1beta1.ReviewApp{}).
-		Watches(
-			&source.Kind{Type: &dreamkastv1beta1.ApplicationTemplate{}},
-			&handler.EnqueueRequestForObject{},
-		).
-		Watches(
-			&source.Kind{Type: &dreamkastv1beta1.ManifestsTemplate{}},
-			&handler.EnqueueRequestForObject{},
-		).
+		Owns(&dreamkastv1beta1.ReviewAppInstance{}).
+		// Watches(
+		// 	&source.Kind{Type: &dreamkastv1beta1.ApplicationTemplate{}},
+		// 	&handler.EnqueueRequestForObject{},
+		// ).
+		// Watches(
+		// 	&source.Kind{Type: &dreamkastv1beta1.ManifestsTemplate{}},
+		// 	&handler.EnqueueRequestForObject{},
+		// ).
 		Complete(r)
 }

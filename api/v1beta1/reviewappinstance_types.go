@@ -60,6 +60,7 @@ type SyncedArtifact struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=rai
 //+kubebuilder:subresource:status
 
 // ReviewAppInstance is the Schema for the reviewappinstances API

@@ -1,4 +1,4 @@
-package services
+package usecases
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ var (
 )
 
 type Value struct {
-	pull_request pullRequest
-	variables    map[string]string
+	PullRequest PullRequest
+	Variables   map[string]string
 }
 
 func (v Value) templating(text string) (string, error) {
@@ -26,6 +26,6 @@ func (v Value) templating(text string) (string, error) {
 	return val.String(), nil
 }
 
-type pullRequest struct {
-	number uint
+type PullRequest struct {
+	Number int
 }

@@ -20,10 +20,10 @@ spec:
     manifests:
       templatesName:
         - manifeststemplate-sample
-      dirpath: "ovarlays/dev/{{.variables.app_repository_alias}}-{{.pull_request.number}}"
+      dirpath: "ovarlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
     argocdApp:
       templateName: applicationtemplate-sample
-      filepath: ".app/dev/{{.variables.app_repository_alias}}-{{.pull_request.number}}.yaml"
+      filepath: ".app/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}.yaml"
   variables:
-    - app_repository_alias=sample
+    - AppRepositoryAlias=sample
 

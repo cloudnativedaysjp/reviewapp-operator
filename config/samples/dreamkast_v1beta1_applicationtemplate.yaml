@@ -7,16 +7,16 @@ spec:
     apiVersion: argoproj.io/v1alpha1
     kind: Application
     metadata:
-      name: "{{.variables.app_repository_alias}}-{{.pull_request.number}}"
+      name: "{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
       namespace: argocd
     spec:
       destination:
-        namespace: "{{.variables.app_repository_alias}}-{{.pull_request.number}}"
+        namespace: "{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
         server: https://kubernetes.default.svc
       project: default
       source:
         repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-        path: "ovarlays/dev/{{.variables.app_repository_alias}}-{{.pull_request.number}}"
+        path: "ovarlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
         targetRevision: main
       syncPolicy:
         automated:

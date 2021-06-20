@@ -13,6 +13,8 @@ spec:
     kind: ApplicationTemplate
     listKind: ApplicationTemplateList
     plural: applicationtemplates
+    shortNames:
+    - at
     singular: applicationtemplate
   scope: Namespaced
   versions:
