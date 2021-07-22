@@ -38,21 +38,21 @@ func (g *GitHubApiGateway) WithCredential(token string) error {
 }
 
 // TODO: 検索条件を指定可能にする (例. label xxx が付与されている PR は対象外)
-func (g *GitHubApiGateway) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequestApp, error) {
+func (g *GitHubApiGateway) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.GitRepoPullRequest, error) {
 	client := github.NewClient(oauth2.NewClient(ctx, g.ts))
 	prs, _, err := client.PullRequests.List(ctx, org, repo, &github.PullRequestListOptions{State: "open"})
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*models.PullRequestApp
+	var result []*models.GitRepoPullRequest
 	for _, pr := range prs {
-		result = append(result, models.NewPullRequestApp(org, repo, *pr.Number, *pr.Head.SHA))
+		result = append(result, models.NewGitRepoPullRequest(org, repo, *pr.Number, *pr.Head.SHA))
 	}
 	return result, nil
 }
 
-func (g *GitHubApiGateway) CommentToPullRequest(pr models.PullRequestApp, comment string) error {
+func (g *GitHubApiGateway) CommentToPullRequest(pr models.GitRepoPullRequest, comment string) error {
 	// TODO
 	return fmt.Errorf("not implemented")
 }

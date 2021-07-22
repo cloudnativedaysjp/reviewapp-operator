@@ -5,11 +5,11 @@ import (
 )
 
 type GitRemoteRepoInfraService struct {
-	prRepo     repositories.PullRequestInfraIFace
-	secretRepo repositories.GitRepoSecretIFace
+	prRepo     repositories.PullRequestAppIFace
+	secretRepo repositories.GitRepoCredentialIFace
 }
 
-func NewGitRemoteRepoInfraService(pr repositories.PullRequestInfraIFace, secret repositories.GitRepoSecretIFace) *GitRemoteRepoInfraService {
+func NewGitRemoteRepoInfraService(pr repositories.PullRequestInfraIFace, secret repositories.GitRepoCredentialIFace) *GitRemoteRepoInfraService {
 	return &GitRemoteRepoInfraService{pr, secret}
 }
 

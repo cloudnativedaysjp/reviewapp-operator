@@ -87,9 +87,17 @@ spec:
                         description: Filepath is file path of deploying ApplicationTemplate
                           Allow Go-Template notation
                         type: string
-                      templateName:
+                      template:
                         description: Template is specifying ApplicationTemplate resources
-                        type: string
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                        required:
+                        - name
+                        - namespace
+                        type: object
                     type: object
                   gitSecretRef:
                     description: GitSecretRef is specifying secret for accessing Git
@@ -116,11 +124,19 @@ spec:
                         description: Dirpath is directory path of deploying TemplateManifests
                           Allow Go-Template notation
                         type: string
-                      templatesName:
+                      templates:
                         description: Templates is specifying list of ManifestTemplate
                           resources
                         items:
-                          type: string
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                          required:
+                          - name
+                          - namespace
+                          type: object
                         type: array
                     type: object
                   organization:

@@ -30,10 +30,6 @@ func NewReviewAppService(c client.Client, l logr.Logger, k8sFactory repositories
 }
 
 func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
-	argocdApplicationRepo, err := wire.NewArgoCDApplication(s.logger, s.Client)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 	reviewAppConfigRepo, err := wire.NewReviewAppConfig(s.logger, s.Client)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -42,7 +38,10 @@ func (s *ReviewAppService) ReconcileByPullRequest(ctx context.Context, ra *dream
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	gitRemoteRepoServiceForApp, err := wire.NewGitRemoteRepoService(s.logger, s.Client, ra.Spec.App.Username)
+	gitRemoteRepoServiceForApp, err := wire.NewGitRemoteRepoAppService(s.logger, s.Client, ra.Spec.App.Username)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
 	// get Git AccessToken from Secret
 	token, err := k8sRepo.GetSecretValue(ctx, types.NamespacedName{Name: ra.Spec.App.GitSecretRef.Name, Namespace: ra.Namespace}, ra.Spec.App.GitSecretRef.Key)

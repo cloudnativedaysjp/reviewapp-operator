@@ -8,11 +8,11 @@ import (
 )
 
 type GitRemoteRepoAppService struct {
-	prRepo     repositories.PullRequestAppIFace
-	secretRepo repositories.GitRepoSecretIFace
+	gitPrRepo repositories.PullRequestIFace
+	k8sRepo   repositories.SecretIFace
 }
 
-func NewGitRemoteRepoAppService(pr repositories.PullRequestAppIFace, secret repositories.GitRepoSecretIFace) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(pr repositories.PullRequestIFace, secret repositories.SecretIFace) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{pr, secret}
 }
 
@@ -24,15 +24,15 @@ type ListOpenPullRequestInput struct {
 	GitRemoteRepository string
 }
 
-func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, input ListOpenPullRequestInput) ([]*models.PullRequestApp, error) {
-	credential, err := s.secretRepo.GetSecretValue(ctx, input.SecretNamespace, input.SecretName, input.SecretKey)
+func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, input ListOpenPullRequestInput) ([]*models.PullRequest, error) {
+	credential, err := s.k8sRepo.GetSecretValue(ctx, input.SecretNamespace, input.SecretName, input.SecretKey)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.prRepo.WithCredential(credential); err != nil {
+	if err := s.gitPrRepo.WithCredential(credential); err != nil {
 		return nil, err
 	}
-	prs, err := s.prRepo.ListOpenPullRequests(ctx, input.GitOrganization, input.GitRemoteRepository)
+	prs, err := s.gitPrRepo.ListOpenPullRequests(ctx, input.GitOrganization, input.GitRemoteRepository)
 	if err != nil {
 		return nil, err
 	}

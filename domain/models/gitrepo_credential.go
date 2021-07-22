@@ -1,5 +1,5 @@
 package models
 
-type GitRepoSecret struct {
+type GitRepoCredential struct {
 	credential string
 }

@@ -13,29 +13,11 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
 )
 
-func NewArgoCDApplication(l logr.Logger, c client.Client) (*repositories.ArgoCDApplication, error) {
-	wire.Build(
-		kubernetes.NewKubernetesGateway,
-		repositories.NewArgoCDApplication,
-		wire.Bind(new(repositories.ArgoCDApplicationIFace), new(*kubernetes.KubernetesGateway)),
-	)
-	return nil, nil
-}
-
-func NewGitRepoSecret(l logr.Logger, c client.Client) (*repositories.GitRepoSecret, error) {
-	wire.Build(
-		kubernetes.NewKubernetesGateway,
-		repositories.NewGitRepoSecret,
-		wire.Bind(new(repositories.GitRepoSecretIFace), new(*kubernetes.KubernetesGateway)),
-	)
-	return nil, nil
-}
-
-func NewPullRequestApp(l logr.Logger, username string) (*repositories.PullRequestApp, error) {
+func NewPullRequest(l logr.Logger, username string) (*repositories.PullRequest, error) {
 	wire.Build(
 		githubapi.NewGitHubApiGateway,
-		repositories.NewPullRequestApp,
-		wire.Bind(new(repositories.PullRequestAppIFace), new(*githubapi.GitHubApiGateway)),
+		repositories.NewPullRequest,
+		wire.Bind(new(repositories.PullRequestIFace), new(*githubapi.GitHubApiGateway)),
 	)
 	return nil, nil
 }
@@ -49,20 +31,11 @@ func NewPullRequestInfra(l logr.Logger, username string) (*repositories.PullRequ
 	return nil, nil
 }
 
-func NewReviewAppConfig(l logr.Logger, c client.Client) (*repositories.ReviewAppConfig, error) {
+func NewKubernetes(l logr.Logger, c client.Client) (*repositories.Kubernetes, error) {
 	wire.Build(
 		kubernetes.NewKubernetesGateway,
-		repositories.NewReviewAppConfig,
-		wire.Bind(new(repositories.ReviewAppConfigIFace), new(*kubernetes.KubernetesGateway)),
-	)
-	return nil, nil
-}
-
-func NewReviewAppInstance(l logr.Logger, c client.Client) (*repositories.ReviewAppInstance, error) {
-	wire.Build(
-		kubernetes.NewKubernetesGateway,
-		repositories.NewReviewAppInstance,
-		wire.Bind(new(repositories.ReviewAppInstanceIFace), new(*kubernetes.KubernetesGateway)),
+		repositories.NewKubernetes,
+		wire.Bind(new(repositories.KubernetesIFace), new(*kubernetes.KubernetesGateway)),
 	)
 	return nil, nil
 }
@@ -70,9 +43,9 @@ func NewReviewAppInstance(l logr.Logger, c client.Client) (*repositories.ReviewA
 func NewGitRemoteRepoAppService(l logr.Logger, c client.Client, username string) (*services.GitRemoteRepoAppService, error) {
 	wire.Build(
 		githubapi.NewGitHubApiGateway,
-		wire.Bind(new(repositories.PullRequestAppIFace), new(*githubapi.GitHubApiGateway)),
+		wire.Bind(new(repositories.PullRequestIFace), new(*githubapi.GitHubApiGateway)),
 		kubernetes.NewKubernetesGateway,
-		wire.Bind(new(repositories.GitRepoSecretIFace), new(*kubernetes.KubernetesGateway)),
+		wire.Bind(new(repositories.GitRepoCredentialIFace), new(*kubernetes.KubernetesGateway)),
 		services.NewGitRemoteRepoAppService,
 	)
 	return nil, nil
@@ -83,10 +56,10 @@ func NewGitRemoteRepoInfraService(l logr.Logger, c client.Client, username strin
 		githubapi.NewGitHubApiGateway,
 		wire.Bind(new(repositories.PullRequestInfraIFace), new(*githubapi.GitHubApiGateway)),
 		kubernetes.NewKubernetesGateway,
-		wire.Bind(new(repositories.GitRepoSecretIFace), new(*kubernetes.KubernetesGateway)),
+		wire.Bind(new(repositories.GitRepoCredentialIFace), new(*kubernetes.KubernetesGateway)),
 		services.NewGitRemoteRepoInfraService,
 	)
 	return nil, nil
 }
 
-//repositories.PullRequestIFace, secret repositories.GitRepoSecretIFace
+//repositories.PullRequestIFace, secret repositories.GitRepoCredentialIFace
