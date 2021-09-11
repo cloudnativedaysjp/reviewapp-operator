@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,92 +24,65 @@ import (
 type ReviewAppSpec struct {
 
 	// App is config of application repository
-	App ReviewAppSpecApp `json:"app,omitempty"`
+	App ReviewAppManagerSpecApp `json:"appRepo"`
 
 	// Infra is config of manifest repository
-	Infra ReviewAppSpecInfra `json:"infra,omitempty"`
+	Infra ReviewAppManagerSpecInfra `json:"infraRepo"`
 
-	// Variables is available to use input of Application & Manifest Template
-	Variables []string `json:"variables,omitempty"`
-}
+	// AppPrNum is watched PR's number by this RA
+	AppPrNum int `json:"appRepoPrNum"`
 
-type ReviewAppSpecApp struct {
+	// Application is manifest of ArgoCD Application resource
+	Application string `json:"application"`
 
-	// TODO
-	Organization string `json:"organization,omitempty"`
-
-	// TODO
-	Repository string `json:"repository,omitempty"`
-
-	// TODO
-	Username string `json:"username,omitempty"`
-
-	// GitSecretRef is specifying secret for accessing Git remote-repo
-	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
-
-	// IgnoreLabels is TODO
-	IgnoreLabels []string `json:"ignoreLabels,omitempty"`
-
-	// IgnoreTitleExp is TODO
-	IgnoreTitleExp string `json:"ignoreTitleExp,omitempty"`
-}
-
-type ReviewAppSpecInfra struct {
-
-	// TODO
-	Organization string `json:"organization,omitempty"`
-
-	// TODO
-	Repository string `json:"repository,omitempty"`
-
-	// GitSecretRef is specifying secret for accessing Git remote-repo
-	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
-
-	Manifests ReviewAppSpecInfraManifests `json:"manifests,omitempty"`
-
-	ArgoCDApp ReviewAppSpecInfraArgoCDApp `json:"argocdApp,omitempty"`
-}
-
-type ReviewAppSpecInfraManifests struct {
-	// Templates is specifying list of ManifestTemplate resources
-	Templates []NamespacedName `json:"templates,omitempty"`
-
-	// Dirpath is directory path of deploying TemplateManifests
-	// Allow Go-Template notation
-	Dirpath string `json:"dirpath,omitempty"`
-}
-
-type ReviewAppSpecInfraArgoCDApp struct {
-
-	// Template is specifying ApplicationTemplate resources
-	Template NamespacedName `json:"template,omitempty"`
-
-	// Filepath is file path of deploying ApplicationTemplate
-	// Allow Go-Template notation
-	Filepath string `json:"filepath,omitempty"`
+	// Manifests
+	Manifests map[string]string `json:"manifests,omitempty"`
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
-
 	// TODO
-	SyncedPullRequests []ReviewAppStatusSyncedPullRequests `json:"syncedPullRequests,omitempty"`
+	Sync SyncStatus `json:"sync,omitempty"`
 }
 
-type ReviewAppStatusSyncedPullRequests struct {
+type SyncStatus struct {
+
+	// Status is the sync state of the comparison
+	Status SyncStatusCode `json:"status"`
 
 	// TODO
-	Number int `json:"number,omitempty"`
+	ApplicationName string `json:"applicationName,omitempty"`
 
 	// TODO
-	ReviewAppInstanceName string `json:"reviewAppInstanceName,omitempty"`
+	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
+
+	// TODO
+	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
+
+	// TODO
+	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
 }
+
+// SyncStatusCode is a type which represents possible comparison results
+type SyncStatusCode string
+
+// Possible comparison results
+const (
+	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
+	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
+	// SyncStatusCodeWatchingAppRepo indicates that desired and live states match
+	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
+	// SyncStatusCodeUpdatedAppRepo indicates that watched updated app repo & will update manifests to infra repo
+	SyncStatusCodeCheckedAppRepo SyncStatusCode = "CheckedAppRepo"
+	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
+	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
 
-// ReviewApp is the Schema for the reviewapps API
+// ReviewApp is the Schema for the reviewapp API
 type ReviewApp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

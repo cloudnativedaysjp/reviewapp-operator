@@ -1,11 +1,9 @@
 package models
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+const (
+	AnnotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
+	AnnotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
+	AnnotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
 )
 
-type ArgoCDApplication struct {
-	metav1.ObjectMeta
-	// TODO
-	Status string
-}
+type ArgoCDApplicationString string

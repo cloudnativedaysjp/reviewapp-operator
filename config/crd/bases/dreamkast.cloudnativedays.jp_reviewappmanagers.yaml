@@ -6,22 +6,22 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: reviewappinstances.dreamkast.cloudnativedays.jp
+  name: reviewappmanagers.dreamkast.cloudnativedays.jp
 spec:
   group: dreamkast.cloudnativedays.jp
   names:
-    kind: ReviewAppInstance
-    listKind: ReviewAppInstanceList
-    plural: reviewappinstances
+    kind: ReviewAppManager
+    listKind: ReviewAppManagerList
+    plural: reviewappmanagers
     shortNames:
-    - rai
-    singular: reviewappinstance
+    - ram
+    singular: reviewappmanager
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ReviewAppInstance is the Schema for the reviewappinstances API
+        description: ReviewAppManager is the Schema for the reviewappmanagers API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,9 +36,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: ReviewAppInstanceSpec defines the desired state of ReviewAppInstance
+            description: ReviewAppManagerSpec defines the desired state of ReviewAppManager
             properties:
-              app:
+              appRepo:
                 description: App is config of application repository
                 properties:
                   gitSecretRef:
@@ -77,11 +77,12 @@ spec:
                   username:
                     description: TODO
                     type: string
+                required:
+                - organization
+                - repository
+                - username
                 type: object
-              application:
-                description: Application is manifest of ArgoCD Application resource
-                type: string
-              infra:
+              infraRepo:
                 description: Infra is config of manifest repository
                 properties:
                   argocdApp:
@@ -148,34 +149,47 @@ spec:
                   repository:
                     description: TODO
                     type: string
+                  targetBranch:
+                    description: TODO
+                    type: string
+                  username:
+                    description: TODO
+                    type: string
+                required:
+                - organization
+                - repository
+                - targetBranch
+                - username
                 type: object
-              manifests:
-                additionalProperties:
+              variables:
+                description: Variables is available to use input of Application &
+                  Manifest Template
+                items:
                   type: string
-                description: Manifests
-                type: object
+                type: array
+            required:
+            - appRepo
+            - infraRepo
             type: object
           status:
-            description: ReviewAppInstanceStatus defines the observed state of ReviewAppInstance
+            description: ReviewAppManagerStatus defines the observed state of ReviewAppManager
             properties:
-              syncedArtifacts:
+              syncedPullRequests:
+                description: TODO
                 items:
                   properties:
-                    appRepoLatestCommitSha:
-                      description: TODO
-                      type: string
-                    appRepoPrNum:
+                    number:
                       description: TODO
                       type: integer
-                    applicationName:
+                    organization:
                       description: TODO
                       type: string
-                    infraRepoLatestCommitSha:
+                    repository:
                       description: TODO
                       type: string
-                    notifid:
+                    reviewAppName:
                       description: TODO
-                      type: boolean
+                      type: string
                   type: object
                 type: array
             type: object

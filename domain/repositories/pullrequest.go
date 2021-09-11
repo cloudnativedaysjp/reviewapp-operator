@@ -9,5 +9,7 @@ import (
 type PullRequestIFace interface {
 	WithCredential(string) error
 	ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequest, error)
-	CommentToPullRequest(pr models.PullRequest, comment string) error
+	GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*models.PullRequest, error)
+	CommentToPullRequest(ctx context.Context, pr models.PullRequest, comment string) error
+	GetCommitHashes(ctx context.Context, pr models.PullRequest) ([]string, error)
 }

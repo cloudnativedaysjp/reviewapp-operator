@@ -16,8 +16,8 @@ spec:
       project: default
       source:
         repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-        path: "ovarlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
-        targetRevision: main
+        path: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
+        targetRevision: master
       syncPolicy:
         automated:
           prune: true

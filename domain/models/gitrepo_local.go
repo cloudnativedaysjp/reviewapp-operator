@@ -1,5 +1,9 @@
 package models
 
+const BaseDir = "/tmp"
+const DummyUsername = "dummy"
+
 type GitProject struct {
-	DownlaodDir string
+	DownlaodDir     string
+	LatestCommitSha string
 }

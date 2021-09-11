@@ -35,9 +35,6 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
-	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructures/githubapi"
-	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructures/kubernetes"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -45,7 +42,7 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	resyncPeriod = time.Second * 30
+	resyncPeriod = time.Second * 10
 )
 
 func init() {
@@ -88,25 +85,20 @@ func main() {
 	}
 
 	// initialize controllers
+	if err = (&controllers.ReviewAppManagerReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ReviewAppManager"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
+		os.Exit(1)
+	}
 	if err = (&controllers.ReviewAppReconciler{
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("ReviewApp"),
 		Scheme: mgr.GetScheme(),
-		Service: services.NewReviewAppService(
-			mgr.GetClient(),
-			ctrl.Log,
-			kubernetes.KubernetesFactoryImpl{},
-			githubapi.GitApiFactoryImpl{},
-		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
-		os.Exit(1)
-	}
-	if err = (&controllers.ReviewAppInstanceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ReviewAppInstance")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

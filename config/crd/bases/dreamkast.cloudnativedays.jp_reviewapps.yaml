@@ -21,7 +21,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: ReviewApp is the Schema for the reviewapps API
+        description: ReviewApp is the Schema for the reviewapp API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -38,7 +38,7 @@ spec:
           spec:
             description: ReviewAppSpec defines the desired state of ReviewApp
             properties:
-              app:
+              appRepo:
                 description: App is config of application repository
                 properties:
                   gitSecretRef:
@@ -77,8 +77,18 @@ spec:
                   username:
                     description: TODO
                     type: string
+                required:
+                - organization
+                - repository
+                - username
                 type: object
-              infra:
+              appRepoPrNum:
+                description: AppPrNum is watched PR's number by this RA
+                type: integer
+              application:
+                description: Application is manifest of ArgoCD Application resource
+                type: string
+              infraRepo:
                 description: Infra is config of manifest repository
                 properties:
                   argocdApp:
@@ -145,29 +155,53 @@ spec:
                   repository:
                     description: TODO
                     type: string
+                  targetBranch:
+                    description: TODO
+                    type: string
+                  username:
+                    description: TODO
+                    type: string
+                required:
+                - organization
+                - repository
+                - targetBranch
+                - username
                 type: object
-              variables:
-                description: Variables is available to use input of Application &
-                  Manifest Template
-                items:
+              manifests:
+                additionalProperties:
                   type: string
-                type: array
+                description: Manifests
+                type: object
+            required:
+            - appRepo
+            - appRepoPrNum
+            - application
+            - infraRepo
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
             properties:
-              syncedPullRequests:
+              sync:
                 description: TODO
-                items:
-                  properties:
-                    number:
-                      description: TODO
-                      type: integer
-                    reviewAppInstanceName:
-                      description: TODO
-                      type: string
-                  type: object
-                type: array
+                properties:
+                  appRepoLatestCommitSha:
+                    description: TODO
+                    type: string
+                  applicationName:
+                    description: TODO
+                    type: string
+                  applicationNamespace:
+                    description: TODO
+                    type: string
+                  infraRepoLatestCommitSha:
+                    description: TODO
+                    type: string
+                  status:
+                    description: Status is the sync state of the comparison
+                    type: string
+                required:
+                - status
+                type: object
             type: object
         type: object
     served: true
