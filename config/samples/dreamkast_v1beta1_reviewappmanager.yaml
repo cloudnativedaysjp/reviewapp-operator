@@ -1,0 +1,35 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1beta1
+kind: ReviewAppManager
+metadata:
+  name: reviewapp-sample
+spec:
+  appRepo:
+    username: ShotaKitazawa
+    organization: ShotaKitazawa
+    repository: reviewapp-operator-demo-app
+    gitSecretRef:
+      name: git-creds
+      key: token
+    ignoreLabels: []
+    ignoreTitleExp: '^\[dreamkast-releasebot\]'
+  infraRepo:
+    username: ShotaKitazawa
+    organization: ShotaKitazawa
+    repository: reviewapp-operator-demo-infra
+    targetBranch: master
+    gitSecretRef:
+      name: git-creds
+      key: token
+    manifests:
+      templates:
+        - namespace: argocd
+          name: manifeststemplate-sample
+      dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
+    argocdApp:
+      template:
+        namespace: argocd
+        name: applicationtemplate-sample
+      filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}.yaml"
+  variables:
+    - AppRepositoryAlias=sample
+

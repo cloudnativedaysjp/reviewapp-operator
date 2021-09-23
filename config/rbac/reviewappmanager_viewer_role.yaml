@@ -1,0 +1,20 @@
+# permissions for end users to view reviewappmanagers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: reviewappmanager-viewer-role
+rules:
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappmanagers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappmanagers/status
+  verbs:
+  - get

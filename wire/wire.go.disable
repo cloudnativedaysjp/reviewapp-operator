@@ -1,0 +1,49 @@
+//+ wireinject
+
+package wire
+
+import (
+	"github.com/go-logr/logr"
+	"github.com/google/wire"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
+)
+
+func NewGitRemoteRepoAppService(l logr.Logger, c client.Client, username string) (*services.GitRemoteRepoAppService, error) {
+	wire.Build(
+		githubapi.NewGitHubApiGateway,
+		wire.Bind(new(repositories.PullRequestIFace), new(*githubapi.GitHubApiGateway)),
+		kubernetes.NewKubernetesGateway,
+		wire.Bind(new(repositories.SecretIFace), new(*kubernetes.KubernetesGateway)),
+		services.NewGitRemoteRepoAppService,
+	)
+	return nil, nil
+}
+
+func NewGitRemoteRepoInfraService(l logr.Logger, c client.Client, username string) (*services.GitRemoteRepoInfraService, error) {
+	wire.Build(
+		gitcommand.NewGitCommandGateway,
+		wire.Bind(new(repositories.GitCodeIFace), new(*gitcommand.GitCommandGateway)),
+		kubernetes.NewKubernetesGateway,
+		wire.Bind(new(repositories.SecretIFace), new(*kubernetes.KubernetesGateway)),
+		services.NewGitRemoteRepoInfraService,
+	)
+	return nil, nil
+}
+
+func NewKubernetesService(l logr.Logger, c client.Client) (*services.KubernetesService, error) {
+	wire.Build(
+		kubernetes.NewKubernetesGateway,
+		wire.Bind(new(repositories.ReviewAppConfigIFace), new(*kubernetes.KubernetesGateway)),
+		wire.Bind(new(repositories.ReviewAppIFace), new(*kubernetes.KubernetesGateway)),
+		wire.Bind(new(repositories.ArgoCDApplictionIFace), new(*kubernetes.KubernetesGateway)),
+		wire.Bind(new(repositories.SecretIFace), new(*kubernetes.KubernetesGateway)),
+		services.NewKubernetes,
+	)
+	return nil, nil
+}

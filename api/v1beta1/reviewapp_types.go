@@ -20,28 +20,69 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ReviewAppSpec defines the desired state of ReviewApp
 type ReviewAppSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ReviewApp. Edit reviewapp_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// App is config of application repository
+	App ReviewAppManagerSpecApp `json:"appRepo"`
+
+	// Infra is config of manifest repository
+	Infra ReviewAppManagerSpecInfra `json:"infraRepo"`
+
+	// AppPrNum is watched PR's number by this RA
+	AppPrNum int `json:"appRepoPrNum"`
+
+	// Application is manifest of ArgoCD Application resource
+	Application string `json:"application"`
+
+	// Manifests
+	Manifests map[string]string `json:"manifests,omitempty"`
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// TODO
+	Sync SyncStatus `json:"sync,omitempty"`
 }
 
+type SyncStatus struct {
+
+	// Status is the sync state of the comparison
+	Status SyncStatusCode `json:"status"`
+
+	// TODO
+	ApplicationName string `json:"applicationName,omitempty"`
+
+	// TODO
+	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
+
+	// TODO
+	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
+
+	// TODO
+	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
+}
+
+// SyncStatusCode is a type which represents possible comparison results
+type SyncStatusCode string
+
+// Possible comparison results
+const (
+	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
+	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
+	// SyncStatusCodeWatchingAppRepo indicates that desired and live states match
+	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
+	// SyncStatusCodeUpdatedAppRepo indicates that watched updated app repo & will update manifests to infra repo
+	SyncStatusCodeCheckedAppRepo SyncStatusCode = "CheckedAppRepo"
+	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
+	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
+)
+
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
 
-// ReviewApp is the Schema for the reviewapps API
+// ReviewApp is the Schema for the reviewapp API
 type ReviewApp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

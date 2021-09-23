@@ -1,0 +1,24 @@
+# permissions for end users to edit reviewappmanagers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: reviewappmanager-editor-role
+rules:
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappmanagers/status
+  verbs:
+  - get

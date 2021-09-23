@@ -20,25 +20,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ApplicationTemplateSpec defines the desired state of ApplicationTemplate
 type ApplicationTemplateSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ApplicationTemplate. Edit applicationtemplate_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Template is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	Template string `json:"template,omitempty"`
+	//Template argocd_application_v1alpha1.Application `json:"template,omitempty"`
 }
 
 // ApplicationTemplateStatus defines the observed state of ApplicationTemplate
 type ApplicationTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// TODO
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=at
 //+kubebuilder:subresource:status
 
 // ApplicationTemplate is the Schema for the applicationtemplates API
