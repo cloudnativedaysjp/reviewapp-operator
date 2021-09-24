@@ -44,14 +44,9 @@ spec:
                   kind, metadata, spec, ...)
                 type: string
             type: object
-          status:
-            description: ApplicationTemplateStatus defines the observed state of ApplicationTemplate
-            type: object
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
 status:
   acceptedNames:
     kind: ""

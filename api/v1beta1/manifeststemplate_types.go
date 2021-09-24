@@ -20,15 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ManifestsTemplateStatus defines the observed state of ManifestsTemplate
-type ManifestsTemplateStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=mt
-//+kubebuilder:subresource:status
 
 // ManifestsTemplate is the Schema for the manifeststemplates API
 type ManifestsTemplate struct {
@@ -37,8 +30,6 @@ type ManifestsTemplate struct {
 
 	// Data is field that be given various resources' manifest.
 	Data map[string]string `json:"data,omitempty"`
-
-	Status ManifestsTemplateStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

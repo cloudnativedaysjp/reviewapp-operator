@@ -40,14 +40,9 @@ spec:
             type: string
           metadata:
             type: object
-          status:
-            description: ManifestsTemplateStatus defines the observed state of ManifestsTemplate
-            type: object
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
 status:
   acceptedNames:
     kind: ""

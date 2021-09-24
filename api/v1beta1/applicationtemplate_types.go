@@ -28,22 +28,15 @@ type ApplicationTemplateSpec struct {
 	//Template argocd_application_v1alpha1.Application `json:"template,omitempty"`
 }
 
-// ApplicationTemplateStatus defines the observed state of ApplicationTemplate
-type ApplicationTemplateStatus struct {
-	// TODO
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=at
-//+kubebuilder:subresource:status
 
 // ApplicationTemplate is the Schema for the applicationtemplates API
 type ApplicationTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ApplicationTemplateSpec   `json:"spec,omitempty"`
-	Status ApplicationTemplateStatus `json:"status,omitempty"`
+	Spec ApplicationTemplateSpec `json:"spec,omitempty"`
 }
 
 //+kubebuilder:object:root=true
