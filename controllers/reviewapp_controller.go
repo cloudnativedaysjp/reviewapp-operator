@@ -196,7 +196,12 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 		ra.Spec.Infra.Organization,
 		ra.Spec.Infra.Repository,
 		ra.Spec.Infra.TargetBranch,
-		"Automatic update from cloudnativedays/reviewapp-operator", // TODO
+		fmt.Sprintf(
+			"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
+			ra.Spec.App.Organization,
+			ra.Spec.App.Repository,
+			ra.Status.Sync.AppRepoLatestCommitSha,
+		),
 		inputSecret, inputManifests...,
 	)
 	if err != nil {
@@ -264,7 +269,7 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := gitRemoteRepoAppService.SendMessage(ctx, pr, "TODO: URL 付きのメッセージ",
+		if err := gitRemoteRepoAppService.SendMessage(ctx, pr, ra.Spec.App.Message,
 			services.AccessToAppRepoInput{
 				SecretNamespace: ra.Namespace,
 				SecretName:      ra.Spec.App.GitSecretRef.Name,
@@ -307,7 +312,12 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context,
 		ra.Spec.Infra.Organization,
 		ra.Spec.Infra.Repository,
 		ra.Spec.Infra.TargetBranch,
-		"Automatic GC from cloudnativedays/reviewapp-operator", // TODO
+		fmt.Sprintf(
+			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
+			ra.Spec.App.Organization,
+			ra.Spec.App.Repository,
+			ra.Status.Sync.AppRepoLatestCommitSha,
+		),
 		inputSecret, inputManifests...,
 	)
 	if err != nil {

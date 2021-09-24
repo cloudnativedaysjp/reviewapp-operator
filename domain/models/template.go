@@ -25,12 +25,12 @@ func NewTemplateValue(organization, repository string, prNum int, variables map[
 }
 
 func (v TemplateValue) Templating(text string) (string, error) {
-	tmpl, err := t.Parse(text)
+	tmpl, err := template.New("Templating").Parse(text)
 	if err != nil {
 		return "", err
 	}
-	val := new(bytes.Buffer)
-	if err := tmpl.Execute(val, v); err != nil {
+	val := bytes.Buffer{}
+	if err := tmpl.Execute(&val, v); err != nil {
 		return "", err
 	}
 	return val.String(), nil

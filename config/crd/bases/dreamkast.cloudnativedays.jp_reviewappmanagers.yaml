@@ -68,6 +68,10 @@ spec:
                   ignoreTitleExp:
                     description: IgnoreTitleExp is TODO
                     type: string
+                  message:
+                    description: Message is output to specified App Repositories'
+                      PR when reviewapp is synced
+                    type: string
                   organization:
                     description: TODO
                     type: string

@@ -79,6 +79,11 @@ func (s *KubernetesService) MergeTemplate(
 	}
 	ra.Spec.Manifests = mts
 
+	ra.Spec.App.Message, err = v.Templating(ram.Spec.App.Message)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

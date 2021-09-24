@@ -53,6 +53,9 @@ type ReviewAppManagerSpecApp struct {
 
 	// IgnoreTitleExp is TODO
 	IgnoreTitleExp string `json:"ignoreTitleExp,omitempty"`
+
+	// Message is output to specified App Repositories' PR when reviewapp is synced
+	Message string `json:"message,omitempty"`
 }
 
 type ReviewAppManagerSpecInfra struct {

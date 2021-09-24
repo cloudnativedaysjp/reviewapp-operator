@@ -12,6 +12,13 @@ spec:
       key: token
     ignoreLabels: []
     ignoreTitleExp: '^\[dreamkast-releasebot\]'
+    message: |
+      # title
+
+      **message**
+
+      * list
+      * {{.Variables.AppRepositoryAlias}}
   infraRepo:
     username: ShotaKitazawa
     organization: ShotaKitazawa
