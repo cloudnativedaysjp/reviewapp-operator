@@ -3,35 +3,49 @@ package models
 import (
 	"bytes"
 	"text/template"
-)
 
-var (
-	t = template.New("services")
+	"golang.org/x/xerrors"
 )
 
 type TemplateValue struct {
-	PullRequest TemplatePullRequest
-	Variables   map[string]string
+	AppRepo   TemplateValueAppRepoInfo
+	InfraRepo TemplateValueInfraRepoInfo
+	Variables map[string]string
 }
 
-type TemplatePullRequest struct {
-	Organization string
-	Repository   string
-	Number       int
+type TemplateValueAppRepoInfo struct {
+	Organization    string
+	Repository      string
+	PrNumber        int
+	LatestCommitSha string
 }
 
-func NewTemplateValue(organization, repository string, prNum int, variables map[string]string) *TemplateValue {
-	return &TemplateValue{TemplatePullRequest{organization, repository, prNum}, variables}
+type TemplateValueInfraRepoInfo struct {
+	Organization    string
+	Repository      string
+	LatestCommitSha string
+}
+
+func NewTemplateValue(
+	appOrg, appRepo string, appPrNum int, appLatestCommitSha string,
+	infraOrg, infraRepo, infraLatestCommitSha string,
+	variables map[string]string,
+) *TemplateValue {
+	return &TemplateValue{
+		TemplateValueAppRepoInfo{appOrg, appRepo, appPrNum, appLatestCommitSha},
+		TemplateValueInfraRepoInfo{infraOrg, infraRepo, infraLatestCommitSha},
+		variables,
+	}
 }
 
 func (v TemplateValue) Templating(text string) (string, error) {
 	tmpl, err := template.New("Templating").Parse(text)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("Error to parse template: %w", err)
 	}
 	val := bytes.Buffer{}
 	if err := tmpl.Execute(&val, v); err != nil {
-		return "", err
+		return "", xerrors.Errorf("Error to parse template: %w", err)
 	}
 	return val.String(), nil
 }

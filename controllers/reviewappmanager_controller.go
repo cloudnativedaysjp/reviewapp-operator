@@ -62,7 +62,7 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamkastv1beta1.ReviewAppManager) (ctrl.Result, error) {
-	gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(r.Log, r.Client, ram.Spec.App.Username)
+	gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(r.Log, r.Client, ram.Spec.AppTarget.Username)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -73,11 +73,11 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 
 	// list PRs
 	prs, err := gitRemoteRepoAppService.ListOpenPullRequest(ctx,
-		ram.Spec.App.Organization, ram.Spec.App.Repository,
+		ram.Spec.AppTarget.Organization, ram.Spec.AppTarget.Repository,
 		services.AccessToAppRepoInput{
 			SecretNamespace: ram.Namespace,
-			SecretName:      ram.Spec.App.GitSecretRef.Name,
-			SecretKey:       ram.Spec.App.GitSecretRef.Key,
+			SecretName:      ram.Spec.AppTarget.GitSecretRef.Name,
+			SecretKey:       ram.Spec.AppTarget.GitSecretRef.Key,
 		},
 	)
 	if err != nil {

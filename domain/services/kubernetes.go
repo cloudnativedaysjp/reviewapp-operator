@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	"sigs.k8s.io/yaml"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
@@ -31,11 +32,12 @@ func (s *KubernetesService) MergeTemplate(
 	ram *dreamkastv1beta1.ReviewAppManager,
 	pr *models.PullRequest,
 ) (err error) {
-	// Initialize ReviewApp Spec from ReviewAppManager
-	ra.Spec.App = ram.Spec.App
-	ra.Spec.Infra = ram.Spec.Infra
+	// set ReviewApp Spec from ReviewAppManager (untemplated fields)
+	ra.Spec.AppTarget = ram.Spec.AppTarget
+	ra.Spec.InfraTarget = ram.Spec.InfraTarget
+	ra.Spec.AppPrNum = pr.Number
 
-	// construct "TemplateValue" model
+	// construct Template
 	vars := make(map[string]string)
 	for i, line := range ram.Spec.Variables {
 		idx := strings.Index(line, "=")
@@ -45,43 +47,61 @@ func (s *KubernetesService) MergeTemplate(
 		}
 		vars[line[:idx]] = line[idx+1:]
 	}
-	v := models.NewTemplateValue(pr.Organization, pr.Repository, pr.Number, vars)
+	v := models.NewTemplateValue(
+		pr.Organization, pr.Repository, pr.Number, pr.HeadCommitSha,
+		ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
+		vars,
+	)
 
-	// set AppPrNum to ReviewApp
-	ra.Spec.AppPrNum = pr.Number
-
-	// set ArgoCDApp.Filepath & Manifests.Dirpath to ReviewApp
-	ra.Spec.Infra.ArgoCDApp.Filepath, err = v.Templating(ram.Spec.Infra.ArgoCDApp.Filepath)
-	if err != nil {
-		return err
-	}
-	ra.Spec.Infra.Manifests.Dirpath, err = v.Templating(ram.Spec.Infra.Manifests.Dirpath)
-	if err != nil {
-		return err
-	}
-
-	// get ApplicationTemplate & ManifestTemplate resource from RA & set to ReviewApp
-	rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name)
-	if err != nil {
-		return err
-	}
-	ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate.Spec.Template)
-	if err != nil {
-		return err
-	}
-	mts := make(map[string]string)
-	for key, val := range rac.ManifestsTemplate {
-		s, err := v.Templating(val)
+	// templating from ram.Spec.AppConfig to ra.Spec.AppConfig
+	{
+		out, err := yaml.Marshal(&ram.Spec.AppConfig)
 		if err != nil {
 			return err
 		}
-		mts[key] = s
+		appConfigStr, err := v.Templating(string(out))
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal([]byte(appConfigStr), &ra.Spec.AppConfig); err != nil {
+			return err
+		}
 	}
-	ra.Spec.Manifests = mts
 
-	ra.Spec.App.Message, err = v.Templating(ram.Spec.App.Message)
-	if err != nil {
-		return err
+	// templating from ram.Spec.InfraConfig to ra.Spec.InfraConfig
+	{
+		out, err := yaml.Marshal(&ram.Spec.InfraConfig)
+		if err != nil {
+			return err
+		}
+		infraConfigStr, err := v.Templating(string(out))
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal([]byte(infraConfigStr), &ra.Spec.InfraConfig); err != nil {
+			return err
+		}
+	}
+
+	// get ApplicationTemplate & ManifestTemplate resource from RA & set to ReviewApp
+	{
+		rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name)
+		if err != nil {
+			return err
+		}
+		ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate.Spec.Template)
+		if err != nil {
+			return err
+		}
+		mts := make(map[string]string)
+		for key, val := range rac.ManifestsTemplate {
+			s, err := v.Templating(val)
+			if err != nil {
+				return err
+			}
+			mts[key] = s
+		}
+		ra.Spec.Manifests = mts
 	}
 
 	return nil

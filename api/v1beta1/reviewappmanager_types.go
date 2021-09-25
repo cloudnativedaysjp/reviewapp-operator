@@ -24,17 +24,23 @@ import (
 // ReviewAppManagerSpec defines the desired state of ReviewAppManager
 type ReviewAppManagerSpec struct {
 
-	// App is config of application repository
-	App ReviewAppManagerSpecApp `json:"appRepo"`
+	// TODO
+	AppTarget ReviewAppManagerSpecAppTarget `json:"appRepoTarget"`
 
-	// Infra is config of manifest repository
-	Infra ReviewAppManagerSpecInfra `json:"infraRepo"`
+	// TODO
+	AppConfig ReviewAppManagerSpecAppConfig `json:"appRepoConfig"`
+
+	// TODO
+	InfraTarget ReviewAppManagerSpecInfraTarget `json:"infraRepoTarget"`
+
+	// TODO
+	InfraConfig ReviewAppManagerSpecInfraConfig `json:"infraRepoConfig"`
 
 	// Variables is available to use input of Application & Manifest Template
 	Variables []string `json:"variables,omitempty"`
 }
 
-type ReviewAppManagerSpecApp struct {
+type ReviewAppManagerSpecAppTarget struct {
 
 	// TODO
 	Organization string `json:"organization"`
@@ -53,12 +59,15 @@ type ReviewAppManagerSpecApp struct {
 
 	// IgnoreTitleExp is TODO
 	IgnoreTitleExp string `json:"ignoreTitleExp,omitempty"`
+}
+
+type ReviewAppManagerSpecAppConfig struct {
 
 	// Message is output to specified App Repositories' PR when reviewapp is synced
 	Message string `json:"message,omitempty"`
 }
 
-type ReviewAppManagerSpecInfra struct {
+type ReviewAppManagerSpecInfraTarget struct {
 
 	// TODO
 	Organization string `json:"organization"`
@@ -70,13 +79,18 @@ type ReviewAppManagerSpecInfra struct {
 	Username string `json:"username"`
 
 	// TODO
-	TargetBranch string `json:"targetBranch"`
+	Branch string `json:"branch"`
 
 	// GitSecretRef is specifying secret for accessing Git remote-repo
 	GitSecretRef *corev1.SecretKeySelector `json:"gitSecretRef,omitempty"`
+}
 
+type ReviewAppManagerSpecInfraConfig struct {
+
+	// TODO
 	Manifests ReviewAppManagerSpecInfraManifests `json:"manifests,omitempty"`
 
+	// TODO
 	ArgoCDApp ReviewAppManagerSpecInfraArgoCDApp `json:"argocdApp,omitempty"`
 }
 

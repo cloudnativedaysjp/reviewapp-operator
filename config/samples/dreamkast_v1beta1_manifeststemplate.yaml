@@ -6,7 +6,7 @@ data:
   kustomization.yaml: |
     apiVersion: kustomize.config.k8s.io/v1beta1
     kind: Kustomization
-    namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}
+    namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
     bases:
     - ../../../base
     - ./ns.yaml
@@ -14,4 +14,4 @@ data:
     apiVersion: v1
     kind: Namespace
     metadata:
-      name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}
+      name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
