@@ -38,8 +38,19 @@ spec:
           spec:
             description: ReviewAppSpec defines the desired state of ReviewApp
             properties:
-              appRepo:
-                description: App is config of application repository
+              appRepoConfig:
+                description: TODO
+                properties:
+                  message:
+                    description: Message is output to specified App Repositories'
+                      PR when reviewapp is synced
+                    type: string
+                type: object
+              appRepoPrNum:
+                description: AppPrNum is watched PR's number by this RA
+                type: integer
+              appRepoTarget:
+                description: TODO
                 properties:
                   gitSecretRef:
                     description: GitSecretRef is specifying secret for accessing Git
@@ -68,10 +79,6 @@ spec:
                   ignoreTitleExp:
                     description: IgnoreTitleExp is TODO
                     type: string
-                  message:
-                    description: Message is output to specified App Repositories'
-                      PR when reviewapp is synced
-                    type: string
                   organization:
                     description: TODO
                     type: string
@@ -86,16 +93,14 @@ spec:
                 - repository
                 - username
                 type: object
-              appRepoPrNum:
-                description: AppPrNum is watched PR's number by this RA
-                type: integer
               application:
                 description: Application is manifest of ArgoCD Application resource
                 type: string
-              infraRepo:
-                description: Infra is config of manifest repository
+              infraRepoConfig:
+                description: TODO
                 properties:
                   argocdApp:
+                    description: TODO
                     properties:
                       filepath:
                         description: Filepath is file path of deploying ApplicationTemplate
@@ -113,26 +118,8 @@ spec:
                         - namespace
                         type: object
                     type: object
-                  gitSecretRef:
-                    description: GitSecretRef is specifying secret for accessing Git
-                      remote-repo
-                    properties:
-                      key:
-                        description: The key of the secret to select from.  Must be
-                          a valid secret key.
-                        type: string
-                      name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
-                        type: string
-                      optional:
-                        description: Specify whether the Secret or its key must be
-                          defined
-                        type: boolean
-                    required:
-                    - key
-                    type: object
                   manifests:
+                    description: TODO
                     properties:
                       dirpath:
                         description: Dirpath is directory path of deploying TemplateManifests
@@ -153,22 +140,45 @@ spec:
                           type: object
                         type: array
                     type: object
+                type: object
+              infraRepoTarget:
+                description: TODO
+                properties:
+                  branch:
+                    description: TODO
+                    type: string
+                  gitSecretRef:
+                    description: GitSecretRef is specifying secret for accessing Git
+                      remote-repo
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
                   organization:
                     description: TODO
                     type: string
                   repository:
                     description: TODO
                     type: string
-                  targetBranch:
-                    description: TODO
-                    type: string
                   username:
                     description: TODO
                     type: string
                 required:
+                - branch
                 - organization
                 - repository
-                - targetBranch
                 - username
                 type: object
               manifests:
@@ -177,10 +187,12 @@ spec:
                 description: Manifests
                 type: object
             required:
-            - appRepo
+            - appRepoConfig
             - appRepoPrNum
+            - appRepoTarget
             - application
-            - infraRepo
+            - infraRepoConfig
+            - infraRepoTarget
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp

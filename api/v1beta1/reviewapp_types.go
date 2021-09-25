@@ -23,11 +23,17 @@ import (
 // ReviewAppSpec defines the desired state of ReviewApp
 type ReviewAppSpec struct {
 
-	// App is config of application repository
-	App ReviewAppManagerSpecApp `json:"appRepo"`
+	// TODO
+	AppTarget ReviewAppManagerSpecAppTarget `json:"appRepoTarget"`
 
-	// Infra is config of manifest repository
-	Infra ReviewAppManagerSpecInfra `json:"infraRepo"`
+	// TODO
+	AppConfig ReviewAppManagerSpecAppConfig `json:"appRepoConfig"`
+
+	// TODO
+	InfraTarget ReviewAppManagerSpecInfraTarget `json:"infraRepoTarget"`
+
+	// TODO
+	InfraConfig ReviewAppManagerSpecInfraConfig `json:"infraRepoConfig"`
 
 	// AppPrNum is watched PR's number by this RA
 	AppPrNum int `json:"appRepoPrNum"`

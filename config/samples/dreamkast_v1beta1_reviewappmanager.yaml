@@ -3,7 +3,7 @@ kind: ReviewAppManager
 metadata:
   name: reviewapp-sample
 spec:
-  appRepo:
+  appRepoTarget:
     username: ShotaKitazawa
     organization: ShotaKitazawa
     repository: reviewapp-operator-demo-app
@@ -12,31 +12,41 @@ spec:
       key: token
     ignoreLabels: []
     ignoreTitleExp: '^\[dreamkast-releasebot\]'
+  appRepoConfig:
     message: |
       # title
 
       **message**
 
       * list
+      * {{.AppRepo.Organization}}
+      * {{.AppRepo.Repository}}
+      * {{.AppRepo.PrNumber}}
+      * {{.AppRepo.LatestCommitSha}}
+      * {{.InfraRepo.Organization}}
+      * {{.InfraRepo.Repository}}
+      * {{.InfraRepo.LatestCommitSha}}
       * {{.Variables.AppRepositoryAlias}}
-  infraRepo:
+      * {{.Variables.dummy}}
+  infraRepoTarget:
     username: ShotaKitazawa
     organization: ShotaKitazawa
     repository: reviewapp-operator-demo-infra
-    targetBranch: master
+    branch: master
     gitSecretRef:
       name: git-creds
       key: token
+  infraRepoConfig:
     manifests:
       templates:
         - namespace: argocd
           name: manifeststemplate-sample
-      dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}"
+      dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"
     argocdApp:
       template:
         namespace: argocd
         name: applicationtemplate-sample
-      filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.PullRequest.Number}}.yaml"
+      filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml"
   variables:
     - AppRepositoryAlias=sample
 

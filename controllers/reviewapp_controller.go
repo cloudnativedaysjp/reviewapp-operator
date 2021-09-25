@@ -59,11 +59,11 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// initalize some service
-	gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(r.Log, r.Client, ra.Spec.App.Username)
+	gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(r.Log, r.Client, ra.Spec.AppTarget.Username)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(r.Log, r.Client, ra.Spec.App.Username)
+	gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(r.Log, r.Client, ra.Spec.AppTarget.Username)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -122,11 +122,11 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context,
 ) (ctrl.Result, error) {
 	// check PRs specified by spec.appRepo.repository
 	pr, err := gitRemoteRepoAppService.GetOpenPullRequest(ctx,
-		ra.Spec.App.Organization, ra.Spec.App.Repository, ra.Spec.AppPrNum,
+		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
 		services.AccessToAppRepoInput{
 			SecretNamespace: ra.Namespace,
-			SecretName:      ra.Spec.App.GitSecretRef.Name,
-			SecretKey:       ra.Spec.App.GitSecretRef.Key,
+			SecretName:      ra.Spec.AppTarget.GitSecretRef.Name,
+			SecretKey:       ra.Spec.AppTarget.GitSecretRef.Key,
 		},
 	)
 	if err != nil {
@@ -170,7 +170,7 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	// add annotations to Application
 	applicationWithAnnotations, err := k8sService.GetArgoCDApplicationWithAnnotations(
 		ctx, ra.Spec.Application,
-		ra.Spec.App.Organization, ra.Spec.App.Repository, ra.Status.Sync.AppRepoLatestCommitSha,
+		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Status.Sync.AppRepoLatestCommitSha,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -179,27 +179,27 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
 	inputSecret := services.AccessToInfraRepoInput{
 		Namespace: ra.Namespace,
-		Name:      ra.Spec.Infra.GitSecretRef.Name,
-		Key:       ra.Spec.Infra.GitSecretRef.Key,
+		Name:      ra.Spec.InfraTarget.GitSecretRef.Name,
+		Key:       ra.Spec.InfraTarget.GitSecretRef.Key,
 	}
 	inputManifests := append([]services.UpdateManifestsInput{}, services.UpdateManifestsInput{
 		Content: applicationWithAnnotations,
-		Path:    ra.Spec.Infra.ArgoCDApp.Filepath,
+		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
 	for filename, manifest := range ra.Spec.Manifests {
 		inputManifests = append(inputManifests, services.UpdateManifestsInput{
 			Content: manifest,
-			Path:    filepath.Join(ra.Spec.Infra.Manifests.Dirpath, filename),
+			Path:    filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
 		})
 	}
 	gp, err := gitRemoteRepoInfraService.UpdateManifests(ctx,
-		ra.Spec.Infra.Organization,
-		ra.Spec.Infra.Repository,
-		ra.Spec.Infra.TargetBranch,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Repository,
+		ra.Spec.InfraTarget.Branch,
 		fmt.Sprintf(
 			"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
-			ra.Spec.App.Organization,
-			ra.Spec.App.Repository,
+			ra.Spec.AppTarget.Organization,
+			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
 		inputSecret, inputManifests...,
@@ -237,12 +237,12 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 	// compare ra.Status.Sync.InfraRepoLatestCommitSha with Application.annotation
 	inputSecret := services.AccessToInfraRepoInput{
 		Namespace: ra.Namespace,
-		Name:      ra.Spec.Infra.GitSecretRef.Name,
-		Key:       ra.Spec.Infra.GitSecretRef.Key,
+		Name:      ra.Spec.InfraTarget.GitSecretRef.Name,
+		Key:       ra.Spec.InfraTarget.GitSecretRef.Key,
 	}
 	updated, err := gitRemoteRepoAppService.CheckApplicationUpdated(ctx,
-		ra.Spec.App.Organization,
-		ra.Spec.App.Repository,
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
 		ra.Spec.AppPrNum,
 		inputSecret,
 		ra.Status.Sync.AppRepoLatestCommitSha, hashInArgoCDApplication,
@@ -256,27 +256,29 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 
 	// if ArgoCD Application updated, send message to PR of AppRepo
 	if updated {
-		pr, err := gitRemoteRepoAppService.GetOpenPullRequest(ctx,
-			ra.Spec.App.Organization,
-			ra.Spec.App.Repository,
-			ra.Spec.AppPrNum,
-			services.AccessToAppRepoInput{
-				SecretNamespace: ra.Namespace,
-				SecretName:      ra.Spec.App.GitSecretRef.Name,
-				SecretKey:       ra.Spec.App.GitSecretRef.Key,
-			},
-		)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if err := gitRemoteRepoAppService.SendMessage(ctx, pr, ra.Spec.App.Message,
-			services.AccessToAppRepoInput{
-				SecretNamespace: ra.Namespace,
-				SecretName:      ra.Spec.App.GitSecretRef.Name,
-				SecretKey:       ra.Spec.App.GitSecretRef.Key,
-			},
-		); err != nil {
-			return ctrl.Result{}, err
+		if ra.Spec.AppConfig.Message != "" {
+			pr, err := gitRemoteRepoAppService.GetOpenPullRequest(ctx,
+				ra.Spec.AppTarget.Organization,
+				ra.Spec.AppTarget.Repository,
+				ra.Spec.AppPrNum,
+				services.AccessToAppRepoInput{
+					SecretNamespace: ra.Namespace,
+					SecretName:      ra.Spec.AppTarget.GitSecretRef.Name,
+					SecretKey:       ra.Spec.AppTarget.GitSecretRef.Key,
+				},
+			)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if err := gitRemoteRepoAppService.SendMessage(ctx, pr, ra.Spec.AppConfig.Message,
+				services.AccessToAppRepoInput{
+					SecretNamespace: ra.Namespace,
+					SecretName:      ra.Spec.AppTarget.GitSecretRef.Name,
+					SecretKey:       ra.Spec.AppTarget.GitSecretRef.Key,
+				},
+			); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 
 		// update ReviewApp.Status
@@ -297,25 +299,25 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context,
 	// delete some manifests
 	inputSecret := services.AccessToInfraRepoInput{
 		Namespace: ra.Namespace,
-		Name:      ra.Spec.Infra.GitSecretRef.Name,
-		Key:       ra.Spec.Infra.GitSecretRef.Key,
+		Name:      ra.Spec.InfraTarget.GitSecretRef.Name,
+		Key:       ra.Spec.InfraTarget.GitSecretRef.Key,
 	}
 	inputManifests := append([]services.DeleteManifestsInput{}, services.DeleteManifestsInput{
-		Path: ra.Spec.Infra.ArgoCDApp.Filepath,
+		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
 	for filename := range ra.Spec.Manifests {
 		inputManifests = append(inputManifests, services.DeleteManifestsInput{
-			Path: filepath.Join(ra.Spec.Infra.Manifests.Dirpath, filename),
+			Path: filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
 		})
 	}
 	_, err := gitRemoteRepoInfraService.DeleteManifests(ctx,
-		ra.Spec.Infra.Organization,
-		ra.Spec.Infra.Repository,
-		ra.Spec.Infra.TargetBranch,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Repository,
+		ra.Spec.InfraTarget.Branch,
 		fmt.Sprintf(
 			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
-			ra.Spec.App.Organization,
-			ra.Spec.App.Repository,
+			ra.Spec.AppTarget.Organization,
+			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
 		inputSecret, inputManifests...,
