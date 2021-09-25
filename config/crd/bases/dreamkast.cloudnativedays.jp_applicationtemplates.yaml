@@ -39,11 +39,17 @@ spec:
           spec:
             description: ApplicationTemplateSpec defines the desired state of ApplicationTemplate
             properties:
-              template:
-                description: Template is included ArgoCD Application manifest. (apiVersion,
-                  kind, metadata, spec, ...)
+              candidate:
+                description: CandidateTemplate is included ArgoCD Application manifest.
+                  (apiVersion, kind, metadata, spec, ...)
+                type: string
+              stable:
+                description: StableTemplate is included ArgoCD Application manifest.
+                  (apiVersion, kind, metadata, spec, ...)
                 type: string
             type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true

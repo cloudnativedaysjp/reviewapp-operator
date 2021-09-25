@@ -87,6 +87,15 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 	// apply ReviewApp
 	var syncedPullRequests []dreamkastv1beta1.ReviewAppManagerStatusSyncedPullRequests
 	for _, pr := range prs {
+
+		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
+		isCandidate := false
+		for _, l := range pr.Labels {
+			if l == models.CandidateLabelName {
+				isCandidate = true
+			}
+		}
+
 		// generate RA struct
 		ra := &dreamkastv1beta1.ReviewApp{
 			ObjectMeta: metav1.ObjectMeta{
@@ -101,7 +110,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		}
 
 		// merge Template & generate ReviewApp
-		if err := k8sService.MergeTemplate(ctx, ra, ram, pr); err != nil {
+		if err := k8sService.MergeTemplate(ctx, ra, ram, pr, isCandidate); err != nil {
 			if models.IsNotFound(err) {
 				return ctrl.Result{}, nil
 			}

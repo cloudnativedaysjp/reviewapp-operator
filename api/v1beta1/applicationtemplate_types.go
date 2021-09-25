@@ -20,14 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ApplicationTemplateSpec defines the desired state of ApplicationTemplate
-type ApplicationTemplateSpec struct {
-
-	// Template is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	Template string `json:"template,omitempty"`
-	//Template argocd_application_v1alpha1.Application `json:"template,omitempty"`
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=at
 
@@ -36,7 +28,17 @@ type ApplicationTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec ApplicationTemplateSpec `json:"spec,omitempty"`
+	Spec ApplicationTemplateSpec `json:"spec"`
+}
+
+// ApplicationTemplateSpec defines the desired state of ApplicationTemplate
+type ApplicationTemplateSpec struct {
+
+	// CandidateTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	CandidateTemplate string `json:"candidate,omitempty"`
+
+	// StableTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	StableTemplate string `json:"stable,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -28,11 +28,6 @@ spec:
               of an object. Servers should convert recognized schemas to the latest
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
-          data:
-            additionalProperties:
-              type: string
-            description: Data is field that be given various resources' manifest.
-            type: object
           kind:
             description: 'Kind is a string value representing the REST resource this
               object represents. Servers may infer this from the endpoint the client
@@ -40,6 +35,23 @@ spec:
             type: string
           metadata:
             type: object
+          spec:
+            properties:
+              candidate:
+                additionalProperties:
+                  type: string
+                description: CandidateData is field that be given various resources'
+                  manifest.
+                type: object
+              stable:
+                additionalProperties:
+                  type: string
+                description: StableData is field that be given various resources'
+                  manifest.
+                type: object
+            type: object
+        required:
+        - spec
         type: object
     served: true
     storage: true
