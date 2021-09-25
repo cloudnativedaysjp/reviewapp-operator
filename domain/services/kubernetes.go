@@ -89,7 +89,7 @@ func (s *KubernetesService) MergeTemplate(
 		if err != nil {
 			return err
 		}
-		ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate.Spec.Template)
+		ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate.Spec.StableTemplate)
 		if err != nil {
 			return err
 		}

@@ -28,8 +28,15 @@ type ManifestsTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Data is field that be given various resources' manifest.
-	Data map[string]string `json:"data,omitempty"`
+	Spec ManifestsTemplateSpec `json:"spec"`
+}
+
+type ManifestsTemplateSpec struct {
+	// NightlyData is field that be given various resources' manifest.
+	NightlyData map[string]string `json:"nightly,omitempty"`
+
+	// StableData is field that be given various resources' manifest.
+	StableData map[string]string `json:"stable,omitempty"`
 }
 
 //+kubebuilder:object:root=true

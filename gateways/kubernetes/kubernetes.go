@@ -104,7 +104,7 @@ func (g *KubernetesGateway) syncManifestsTemplate(ctx context.Context, rac *mode
 		return wrapedErr
 	}
 
-	for key, val := range mt.Data {
+	for key, val := range mt.Spec.StableData {
 		rac.ManifestsTemplate[key] = val
 	}
 	return nil
