@@ -50,7 +50,7 @@ func NewKubernetesGateway(c client.Client, l logr.Logger) (*KubernetesGateway, e
 
 // ReviewApp
 
-func (g *KubernetesGateway) GetReviewAppConfig(ctx context.Context, namespace, name string, isNightly bool) (*models.ReviewAppConfig, error) {
+func (g *KubernetesGateway) GetReviewAppConfig(ctx context.Context, namespace, name string, isCandidate bool) (*models.ReviewAppConfig, error) {
 	var ram dreamkastv1beta1.ReviewAppManager
 	if err := g.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ram); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(ram), err)
@@ -64,13 +64,13 @@ func (g *KubernetesGateway) GetReviewAppConfig(ctx context.Context, namespace, n
 	rac.ReviewAppManager = ram
 
 	// sync ApplicationTemplate
-	if err := g.syncApplicationTemplate(ctx, rac, ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name, isNightly); err != nil {
+	if err := g.syncApplicationTemplate(ctx, rac, ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name, isCandidate); err != nil {
 		return nil, err
 	}
 
 	// sync ManifestsTemplate
 	for _, nn := range ram.Spec.InfraConfig.Manifests.Templates {
-		if err := g.syncManifestsTemplate(ctx, rac, nn.Namespace, nn.Name, isNightly); err != nil {
+		if err := g.syncManifestsTemplate(ctx, rac, nn.Namespace, nn.Name, isCandidate); err != nil {
 			return nil, err
 		}
 	}
@@ -78,7 +78,7 @@ func (g *KubernetesGateway) GetReviewAppConfig(ctx context.Context, namespace, n
 	return rac, nil
 }
 
-func (g *KubernetesGateway) syncApplicationTemplate(ctx context.Context, rac *models.ReviewAppConfig, namespace, name string, isNightly bool) error {
+func (g *KubernetesGateway) syncApplicationTemplate(ctx context.Context, rac *models.ReviewAppConfig, namespace, name string, isCandidate bool) error {
 	var at dreamkastv1beta1.ApplicationTemplate
 	if err := g.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &at); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(at), err)
@@ -89,15 +89,15 @@ func (g *KubernetesGateway) syncApplicationTemplate(ctx context.Context, rac *mo
 		return wrapedErr
 	}
 
-	if isNightly {
-		rac.ApplicationTemplate = at.Spec.NightlyTemplate
+	if isCandidate {
+		rac.ApplicationTemplate = at.Spec.CandidateTemplate
 	} else {
 		rac.ApplicationTemplate = at.Spec.StableTemplate
 	}
 	return nil
 }
 
-func (g *KubernetesGateway) syncManifestsTemplate(ctx context.Context, rac *models.ReviewAppConfig, namespace, name string, isNightly bool) error {
+func (g *KubernetesGateway) syncManifestsTemplate(ctx context.Context, rac *models.ReviewAppConfig, namespace, name string, isCandidate bool) error {
 	var mt dreamkastv1beta1.ManifestsTemplate
 	if err := g.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &mt); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(mt), err)
@@ -109,8 +109,8 @@ func (g *KubernetesGateway) syncManifestsTemplate(ctx context.Context, rac *mode
 	}
 
 	var data map[string]string
-	if isNightly {
-		data = mt.Spec.NightlyData
+	if isCandidate {
+		data = mt.Spec.CandidateData
 	} else {
 		data = mt.Spec.StableData
 	}

@@ -88,11 +88,11 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 	var syncedPullRequests []dreamkastv1beta1.ReviewAppManagerStatusSyncedPullRequests
 	for _, pr := range prs {
 
-		// if PR labeled "nightly-template", using nightly template in ApplicationTemplate / ManifestsTemplate
-		isNightly := false
+		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
+		isCandidate := false
 		for _, l := range pr.Labels {
-			if l == models.NightlyLabelName {
-				isNightly = true
+			if l == models.CandidateLabelName {
+				isCandidate = true
 			}
 		}
 
@@ -110,7 +110,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		}
 
 		// merge Template & generate ReviewApp
-		if err := k8sService.MergeTemplate(ctx, ra, ram, pr, isNightly); err != nil {
+		if err := k8sService.MergeTemplate(ctx, ra, ram, pr, isCandidate); err != nil {
 			if models.IsNotFound(err) {
 				return ctrl.Result{}, nil
 			}

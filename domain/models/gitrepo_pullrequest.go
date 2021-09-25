@@ -1,6 +1,6 @@
 package models
 
-const NightlyLabelName = "nightly-template"
+const CandidateLabelName = "candidate-template"
 
 type PullRequest struct {
 	Organization  string

@@ -34,8 +34,8 @@ type ApplicationTemplate struct {
 // ApplicationTemplateSpec defines the desired state of ApplicationTemplate
 type ApplicationTemplateSpec struct {
 
-	// NightlyTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	NightlyTemplate string `json:"nightly,omitempty"`
+	// CandidateTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	CandidateTemplate string `json:"candidate,omitempty"`
 
 	// StableTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
 	StableTemplate string `json:"stable,omitempty"`

@@ -32,8 +32,8 @@ type ManifestsTemplate struct {
 }
 
 type ManifestsTemplateSpec struct {
-	// NightlyData is field that be given various resources' manifest.
-	NightlyData map[string]string `json:"nightly,omitempty"`
+	// CandidateData is field that be given various resources' manifest.
+	CandidateData map[string]string `json:"candidate,omitempty"`
 
 	// StableData is field that be given various resources' manifest.
 	StableData map[string]string `json:"stable,omitempty"`
