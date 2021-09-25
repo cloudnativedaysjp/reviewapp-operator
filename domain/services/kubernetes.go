@@ -31,6 +31,7 @@ func (s *KubernetesService) MergeTemplate(
 	ra *dreamkastv1beta1.ReviewApp,
 	ram *dreamkastv1beta1.ReviewAppManager,
 	pr *models.PullRequest,
+	isNightly bool,
 ) (err error) {
 	// set ReviewApp Spec from ReviewAppManager (untemplated fields)
 	ra.Spec.AppTarget = ram.Spec.AppTarget
@@ -85,11 +86,11 @@ func (s *KubernetesService) MergeTemplate(
 
 	// get ApplicationTemplate & ManifestTemplate resource from RA & set to ReviewApp
 	{
-		rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name)
+		rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name, isNightly)
 		if err != nil {
 			return err
 		}
-		ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate.Spec.StableTemplate)
+		ra.Spec.Application, err = v.Templating(rac.ApplicationTemplate)
 		if err != nil {
 			return err
 		}
@@ -132,7 +133,7 @@ func (s *KubernetesService) UpdateReviewAppManagerStatus(
 	ctx context.Context,
 	ram *dreamkastv1beta1.ReviewAppManager,
 ) error {
-	rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name)
+	rac, err := s.ReviewAppConfigIFace.GetReviewAppConfig(ctx, ram.Namespace, ram.Name, false)
 	if err != nil {
 		return err
 	}

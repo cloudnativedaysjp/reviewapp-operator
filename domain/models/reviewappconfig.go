@@ -6,7 +6,7 @@ import (
 
 type ReviewAppConfig struct {
 	ReviewAppManager    dreamkastv1beta1.ReviewAppManager
-	ApplicationTemplate dreamkastv1beta1.ApplicationTemplate
+	ApplicationTemplate string
 	ManifestsTemplate   map[string]string
 }
 

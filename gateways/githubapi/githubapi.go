@@ -50,7 +50,11 @@ func (g *GitHubApiGateway) ListOpenPullRequests(ctx context.Context, org, repo s
 
 	var result []*models.PullRequest
 	for _, pr := range prs {
-		result = append(result, models.NewPullRequest(org, repo, *pr.Number, *pr.Head.SHA))
+		var labels []string
+		for _, l := range pr.Labels {
+			labels = append(labels, *l.Name)
+		}
+		result = append(result, models.NewPullRequest(org, repo, *pr.Number, *pr.Head.SHA, labels))
 	}
 	return result, nil
 }
