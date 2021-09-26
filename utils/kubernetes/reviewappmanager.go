@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
 func GetReviewAppManager(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1beta1.ReviewAppManager, error) {

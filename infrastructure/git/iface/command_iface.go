@@ -1,12 +1,12 @@
-package repositories
+package git_iface
 
 import (
 	"context"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
-type GitCodeIFace interface {
+type GitCommandIFace interface {
 	WithCredential(username, token string) error
 	Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error)
 	CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error

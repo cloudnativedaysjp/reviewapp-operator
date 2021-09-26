@@ -1,4 +1,4 @@
-package gitcommand
+package git
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -19,7 +19,7 @@ const (
 	noreplyEmail = `%s@users.noreply.github.com`
 )
 
-type GitCommandGateway struct {
+type GitCommandDriver struct {
 	logger logr.Logger
 
 	baseDir  string
@@ -28,17 +28,17 @@ type GitCommandGateway struct {
 }
 
 // TODO: this impl only support https (ssh is not implemented yet)
-func NewGitCommandGateway(l logr.Logger) (*GitCommandGateway, error) {
+func NewGitCommandGateway(l logr.Logger) (*GitCommandDriver, error) {
 	// create basedir
 	basedir := models.BaseDir
 	if err := os.MkdirAll(basedir, 0755); err != nil {
 		return nil, err
 	}
 
-	return &GitCommandGateway{logger: l, baseDir: basedir}, nil
+	return &GitCommandDriver{logger: l, baseDir: basedir}, nil
 }
 
-func (g *GitCommandGateway) WithCredential(username, token string) error {
+func (g *GitCommandDriver) WithCredential(username, token string) error {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -52,7 +52,7 @@ func (g *GitCommandGateway) WithCredential(username, token string) error {
 	return nil
 }
 
-func (g *GitCommandGateway) Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error) {
+func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error) {
 	downloadDir := filepath.Join(g.baseDir, org, repo)
 	// rmdir if already exists
 	if _, err := os.Stat(downloadDir); !os.IsNotExist(err) {
@@ -75,7 +75,7 @@ func (g *GitCommandGateway) Pull(ctx context.Context, org, repo, branch string) 
 	return gp, nil
 }
 
-func (g *GitCommandGateway) CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error {
+func (g *GitCommandDriver) CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error {
 	fpath := filepath.Join(gp.DownlaodDir, filename)
 	if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 		return err
@@ -91,12 +91,12 @@ func (g *GitCommandGateway) CreateFile(ctx context.Context, gp models.GitProject
 	return nil
 }
 
-func (g *GitCommandGateway) DeleteFile(ctx context.Context, gp models.GitProject, filename string) error {
+func (g *GitCommandDriver) DeleteFile(ctx context.Context, gp models.GitProject, filename string) error {
 	fpath := filepath.Join(gp.DownlaodDir, filename)
 	return os.RemoveAll(fpath)
 }
 
-func (g *GitCommandGateway) CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error) {
+func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error) {
 	// stage に更新ファイルがない場合早期リターン
 	cmd := exec.CommandContext(ctx, "git", "status", "-s")
 	cmd.Dir = gp.DownlaodDir
@@ -142,7 +142,7 @@ func (g *GitCommandGateway) CommitAndPush(ctx context.Context, gp models.GitProj
 	return &gp, nil
 }
 
-func (g *GitCommandGateway) updateHeadCommitSha(ctx context.Context, gp *models.GitProject) error {
+func (g *GitCommandDriver) updateHeadCommitSha(ctx context.Context, gp *models.GitProject) error {
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
 	cmd.Dir = gp.DownlaodDir
 	out, err := cmd.Output()
@@ -153,7 +153,7 @@ func (g *GitCommandGateway) updateHeadCommitSha(ctx context.Context, gp *models.
 	return nil
 }
 
-func (g *GitCommandGateway) HashLogs(ctx context.Context, gp models.GitProject, hash1, hash2 string) ([]string, error) {
+func (g *GitCommandDriver) HashLogs(ctx context.Context, gp models.GitProject, hash1, hash2 string) ([]string, error) {
 	cmd := exec.CommandContext(ctx, "git", "log", "--format=%H",
 		fmt.Sprintf("%s...%s", hash1, hash2),
 	)

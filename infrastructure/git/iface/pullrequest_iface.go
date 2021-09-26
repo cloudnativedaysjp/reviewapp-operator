@@ -1,12 +1,12 @@
-package repositories
+package git_iface
 
 import (
 	"context"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
-type PullRequestIFace interface {
+type GitApiPullRequestIFace interface {
 	WithCredential(username, token string) error
 	ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequest, error)
 	GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*models.PullRequest, error)

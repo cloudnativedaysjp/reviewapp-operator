@@ -28,11 +28,11 @@ import (
 	"sigs.k8s.io/yaml"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/kubernetes"
-	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/template"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
 // ReviewAppManagerReconciler reconciles a ReviewAppManager object
@@ -41,7 +41,7 @@ type ReviewAppManagerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	GitRemoteRepoAppService *services.GitRemoteRepoAppService
+	GitRemoteRepoAppService *apprepo.GitRemoteRepoAppService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers,verbs=get;list;watch;create;update;patch;delete

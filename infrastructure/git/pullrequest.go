@@ -1,4 +1,4 @@
-package githubapi
+package git
 
 import (
 	"context"
@@ -7,21 +7,21 @@ import (
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
-type GitHubApiGateway struct {
+type GitApiPullRequestDriver struct {
 	logger logr.Logger
 
 	username string
 	ts       oauth2.TokenSource
 }
 
-func NewGitHubApiGateway(l logr.Logger) *GitHubApiGateway {
-	return &GitHubApiGateway{logger: l}
+func NewGitApiPullRequestDriver(l logr.Logger) *GitApiPullRequestDriver {
+	return &GitApiPullRequestDriver{logger: l}
 }
 
-func (g *GitHubApiGateway) WithCredential(username, token string) error {
+func (g *GitApiPullRequestDriver) WithCredential(username, token string) error {
 	// 既にtokenを持っているなら早期リターン
 	if g.ts != nil {
 		if _, err := g.ts.Token(); err == nil {
@@ -42,7 +42,7 @@ func (g *GitHubApiGateway) WithCredential(username, token string) error {
 }
 
 // TODO: 検索条件を指定可能にする (例. label xxx が付与されている PR は対象外)
-func (g *GitHubApiGateway) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequest, error) {
+func (g *GitApiPullRequestDriver) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequest, error) {
 	client := github.NewClient(oauth2.NewClient(ctx, g.ts))
 	prs, _, err := client.PullRequests.List(ctx, org, repo, &github.PullRequestListOptions{State: "open"})
 	if err != nil {
@@ -60,7 +60,7 @@ func (g *GitHubApiGateway) ListOpenPullRequests(ctx context.Context, org, repo s
 	return result, nil
 }
 
-func (g *GitHubApiGateway) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*models.PullRequest, error) {
+func (g *GitApiPullRequestDriver) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*models.PullRequest, error) {
 	client := github.NewClient(oauth2.NewClient(ctx, g.ts))
 	pr, _, err := client.PullRequests.Get(ctx, org, repo, prNum)
 	if err != nil {
@@ -74,7 +74,7 @@ func (g *GitHubApiGateway) GetOpenPullRequest(ctx context.Context, org, repo str
 	}, nil
 }
 
-func (g *GitHubApiGateway) CommentToPullRequest(ctx context.Context, pr models.PullRequest, comment string) error {
+func (g *GitApiPullRequestDriver) CommentToPullRequest(ctx context.Context, pr models.PullRequest, comment string) error {
 	client := github.NewClient(oauth2.NewClient(ctx, g.ts))
 	// get User
 	u, _, err := client.Users.Get(ctx, g.username)
@@ -91,7 +91,7 @@ func (g *GitHubApiGateway) CommentToPullRequest(ctx context.Context, pr models.P
 	return nil
 }
 
-func (g *GitHubApiGateway) GetCommitHashes(ctx context.Context, prModel models.PullRequest) ([]string, error) {
+func (g *GitApiPullRequestDriver) GetCommitHashes(ctx context.Context, prModel models.PullRequest) ([]string, error) {
 	client := github.NewClient(oauth2.NewClient(ctx, g.ts))
 	prs, _, err := client.PullRequests.ListCommits(ctx, prModel.Organization, prModel.Repository, prModel.Number, &github.ListOptions{})
 	if err != nil {

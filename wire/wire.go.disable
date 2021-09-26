@@ -6,26 +6,26 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git"
+	git_iface "github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git/iface"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/infrarepo"
 )
 
-func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
+func NewGitRemoteRepoAppService(l logr.Logger) (*apprepo.GitRemoteRepoAppService, error) {
 	wire.Build(
-		githubapi.NewGitHubApiGateway,
-		wire.Bind(new(repositories.PullRequestIFace), new(*githubapi.GitHubApiGateway)),
-		services.NewGitRemoteRepoAppService,
+		git.NewGitApiPullRequestDriver,
+		wire.Bind(new(git_iface.GitApiPullRequestIFace), new(*git.GitApiPullRequestDriver)),
+		apprepo.NewGitRemoteRepoAppService,
 	)
 	return nil, nil
 }
 
-func NewGitRemoteRepoInfraService(l logr.Logger) (*services.GitRemoteRepoInfraService, error) {
+func NewGitRemoteRepoInfraService(l logr.Logger) (*infrarepo.GitRemoteRepoInfraService, error) {
 	wire.Build(
-		gitcommand.NewGitCommandGateway,
-		wire.Bind(new(repositories.GitCodeIFace), new(*gitcommand.GitCommandGateway)),
-		services.NewGitRemoteRepoInfraService,
+		git.NewGitCommandGateway,
+		wire.Bind(new(git_iface.GitCommandIFace), new(*git.GitCommandDriver)),
+		infrarepo.NewGitRemoteRepoInfraService,
 	)
 	return nil, nil
 }

@@ -15,8 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr *models.PullRequest) *dreamkastv1beta1.ReviewApp {

@@ -6,25 +6,25 @@
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/infrarepo"
 	"github.com/go-logr/logr"
 )
 
 // Injectors from wire.go:
 
-func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
-	gitHubApiGateway := githubapi.NewGitHubApiGateway(l)
-	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitHubApiGateway, l)
+func NewGitRemoteRepoAppService(l logr.Logger) (*apprepo.GitRemoteRepoAppService, error) {
+	gitApiPullRequestDriver := git.NewGitApiPullRequestDriver(l)
+	gitRemoteRepoAppService := apprepo.NewGitRemoteRepoAppService(gitApiPullRequestDriver, l)
 	return gitRemoteRepoAppService, nil
 }
 
-func NewGitRemoteRepoInfraService(l logr.Logger) (*services.GitRemoteRepoInfraService, error) {
-	gitCommandGateway, err := gitcommand.NewGitCommandGateway(l)
+func NewGitRemoteRepoInfraService(l logr.Logger) (*infrarepo.GitRemoteRepoInfraService, error) {
+	gitCommandDriver, err := git.NewGitCommandGateway(l)
 	if err != nil {
 		return nil, err
 	}
-	gitRemoteRepoInfraService := services.NewGitRemoteRepoInfraService(gitCommandGateway, l)
+	gitRemoteRepoInfraService := infrarepo.NewGitRemoteRepoInfraService(gitCommandDriver, l)
 	return gitRemoteRepoInfraService, nil
 }

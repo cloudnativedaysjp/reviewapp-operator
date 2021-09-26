@@ -27,9 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/kubernetes"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services/infrarepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -38,8 +39,8 @@ type ReviewAppReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	GitRemoteRepoAppService   *services.GitRemoteRepoAppService
-	GitRemoteRepoInfraService *services.GitRemoteRepoInfraService
+	GitRemoteRepoAppService   *apprepo.GitRemoteRepoAppService
+	GitRemoteRepoInfraService *infrarepo.GitRemoteRepoInfraService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete

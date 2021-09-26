@@ -7,6 +7,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-github v17.0.0+incompatible
+	github.com/google/wire v0.5.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.15.0
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914

@@ -1,4 +1,4 @@
-package services
+package infrarepo
 
 import (
 	"context"
@@ -8,17 +8,17 @@ import (
 	"github.com/go-logr/logr"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
+	git_iface "github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git/iface"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCodeRepo repositories.GitCodeIFace
+	gitCodeRepo git_iface.GitCommandIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF repositories.GitCodeIFace, logger logr.Logger) *GitRemoteRepoInfraService {
+func NewGitRemoteRepoInfraService(gitCodeIF git_iface.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
 	return &GitRemoteRepoInfraService{gitCodeIF, logger}
 }
 

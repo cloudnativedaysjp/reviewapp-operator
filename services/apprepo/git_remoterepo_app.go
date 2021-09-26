@@ -1,20 +1,21 @@
-package services
+package apprepo
 
 import (
 	"context"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	"github.com/go-logr/logr"
+
+	githubapi_iface "github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git/iface"
+	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoAppService struct {
-	gitPrRepo repositories.PullRequestIFace
+	gitPrRepo githubapi_iface.GitApiPullRequestIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoAppService(prIF repositories.PullRequestIFace, logger logr.Logger) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(prIF githubapi_iface.GitApiPullRequestIFace, logger logr.Logger) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{prIF, logger}
 }
 

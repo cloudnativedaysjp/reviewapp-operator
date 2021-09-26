@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
 func GetSecretValue(ctx context.Context, c client.Client, namespace, name, key string) (string, error) {

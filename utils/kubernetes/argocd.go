@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
 const (
