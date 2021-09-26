@@ -23,7 +23,7 @@ func NewGitRemoteRepoAppService(l logr.Logger) (*apprepo.GitRemoteRepoAppService
 
 func NewGitRemoteRepoInfraService(l logr.Logger) (*infrarepo.GitRemoteRepoInfraService, error) {
 	wire.Build(
-		git.NewGitCommandGateway,
+		git.NewGitCommandDriver,
 		wire.Bind(new(git_iface.GitCommandIFace), new(*git.GitCommandDriver)),
 		infrarepo.NewGitRemoteRepoInfraService,
 	)

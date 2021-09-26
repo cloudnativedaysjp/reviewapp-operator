@@ -21,7 +21,7 @@ func NewGitRemoteRepoAppService(l logr.Logger) (*apprepo.GitRemoteRepoAppService
 }
 
 func NewGitRemoteRepoInfraService(l logr.Logger) (*infrarepo.GitRemoteRepoInfraService, error) {
-	gitCommandDriver, err := git.NewGitCommandGateway(l)
+	gitCommandDriver, err := git.NewGitCommandDriver(l)
 	if err != nil {
 		return nil, err
 	}

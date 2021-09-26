@@ -28,7 +28,7 @@ type GitCommandDriver struct {
 }
 
 // TODO: this impl only support https (ssh is not implemented yet)
-func NewGitCommandGateway(l logr.Logger) (*GitCommandDriver, error) {
+func NewGitCommandDriver(l logr.Logger) (*GitCommandDriver, error) {
 	// create basedir
 	basedir := models.BaseDir
 	if err := os.MkdirAll(basedir, 0755); err != nil {
