@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/argoproj/argo-cd/v2 v2.1.2
 	github.com/cenkalti/backoff/v4 v4.1.1
+	github.com/go-logr/glogr v0.4.0
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/wire v0.5.0

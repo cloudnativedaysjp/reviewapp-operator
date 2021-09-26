@@ -50,8 +50,7 @@ type ReviewAppReconciler struct {
 const finalizer = "reviewapp.finalizers.cloudnativedays.jp"
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var ra *dreamkastv1beta1.ReviewApp
-	r.Log.Info(fmt.Sprintf("fetching %s resource: %s/%s", reflect.TypeOf(ra), req.Namespace, req.Name))
+	r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 	ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
