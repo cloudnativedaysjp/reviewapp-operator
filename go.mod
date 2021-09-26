@@ -3,27 +3,18 @@ module github.com/cloudnativedaysjp/reviewapp-operator
 go 1.16
 
 require (
-	github.com/argoproj/argo-cd v1.8.7
-	github.com/argoproj/gitops-engine v0.4.1 // indirect
-	github.com/argoproj/pkg v0.9.1 // indirect
+	github.com/argoproj/argo-cd/v2 v2.1.2
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/go-logr/logr v0.4.0
-	github.com/google/go-cmp v0.5.4 // indirect
 	github.com/google/go-github v17.0.0+incompatible
-	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.3
-	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.15.0
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
-	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-	google.golang.org/grpc v1.33.1 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/api v0.21.0
-	k8s.io/apimachinery v0.21.0
+	k8s.io/api v0.22.2
+	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v11.0.1-0.20190816222228-6d55c1b1f1ca+incompatible
-	sigs.k8s.io/controller-runtime v0.8.3
+	sigs.k8s.io/controller-runtime v0.10.1
 	sigs.k8s.io/yaml v1.2.0
 )
 

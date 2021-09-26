@@ -22,23 +22,23 @@ const (
 type GitCommandGateway struct {
 	logger logr.Logger
 
+	baseDir  string
 	username string
 	token    string
-	baseDir  string
 }
 
 // TODO: this impl only support https (ssh is not implemented yet)
-func NewGitCommandGateway(l logr.Logger, username string) (*GitCommandGateway, error) {
+func NewGitCommandGateway(l logr.Logger) (*GitCommandGateway, error) {
 	// create basedir
 	basedir := models.BaseDir
 	if err := os.MkdirAll(basedir, 0755); err != nil {
 		return nil, err
 	}
 
-	return &GitCommandGateway{logger: l, username: username, baseDir: basedir}, nil
+	return &GitCommandGateway{logger: l, baseDir: basedir}, nil
 }
 
-func (g *GitCommandGateway) WithCredential(token string) error {
+func (g *GitCommandGateway) WithCredential(username, token string) error {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -47,6 +47,7 @@ func (g *GitCommandGateway) WithCredential(token string) error {
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
 		return err
 	}
+	g.username = username
 	g.token = token
 	return nil
 }

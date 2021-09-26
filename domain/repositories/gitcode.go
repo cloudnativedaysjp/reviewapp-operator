@@ -7,7 +7,7 @@ import (
 )
 
 type GitCodeIFace interface {
-	WithCredential(token string) error
+	WithCredential(username, token string) error
 	Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error)
 	CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error
 	DeleteFile(ctx context.Context, gp models.GitProject, filename string) error

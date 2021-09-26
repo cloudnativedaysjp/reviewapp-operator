@@ -2,30 +2,27 @@ package services
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/go-logr/logr"
+
+	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
-	"github.com/go-logr/logr"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCodeRepo   repositories.GitCodeIFace
-	k8sSecretRepo repositories.SecretIFace
+	gitCodeRepo repositories.GitCodeIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF repositories.GitCodeIFace, secretIF repositories.SecretIFace, logger logr.Logger) *GitRemoteRepoInfraService {
-	return &GitRemoteRepoInfraService{gitCodeIF, secretIF, logger}
+func NewGitRemoteRepoInfraService(gitCodeIF repositories.GitCodeIFace, logger logr.Logger) *GitRemoteRepoInfraService {
+	return &GitRemoteRepoInfraService{gitCodeIF, logger}
 }
 
 /* Inputs of some functions */
-type AccessToInfraRepoInput struct {
-	Namespace string
-	Name      string
-	Key       string
-}
 type UpdateManifestsInput struct {
 	Content string
 	Path    string
@@ -38,16 +35,27 @@ var (
 	b = backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3)
 )
 
-func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, org, repo, branch, commitMsg string, inputSecret AccessToInfraRepoInput, inputManifests ...UpdateManifestsInput) (*models.GitProject, error) {
+func (s GitRemoteRepoInfraService) UpdateManifests(
+	ctx context.Context, org, repo, branch, commitMsg string,
+	username, token string,
+	ra *dreamkastv1beta1.ReviewApp,
+) (*models.GitProject, error) {
+	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
+		Content: ra.Spec.Application,
+		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
+	})
+	for filename, manifest := range ra.Spec.Manifests {
+		inputManifests = append(inputManifests, UpdateManifestsInput{
+			Content: manifest,
+			Path:    filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
+		})
+	}
+
 	var gp *models.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCodeRepo.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			credential, err := s.k8sSecretRepo.GetSecretValue(ctx, inputSecret.Namespace, inputSecret.Name, inputSecret.Key)
-			if err != nil {
-				return err
-			}
-			if err := s.gitCodeRepo.WithCredential(credential); err != nil {
+			if err := s.gitCodeRepo.WithCredential(username, token); err != nil {
 				return err
 			}
 			m, err := s.gitCodeRepo.Pull(ctx, org, repo, branch)
@@ -71,16 +79,25 @@ func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, org, rep
 	return gp, nil
 }
 
-func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, org, repo, branch, commitMsg string, inputSecret AccessToInfraRepoInput, inputManifests ...DeleteManifestsInput) (*models.GitProject, error) {
+func (s GitRemoteRepoInfraService) DeleteManifests(
+	ctx context.Context, org, repo, branch, commitMsg string,
+	username, token string,
+	ra *dreamkastv1beta1.ReviewApp,
+) (*models.GitProject, error) {
+	inputManifests := append([]DeleteManifestsInput{}, DeleteManifestsInput{
+		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
+	})
+	for filename := range ra.Spec.Manifests {
+		inputManifests = append(inputManifests, DeleteManifestsInput{
+			Path: filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
+		})
+	}
+
 	var gp *models.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCodeRepo.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			credential, err := s.k8sSecretRepo.GetSecretValue(ctx, inputSecret.Namespace, inputSecret.Name, inputSecret.Key)
-			if err != nil {
-				return err
-			}
-			if err := s.gitCodeRepo.WithCredential(credential); err != nil {
+			if err := s.gitCodeRepo.WithCredential(username, token); err != nil {
 				return err
 			}
 			m, err := s.gitCodeRepo.Pull(ctx, org, repo, branch)

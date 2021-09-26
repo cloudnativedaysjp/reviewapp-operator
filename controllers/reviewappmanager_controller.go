@@ -20,19 +20,19 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/go-logr/logr"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/template"
 )
 
 // ReviewAppManagerReconciler reconciles a ReviewAppManager object
@@ -40,6 +40,8 @@ type ReviewAppManagerReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	GitRemoteRepoAppService *services.GitRemoteRepoAppService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -47,38 +49,34 @@ type ReviewAppManagerReconciler struct {
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers/finalizers,verbs=update
 
 func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var ram dreamkastv1beta1.ReviewAppManager
+	var ram *dreamkastv1beta1.ReviewAppManager
 	r.Log.Info(fmt.Sprintf("fetching %s resource", reflect.TypeOf(ram)))
-	if err := r.Get(ctx, req.NamespacedName, &ram); err != nil {
-		if apierrors.IsNotFound(err) {
+	ram, err := kubernetes.GetReviewAppManager(ctx, r.Client, req.Namespace, req.Name)
+	if err != nil {
+		if myerrors.IsNotFound(err) {
 			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ram), req.Namespace, req.Name))
 			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	// Handle normal reconciliation loop.
-	return r.reconcile(ctx, &ram)
+	return r.reconcile(ctx, ram)
 }
 
 func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamkastv1beta1.ReviewAppManager) (ctrl.Result, error) {
-	gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(r.Log, r.Client, ram.Spec.AppTarget.Username)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	k8sService, err := wire.NewKubernetesService(r.Log, r.Client)
+	// get gitRemoteRepo credential from Secret
+	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
+		r.Client, ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key,
+	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// list PRs
-	prs, err := gitRemoteRepoAppService.ListOpenPullRequest(ctx,
+	prs, err := r.GitRemoteRepoAppService.ListOpenPullRequest(ctx,
 		ram.Spec.AppTarget.Organization, ram.Spec.AppTarget.Repository,
-		services.AccessToAppRepoInput{
-			SecretNamespace: ram.Namespace,
-			SecretName:      ram.Spec.AppTarget.GitSecretRef.Name,
-			SecretKey:       ram.Spec.AppTarget.GitSecretRef.Key,
-		},
+		ram.Spec.AppTarget.Username, gitRemoteRepoCred,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -97,28 +95,85 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		}
 
 		// generate RA struct
-		ra := &dreamkastv1beta1.ReviewApp{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: fmt.Sprintf("%s-%s-%s-%d",
-					ram.Name,
-					strings.ToLower(pr.Organization),
-					strings.ToLower(pr.Repository),
-					pr.Number,
-				),
-				Namespace: ram.Namespace,
-			},
-		}
+		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, pr)
+		ra.Spec.AppTarget = ram.Spec.AppTarget
+		ra.Spec.InfraTarget = ram.Spec.InfraTarget
 
-		// merge Template & generate ReviewApp
-		if err := k8sService.MergeTemplate(ctx, ra, ram, pr, isCandidate); err != nil {
-			if models.IsNotFound(err) {
-				return ctrl.Result{}, nil
+		// Templating
+		{
+			v := template.NewTemplateValue(
+				pr.Organization, pr.Repository, pr.Number, pr.HeadCommitSha,
+				ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
+				kubernetes.PickVariablesFromReviewAppManager(ctx, ram),
+			)
+			{ // template from ram.Spec.AppConfig to ra.Spec.AppConfig
+				out, err := yaml.Marshal(&ram.Spec.AppConfig)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				appConfigStr, err := v.Templating(string(out))
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				if err := yaml.Unmarshal([]byte(appConfigStr), &ra.Spec.AppConfig); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
-			return ctrl.Result{}, err
+			{ // template from ram.Spec.InfraConfig to ra.Spec.InfraConfig
+				out, err := yaml.Marshal(&ram.Spec.InfraConfig)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				infraConfigStr, err := v.Templating(string(out))
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+				if err := yaml.Unmarshal([]byte(infraConfigStr), &ra.Spec.InfraConfig); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			{ // get ApplicationTemplate & template to ra.Spec.Application
+				at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name)
+				if err != nil {
+					if myerrors.IsNotFound(err) {
+						r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ram.Namespace, ram.Name))
+						return ctrl.Result{}, nil
+					}
+					return ctrl.Result{}, err
+				}
+				if isCandidate {
+					ra.Spec.Application, err = v.Templating(at.Spec.CandidateTemplate)
+				} else {
+					ra.Spec.Application, err = v.Templating(at.Spec.StableTemplate)
+				}
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			{ // get ManifestsTemplate & template to ra.Spec.Manifests
+				for _, mt := range ram.Spec.InfraConfig.Manifests.Templates {
+					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mt.Namespace, mt.Name)
+					if err != nil {
+						if myerrors.IsNotFound(err) {
+							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), ram.Namespace, ram.Name))
+							return ctrl.Result{}, nil
+						}
+						return ctrl.Result{}, err
+					}
+					if isCandidate {
+						ra.Spec.Manifests, err = v.MapTemplatingAndAppend(ra.Spec.Manifests, mt.Spec.CandidateData)
+					} else {
+						ra.Spec.Manifests, err = v.MapTemplatingAndAppend(ra.Spec.Manifests, mt.Spec.StableData)
+					}
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+				}
+			}
 		}
 
 		// apply RA
-		if err := k8sService.ApplyReviewAppFromReviewAppManager(ctx, ra, ram); err != nil {
+		if err := kubernetes.ApplyReviewAppWithOwnerRef(ctx, r.Client, ra, ram); err != nil {
 			return ctrl.Result{}, err
 		}
 
@@ -140,14 +195,14 @@ loop:
 			}
 		}
 		// delete RA that only exists ResourceStatus
-		if err := k8sService.ReviewAppIFace.DeleteReviewApp(ctx, ram.Namespace, a.ReviewAppName); err != nil {
+		if err := kubernetes.DeleteReviewApp(ctx, r.Client, ram.Namespace, a.ReviewAppName); err != nil {
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
 
 	// update ReviewAppManager Status
 	ram.Status.SyncedPullRequests = syncedPullRequests
-	if err := k8sService.UpdateReviewAppManagerStatus(ctx, ram); err != nil {
+	if err := kubernetes.UpdateReviewAppManagerStatus(ctx, r.Client, ram); err != nil {
 		return ctrl.Result{}, err
 	}
 

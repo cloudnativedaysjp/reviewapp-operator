@@ -26,7 +26,7 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
-	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/pkg/apis/application/v1alpha1"
+	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -36,6 +36,7 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -86,22 +87,45 @@ func main() {
 		os.Exit(1)
 	}
 
-	// initialize controllers
-	if err = (&controllers.ReviewAppManagerReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ReviewAppManager"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
-		os.Exit(1)
+	{ // initialize controller: ReviewAppManager
+		ramLogger := ctrl.Log.WithName("controllers").WithName("ReviewAppManager")
+		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(ramLogger)
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoApp")
+			os.Exit(1)
+		}
+		if err = (&controllers.ReviewAppManagerReconciler{
+			Client:                  mgr.GetClient(),
+			Log:                     ramLogger,
+			Scheme:                  mgr.GetScheme(),
+			GitRemoteRepoAppService: gitRemoteRepoAppService,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
+			os.Exit(1)
+		}
 	}
-	if err = (&controllers.ReviewAppReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ReviewApp"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
-		os.Exit(1)
+	{ // initialize controller: ReviewApp
+		raLogger := ctrl.Log.WithName("controllers").WithName("ReviewApp")
+		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(raLogger)
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoApp")
+			os.Exit(1)
+		}
+		gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(raLogger)
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoInfra")
+			os.Exit(1)
+		}
+		if err = (&controllers.ReviewAppReconciler{
+			Client:                    mgr.GetClient(),
+			Log:                       raLogger,
+			Scheme:                    mgr.GetScheme(),
+			GitRemoteRepoAppService:   gitRemoteRepoAppService,
+			GitRemoteRepoInfraService: gitRemoteRepoInfraService,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

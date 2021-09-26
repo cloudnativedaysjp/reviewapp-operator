@@ -17,11 +17,11 @@ type GitHubApiGateway struct {
 	ts       oauth2.TokenSource
 }
 
-func NewGitHubApiGateway(l logr.Logger, username string) *GitHubApiGateway {
-	return &GitHubApiGateway{logger: l, username: username}
+func NewGitHubApiGateway(l logr.Logger) *GitHubApiGateway {
+	return &GitHubApiGateway{logger: l}
 }
 
-func (g *GitHubApiGateway) WithCredential(token string) error {
+func (g *GitHubApiGateway) WithCredential(username, token string) error {
 	// 既にtokenを持っているなら早期リターン
 	if g.ts != nil {
 		if _, err := g.ts.Token(); err == nil {
@@ -36,6 +36,7 @@ func (g *GitHubApiGateway) WithCredential(token string) error {
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
 		return err
 	}
+	g.username = username
 	g.ts = ts
 	return nil
 }

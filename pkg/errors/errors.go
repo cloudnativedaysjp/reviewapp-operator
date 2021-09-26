@@ -1,16 +1,16 @@
-package models
+package errors
 
-type K8sRsourceNotFound struct {
+type K8sResourceNotFound struct {
 	Err error
 }
 
-func (e K8sRsourceNotFound) Error() string { return "" }
+func (e K8sResourceNotFound) Error() string { return "" }
 
 // utility functions
 
 func IsNotFound(err error) bool {
 	switch err.(type) {
-	case K8sRsourceNotFound:
+	case K8sResourceNotFound:
 		return true
 	default:
 		return false
