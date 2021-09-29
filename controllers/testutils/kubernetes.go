@@ -1,10 +1,13 @@
 package testutils
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -38,7 +41,7 @@ func InitDynamicClient(cfg *rest.Config) (*Dynamic, error) {
 	return &Dynamic{dynamicClient, mapper}, nil
 }
 
-func (d Dynamic) NewClient(data []byte, obj *unstructured.Unstructured, ns string) (dynamic.ResourceInterface, error) {
+func (d Dynamic) newClient(data []byte, obj *unstructured.Unstructured, ns string) (dynamic.ResourceInterface, error) {
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 	_, gvk, err := dec.Decode(data, nil, obj)
 	if err != nil {
@@ -60,4 +63,17 @@ func (d Dynamic) NewClient(data []byte, obj *unstructured.Unstructured, ns strin
 	} else {
 		return d.Client.Resource(mapping.Resource), nil
 	}
+}
+
+func (d Dynamic) CreateOrUpdate(data []byte, obj *unstructured.Unstructured, ns string) error {
+	c, err := d.newClient(data, obj, ns)
+	if err != nil {
+		return err
+	}
+	if _, err := c.Patch(context.Background(), obj.GetName(), types.ApplyPatchType, data, metav1.PatchOptions{
+		FieldManager: "test",
+	}); err != nil {
+		return err
+	}
+	return nil
 }

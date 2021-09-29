@@ -61,7 +61,7 @@ unit-test: fmt vet ## Run unit tests.
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 USE_EXISTING_CLUSTER ?= "false" # this value must be true because this integration-test required full k8s.
 TEST_GITHUB_TOKEN ?= "" # you must `export` this variable
-integration-test: manifests generate fmt vet ## Run integration tests. (CAUTION: current context's cluster will be destroyed if USE_EXISTING_CLUSTER=ture)
+integration-test: manifests generate fmt vet install-tools ## Run integration tests. (CAUTION: current context's cluster will be destroyed if USE_EXISTING_CLUSTER=ture)
 	: USE_EXISTING_CLUSTER=${USE_EXISTING_CLUSTER}
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh

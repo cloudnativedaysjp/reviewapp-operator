@@ -1,5 +1,3 @@
-// +build integration_test
-
 /*
 Copyright 2021.
 
@@ -37,6 +35,8 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
+const ()
+
 var _ = Describe("ReviewAppManager controller", func() {
 	//! [setup]
 	var stopFunc func()
@@ -64,7 +64,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// Control external resources: close PR for test
-		err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
 
 		// initialize controller-manager of ReviewAppManager
@@ -126,7 +126,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 	//! [test]
 	It("should create ReviewApp when PR is opened", func() {
 		// Control external resources: open PR for test
-		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
 
 		ram, err := createSomeResourceForReviewAppManagerTest(ctx)
@@ -134,7 +134,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 
 		ra := dreamkastv1beta1.ReviewApp{}
 		Eventually(func() error {
-			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "sample-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
+			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
 		}).Should(Succeed())
 		Expect(ra.Spec.AppTarget).To(Equal(ram.Spec.AppTarget))
 		Expect(ra.Spec.InfraTarget).To(Equal(ram.Spec.InfraTarget))
@@ -144,53 +144,53 @@ var _ = Describe("ReviewAppManager controller", func() {
 * 1
 * ShotaKitazawa
 * reviewapp-operator-demo-infra
-* sample
+* test-ram
 * <no value>`))
 		Expect(ra.Spec.Application).To(Equal(`apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: "sample-1"
+  name: "test-ram-1"
   namespace: argocd
 spec:
   project: "default"
   destination:
-    namespace: "sample-1"
+    namespace: "test-ram-1"
     server: "https://kubernetes.default.svc"
   source:
     repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-    path: "overlays/dev/sample-1"
+    path: "overlays/dev/test-ram-1"
     targetRevision: master
   syncPolicy:
     automated:
       prune: true`))
 		Expect(ra.Spec.Manifests["kustomization.yaml"]).To(Equal(`apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: demo-dev-sample-1
+namespace: demo-dev-test-ram-1
 bases:
 - ../../../base
 - ./ns.yaml`))
 		Expect(ra.Spec.Manifests["ns.yaml"]).To(Equal(`apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-sample-1`))
+  name: demo-dev-test-ram-1`))
 	})
 
 	It("should delete ReviewApp when PR is closed", func() {
 		// Control external resources: open PR for test
-		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
 		// Control external resources: close PR for test
-		err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
 
 		// wait to run reconcile loop
 		ra := dreamkastv1beta1.ReviewApp{}
 		Eventually(func() error {
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "sample-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					return nil
@@ -206,7 +206,7 @@ metadata:
 
 	It("should update status", func() {
 		// Control external resources: open PR for test
-		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, err = createSomeResourceForReviewAppManagerTest(ctx)
@@ -214,7 +214,7 @@ metadata:
 
 		updated := dreamkastv1beta1.ReviewAppManager{}
 		Eventually(func() error {
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "sample"}, &updated)
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram"}, &updated)
 			if err != nil {
 				return err
 			}

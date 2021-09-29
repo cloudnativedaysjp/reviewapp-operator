@@ -7,6 +7,5 @@ case "$(uname -m)" in
   * ) echo "unknown arch"; exit 1 ;;
 esac
 
-curl -sSL -o ${ARGOCD_CLI_PATH} \
-  https://github.com/argoproj/argo-cd/releases/latest/download/argocd-$(uname -s)-${ARGOCD_ARCH}
-
+[ -f ${ARGOCD_CLI_PATH} ] || curl -sSL -o ${ARGOCD_CLI_PATH} https://github.com/argoproj/argo-cd/releases/latest/download/argocd-$(uname -s)-${ARGOCD_ARCH}
+chmod +x ${ARGOCD_CLI_PATH}

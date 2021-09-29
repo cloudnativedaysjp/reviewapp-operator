@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -50,8 +51,6 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-const argoCDManifestUrl = "https://raw.githubusercontent.com/argoproj/argo-cd/v2.1.2/manifests/install.yaml"
-
 var (
 	cfg       *rest.Config
 	k8sClient client.Client
@@ -68,7 +67,8 @@ const (
 	testGitUsername          = "ShotaKitazawa"
 	testGitAppOrganization   = "ShotaKitazawa"
 	testGitAppRepository     = "reviewapp-operator-demo-app"
-	testGitAppPrNum          = 1
+	testGitAppPrNumForRAM    = 1
+	testGitAppPrNumForRA     = 2
 	testGitInfraOrganization = "ShotaKitazawa"
 	testGitInfraRepository   = "reviewapp-operator-demo-infra"
 	testGitInfraBranch       = "master"
@@ -132,27 +132,28 @@ var _ = BeforeSuite(func() {
 	dynamic, err := testutils.InitDynamicClient(cfg)
 	Expect(err).NotTo(HaveOccurred())
 
-	// create "argocd" Namespace
-	ns := &corev1.Namespace{}
-	ns.Name = testNamespace
-	err = k8sClient.Create(ctx, ns)
-	Expect(err).NotTo(HaveOccurred())
-
 	// install Argo CD
-	manifest, err := testutils.Wget(argoCDManifestUrl)
+	manifest, err := testutils.KustomizeBuildForTest()
 	Expect(err).NotTo(HaveOccurred())
-	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 100)
-	for {
-		var rawObj runtime.RawExtension
-		if err := decoder.Decode(&rawObj); err != nil {
-			break
+	Eventually(func(g Gomega) {
+		//jnnstall
+		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 100)
+		for {
+			var rawObj runtime.RawExtension
+			if err := decoder.Decode(&rawObj); err != nil {
+				break
+			}
+			obj := &unstructured.Unstructured{}
+			err = dynamic.CreateOrUpdate(rawObj.Raw, obj, testNamespace)
+			g.Expect(err).NotTo(HaveOccurred())
 		}
-		obj := &unstructured.Unstructured{}
-		client, err := dynamic.NewClient(rawObj.Raw, obj, testNamespace)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = client.Create(ctx, obj, metav1.CreateOptions{})
-		Expect(err).NotTo(HaveOccurred())
-	}
+		// check argocd-server is up
+		var deployment appsv1.Deployment
+		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "argocd-server"}, &deployment)
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(deployment.Status.ReadyReplicas).NotTo(Equal(int32(0)))
+		g.Expect(deployment.Status.UnavailableReplicas).To(Equal(int32(0)))
+	}, 180, 10).Should(Succeed())
 }, 60)
 
 var _ = AfterSuite(func() {
@@ -161,7 +162,9 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// Control external resources: close PR for test
-	err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+	err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
+	Expect(err).NotTo(HaveOccurred())
+	err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 	Expect(err).NotTo(HaveOccurred())
 })
 
@@ -198,7 +201,7 @@ spec:
 
 	return &dreamkastv1beta1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "applicationtemplate-sample",
+			Name:      "applicationtemplate-test-ram",
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1beta1.ApplicationTemplateSpec{
@@ -225,7 +228,7 @@ metadata:
 
 	return &dreamkastv1beta1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "manifeststemplate-sample",
+			Name:      "manifeststemplate-test-ram",
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1beta1.ManifestsTemplateSpec{
@@ -238,7 +241,7 @@ metadata:
 func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 	return &dreamkastv1beta1.ReviewAppManager{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample",
+			Name:      "test-ram",
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1beta1.ReviewAppManagerSpec{
@@ -279,20 +282,20 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 				Manifests: dreamkastv1beta1.ReviewAppManagerSpecInfraManifests{
 					Templates: []dreamkastv1beta1.NamespacedName{{
 						Namespace: testNamespace,
-						Name:      "manifeststemplate-sample",
+						Name:      "manifeststemplate-test-ram",
 					}},
 					Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
 				},
 				ArgoCDApp: dreamkastv1beta1.ReviewAppManagerSpecInfraArgoCDApp{
 					Template: dreamkastv1beta1.NamespacedName{
 						Namespace: testNamespace,
-						Name:      "applicationtemplate-sample",
+						Name:      "applicationtemplate-test-ram",
 					},
 					Filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml",
 				},
 			},
 			Variables: []string{
-				"AppRepositoryAlias=sample",
+				"AppRepositoryAlias=test-ram",
 			},
 		},
 	}
@@ -301,7 +304,7 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 func newReviewApp() *dreamkastv1beta1.ReviewApp {
 	return &dreamkastv1beta1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "sample-shotakitazawa-reviewapp-operator-demo-app-1",
+			Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-1",
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1beta1.ReviewAppSpec{
@@ -335,32 +338,32 @@ func newReviewApp() *dreamkastv1beta1.ReviewApp {
 				Manifests: dreamkastv1beta1.ReviewAppManagerSpecInfraManifests{
 					Templates: []dreamkastv1beta1.NamespacedName{{
 						Namespace: testNamespace,
-						Name:      "manifeststemplate-sample",
+						Name:      "manifeststemplate-test-ra",
 					}},
-					Dirpath: "overlays/dev/sample-1",
+					Dirpath: "overlays/dev/test-ra-1",
 				},
 				ArgoCDApp: dreamkastv1beta1.ReviewAppManagerSpecInfraArgoCDApp{
 					Template: dreamkastv1beta1.NamespacedName{
 						Namespace: testNamespace,
-						Name:      "applicationtemplate-sample",
+						Name:      "applicationtemplate-test-ra",
 					},
-					Filepath: ".apps/dev/sample-1.yaml",
+					Filepath: ".apps/dev/test-ra-1.yaml",
 				},
 			},
-			AppPrNum: testGitAppPrNum,
+			AppPrNum: testGitAppPrNumForRA,
 			Application: `apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: "sample-1"
+  name: "test-ra-1"
   namespace: argocd
 spec:
   project: "default"
   destination:
-    namespace: "sample-1"
+    namespace: "test-ra-1"
     server: "https://kubernetes.default.svc"
   source:
     repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-    path: "overlays/dev/sample-1"
+    path: "overlays/dev/test-ra-1"
     targetRevision: master
   syncPolicy:
     automated:
@@ -368,14 +371,14 @@ spec:
 			Manifests: map[string]string{
 				"kustomization.yaml": `apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: demo-dev-sample-1
+namespace: demo-dev-test-ra-1
 bases:
 - ../../../base
 - ./ns.yaml`,
 				"ns.yaml": `apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-sample-1`,
+  name: demo-dev-test-ra-1`,
 			},
 		},
 	}

@@ -31,17 +31,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
 var _ = Describe("ReviewApp controller", func() {
+	fmt.Println(GinkgoParallelNode())
 	//! [setup]
 	var stopFunc func()
 
 	BeforeEach(func() {
 		// Control external resources: open PR for test
-		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 		Expect(err).NotTo(HaveOccurred())
 
 		// initialize controller-manager of ReviewApp
@@ -85,7 +87,7 @@ var _ = Describe("ReviewApp controller", func() {
 	//! [setup]
 
 	//! [test]
-	timeout := 300 * time.Second
+	timeout := 120 * time.Second
 	interval := 10 * time.Second
 	Context("step1. create ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
@@ -94,12 +96,16 @@ var _ = Describe("ReviewApp controller", func() {
 		})
 		It("should update status", func() {
 			Eventually(func(g Gomega) error {
+				// sync argocd application
+				err := testutils.SyncArgoCDApplication(argocdCLIPath, "reviewapps")
+				g.Expect(err).NotTo(HaveOccurred())
+				// get k8s-object of argocd application
 				ra := &dreamkastv1beta1.ReviewApp{}
-				if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "sample-shotakitazawa-reviewapp-operator-demo-app-1"}, ra); err != nil {
+				if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, ra); err != nil {
 					return err
 				}
 				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1beta1.SyncStatusCodeWatchingAppRepo))
-				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("sample-1"))
+				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-1"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
 				g.Expect(ra.Status.Sync.InfraRepoLatestCommitSha).NotTo(BeEmpty())
@@ -110,21 +116,21 @@ var _ = Describe("ReviewApp controller", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
-				".apps/dev/sample-1.yaml",
-				"overlays/dev/sample-1/kustomization.yaml",
-				"overlays/dev/sample-1/ns.yaml",
+				".apps/dev/test-ra-1.yaml",
+				"overlays/dev/test-ra-1/kustomization.yaml",
+				"overlays/dev/test-ra-1/ns.yaml",
 			}))
 		})
 		It("should check Argo CD Application", func() {
 			argocdApp := &argocd_application_v1alpha1.Application{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "sample-1"}, argocdApp)
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, argocdApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(argocdApp.Annotations[kubernetes.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
 			Expect(argocdApp.Annotations[kubernetes.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
 			Expect(argocdApp.Annotations[kubernetes.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 		})
 		It("should comment to app-repo's PR when create ReviewApp", func() {
-			msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNum)
+			msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(msg).To(Equal("message"))
 		})
