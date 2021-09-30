@@ -49,8 +49,7 @@ type ReviewAppManagerReconciler struct {
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers/finalizers,verbs=update
 
 func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var ram *dreamkastv1beta1.ReviewAppManager
-	r.Log.Info(fmt.Sprintf("fetching %s resource", reflect.TypeOf(ram)))
+	r.Log.Info(fmt.Sprintf("fetching ReviewAppManager resource: %s/%s", req.Namespace, req.Name))
 	ram, err := kubernetes.GetReviewAppManager(ctx, r.Client, req.Namespace, req.Name)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
@@ -70,6 +69,10 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		r.Client, ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key,
 	)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 

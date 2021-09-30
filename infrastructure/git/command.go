@@ -10,7 +10,7 @@ import (
 
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 	"github.com/go-logr/logr"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
 )
 

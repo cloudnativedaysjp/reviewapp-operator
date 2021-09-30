@@ -50,8 +50,7 @@ type ReviewAppReconciler struct {
 const finalizer = "reviewapp.finalizers.cloudnativedays.jp"
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var ra *dreamkastv1beta1.ReviewApp
-	r.Log.Info(fmt.Sprintf("fetching %s resource: %s/%s", reflect.TypeOf(ra), req.Namespace, req.Name))
+	r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 	ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
@@ -76,9 +75,15 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (result ctrl.Result, err error) {
 
-	emptyStatus := dreamkastv1beta1.ReviewAppStatus{}
-	if ra.Status == emptyStatus || ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
+	if reflect.DeepEqual(ra.Status, dreamkastv1beta1.ReviewAppStatus{}) ||
+		ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
 		result, err = r.reconcileCheckAppRepository(ctx, ra)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingTemplates {
+		result, err = r.reconcileCheckAtAndMt(ctx, ra)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -96,13 +101,23 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 		}
 	}
 
-	return
+	// update status
+	if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
 }
 
 func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+	var updated bool
+
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx, r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -115,9 +130,8 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 		return ctrl.Result{}, err
 	}
 
-	// if RA.status already applied with above PR, ealry return
-	if pr.HeadCommitSha == ra.Status.Sync.AppRepoLatestCommitSha {
-		return ctrl.Result{}, nil
+	if pr.HeadCommitSha != ra.Status.Sync.AppRepoLatestCommitSha {
+		updated = true
 	}
 
 	// get ArgoCD Application name
@@ -127,14 +141,39 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync = dreamkastv1beta1.SyncStatus{
-		Status:                 dreamkastv1beta1.SyncStatusCodeCheckedAppRepo,
-		ApplicationName:        argocdAppNamespacedName.Name,
-		ApplicationNamespace:   argocdAppNamespacedName.Namespace,
-		AppRepoLatestCommitSha: pr.HeadCommitSha,
+	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
+	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
+	ra.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
+	if updated {
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+	} else {
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingTemplates
 	}
-	if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
+	return ctrl.Result{}, nil
+}
+
+func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+	var updated bool
+	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
+		updated = true
+	}
+	if !reflect.DeepEqual(ra.Spec.Manifests, ra.Status.Sync.Manifests) {
+		updated = true
+	}
+
+	// get ArgoCD Application name
+	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromArgoCDAppStr(ctx, ra.Spec.Application)
+	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	// update ReviewApp.Status
+	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
+	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
+	if updated {
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+	} else {
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
 	}
 	return ctrl.Result{}, nil
 }
@@ -161,6 +200,7 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	argocdAppStrWithoutAnnotations := ra.Spec.Application
 	ra.Spec.Application = argocdAppStr
 
 	// get gitRemoteRepo credential from Secret
@@ -168,6 +208,10 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
 	)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -189,9 +233,8 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	// update ReviewApp.Status
 	ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo
 	ra.Status.Sync.InfraRepoLatestCommitSha = gp.LatestCommitSha
-	if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
-		return ctrl.Result{}, err
-	}
+	ra.Status.Sync.Application = argocdAppStrWithoutAnnotations
+	ra.Status.Sync.Manifests = ra.Spec.Manifests
 
 	return ctrl.Result{}, nil
 }
@@ -213,6 +256,10 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
 	)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -238,6 +285,10 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 				r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
 			)
 			if err != nil {
+				if myerrors.IsNotFound(err) {
+					r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+					return ctrl.Result{}, nil
+				}
 				return ctrl.Result{}, err
 			}
 
@@ -260,9 +311,6 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 
 		// update ReviewApp.Status
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
-		if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
-			return ctrl.Result{}, err
-		}
 	}
 
 	return ctrl.Result{}, nil
@@ -274,6 +322,10 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
 	)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 

@@ -1,4 +1,4 @@
-//+ wireinject
+// +build wireinject
 
 package wire
 

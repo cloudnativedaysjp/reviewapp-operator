@@ -41,7 +41,7 @@ type ReviewAppSpec struct {
 	// Application is manifest of ArgoCD Application resource
 	Application string `json:"application"`
 
-	// Manifests
+	// Manifests is other manifests
 	Manifests map[string]string `json:"manifests,omitempty"`
 }
 
@@ -67,6 +67,12 @@ type SyncStatus struct {
 
 	// TODO
 	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
+
+	// Application is manifest of ArgoCD Application resource
+	Application string `json:"application,omitempty"`
+
+	// Manifests is other manifests
+	Manifests map[string]string `json:"manifests,omitempty"`
 }
 
 // SyncStatusCode is a type which represents possible comparison results
@@ -76,8 +82,10 @@ type SyncStatusCode string
 const (
 	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
 	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
-	// SyncStatusCodeWatchingAppRepo indicates that desired and live states match
+	// SyncStatusCodeWatchingAppRepo indicates that TODO
 	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
+	// SyncStatusCodeWatchingTemplates indicates that TODO
+	SyncStatusCodeWatchingTemplates SyncStatusCode = "WatchingTemplate"
 	// SyncStatusCodeUpdatedAppRepo indicates that watched updated app repo & will update manifests to infra repo
 	SyncStatusCodeCheckedAppRepo SyncStatusCode = "CheckedAppRepo"
 	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
