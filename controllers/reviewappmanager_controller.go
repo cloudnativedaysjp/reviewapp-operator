@@ -69,6 +69,10 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		r.Client, ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key,
 	)
 	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 

@@ -52,9 +52,6 @@ vet: ## Run go vet against code.
 
 ##@ Test
 
-install-tools: ## install tools for integration-test
-	./hack/install-argocd-cli.sh
-
 unit-test: fmt vet ## Run unit tests.
 	go test -tags unit_test ./...
 
@@ -65,7 +62,11 @@ integration-test: manifests generate fmt vet install-tools ## Run integration te
 	: USE_EXISTING_CLUSTER=${USE_EXISTING_CLUSTER}
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test -tags integration_test ./... -coverprofile cover.out
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test -race -tags integration_test ./... -coverprofile cover.out
+
+install-tools: ## install tools for integration-test
+	./hack/install-argocd-cli.sh
+	./hack/install-kustomize.sh
 
 ##@ Build
 

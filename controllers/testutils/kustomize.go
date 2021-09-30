@@ -6,8 +6,8 @@ import (
 	"os/exec"
 )
 
-func KustomizeBuildForTest() (string, error) {
-	cmd := exec.Command("kustomize", "build", "../config/test")
+func KustomizeBuildForTest(binPath string) (string, error) {
+	cmd := exec.Command(binPath, "build", "../config/test")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout

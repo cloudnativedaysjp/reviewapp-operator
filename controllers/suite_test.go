@@ -61,6 +61,7 @@ var (
 	gitCredential string
 	ghClient      *testutils.GitHubClient
 	argocdCLIPath string
+	kustomizePath string
 )
 
 const (
@@ -89,7 +90,11 @@ func init() {
 
 	argocdCLIPath = os.Getenv("ARGOCD_CLI_PATH")
 	if argocdCLIPath == "" {
-		argocdCLIPath = "/tmp/argocd"
+		argocdCLIPath = "/tmp/.reviewapp-operator/argocd"
+	}
+	kustomizePath = os.Getenv("KUSTOMIZE_PATH")
+	if kustomizePath == "" {
+		kustomizePath = "/tmp/.reviewapp-operator/kustomize"
 	}
 }
 
@@ -133,10 +138,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// install Argo CD
-	manifest, err := testutils.KustomizeBuildForTest()
+	manifest, err := testutils.KustomizeBuildForTest(kustomizePath)
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(func(g Gomega) {
-		//jnnstall
+		// install
 		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 100)
 		for {
 			var rawObj runtime.RawExtension
@@ -154,11 +159,21 @@ var _ = BeforeSuite(func() {
 		g.Expect(deployment.Status.ReadyReplicas).NotTo(Equal(int32(0)))
 		g.Expect(deployment.Status.UnavailableReplicas).To(Equal(int32(0)))
 	}, 180, 10).Should(Succeed())
+
+	// install credential of github
+	secret := newSecret()
+	err = k8sClient.Create(ctx, secret)
+	Expect(err).NotTo(HaveOccurred())
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
+	Expect(err).NotTo(HaveOccurred())
+
+	// Delete K8s resources
+	secret := newSecret()
+	err = k8sClient.Delete(ctx, secret)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Control external resources: close PR for test
@@ -382,12 +397,6 @@ metadata:
 			},
 		},
 	}
-}
-
-func newReviewAppStep2() *dreamkastv1beta1.ReviewApp {
-	ra := newReviewApp()
-	ra.Spec.AppConfig.Message = "modified"
-	return ra
 }
 
 func newArgoCDApplication() *argocd_application_v1alpha1.Application {

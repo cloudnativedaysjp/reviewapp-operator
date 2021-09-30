@@ -26,7 +26,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,8 +58,6 @@ var _ = Describe("ReviewAppManager controller", func() {
 		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ApplicationTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ManifestsTemplate{}, client.InNamespace(testNamespace))
-		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		// Control external resources: close PR for test
@@ -114,8 +111,6 @@ var _ = Describe("ReviewAppManager controller", func() {
 		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ApplicationTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ManifestsTemplate{}, client.InNamespace(testNamespace))
-		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &corev1.Secret{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		stopFunc()
@@ -228,10 +223,6 @@ metadata:
 })
 
 func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv1beta1.ReviewAppManager, error) {
-	secret := newSecret()
-	if err := k8sClient.Create(ctx, secret); err != nil {
-		return nil, err
-	}
 	at := newApplicationTemplate()
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err

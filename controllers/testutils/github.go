@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
 )
 
@@ -57,18 +57,39 @@ func (c GitHubClient) OpenPr(org, repo string, prNum int) error {
 func (c GitHubClient) GetLatestMessage(org, repo string, prNum int) (string, error) {
 	ctx := context.Background()
 	client := github.NewClient(oauth2.NewClient(ctx, c.ts))
+
+	idx := 0
+	for {
+		idx++
+		comments, _, err := client.Issues.ListComments(ctx, org, repo, prNum, &github.IssueListCommentsOptions{
+			Direction: github.String("desc"),
+			ListOptions: github.ListOptions{
+				Page:    idx,
+				PerPage: 100,
+			},
+		})
+		if err != nil {
+			return "", err
+		} else if len(comments) == 0 {
+			if idx == 0 {
+				return "", fmt.Errorf("PR is not commented")
+			}
+			idx--
+		} else if len(comments) < 100 {
+			break
+		}
+	}
 	comments, _, err := client.Issues.ListComments(ctx, org, repo, prNum, &github.IssueListCommentsOptions{
-		// Sort: "created", Direction: "desc",  // NOTE: これらのオプションが効かないので全件取得後に最新1件を取り出している。
+		Direction: github.String("desc"),
 		ListOptions: github.ListOptions{
-			Page:    1,
-			PerPage: 1048576,
+			Page:    idx,
+			PerPage: 100,
 		},
 	})
 	if err != nil {
 		return "", err
-	} else if len(comments) == 0 {
-		return "", fmt.Errorf("PR is not commented")
 	}
+
 	return *comments[len(comments)-1].Body, nil
 }
 
@@ -79,7 +100,7 @@ func (c GitHubClient) GetUpdatedFilenamesInLatestCommit(org, repo, branch string
 	if err != nil {
 		return nil, err
 	}
-	commit, _, err := client.Repositories.GetCommit(ctx, org, repo, *ref.Object.SHA)
+	commit, _, err := client.Repositories.GetCommit(ctx, org, repo, *ref.Object.SHA, &github.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -99,15 +120,13 @@ func (c GitHubClient) GetDeletedFilenamesInLatestCommit(org, repo, branch string
 	if err != nil {
 		return nil, err
 	}
-	commit, _, err := client.Repositories.GetCommit(ctx, org, repo, *ref.Object.SHA)
+	commit, _, err := client.Repositories.GetCommit(ctx, org, repo, *ref.Object.SHA, &github.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 	result := []string{}
 	for _, file := range commit.Files {
-		// TODO: debug
-		fmt.Println(*file.Status)
-		if *file.Status == "deleted" {
+		if *file.Status == "removed" {
 			result = append(result, *file.Filename)
 		}
 	}

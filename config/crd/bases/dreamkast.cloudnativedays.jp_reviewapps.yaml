@@ -184,7 +184,7 @@ spec:
               manifests:
                 additionalProperties:
                   type: string
-                description: Manifests
+                description: Manifests is other manifests
                 type: object
             required:
             - appRepoConfig
@@ -203,6 +203,9 @@ spec:
                   appRepoLatestCommitSha:
                     description: TODO
                     type: string
+                  application:
+                    description: Application is manifest of ArgoCD Application resource
+                    type: string
                   applicationName:
                     description: TODO
                     type: string
@@ -212,6 +215,11 @@ spec:
                   infraRepoLatestCommitSha:
                     description: TODO
                     type: string
+                  manifests:
+                    additionalProperties:
+                      type: string
+                    description: Manifests is other manifests
+                    type: object
                   status:
                     description: Status is the sync state of the comparison
                     type: string

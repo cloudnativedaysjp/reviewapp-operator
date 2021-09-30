@@ -19,7 +19,7 @@ func SyncArgoCDApplication(binPath string, app string) error {
 		return fmt.Errorf(`Error: %v`, stderr.String())
 	}
 
-	cmd = exec.Command(binPath, "app", "sync", app, "--port-forward", "--port-forward-namespace", argocdAppNamespace)
+	cmd = exec.Command(binPath, "app", "sync", app, "--prune", "--port-forward", "--port-forward-namespace", argocdAppNamespace)
 	stderr = bytes.Buffer{}
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
