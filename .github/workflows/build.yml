@@ -58,8 +58,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-1
       - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        run: |
+          docker login -u AWS -p $(aws ecr-public get-login-password --region us-east-1) public.ecr.aws
+
       - name: Build, tag, and push image to Amazon ECR
         run: |
           export COMMIT=$(git rev-parse --short ${GITHUB_SHA})
@@ -78,4 +79,7 @@ jobs:
             fi
             ;;
           esac
+          export BRANCH_OR_TAG=$(echo ${BRANCH_OR_TAG} | sed -e 's|/|_|g')
           make docker-build && make docker-push
+        env:
+          DOCKER_BUILDKIT: 1
