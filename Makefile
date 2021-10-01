@@ -48,11 +48,11 @@ fmt: ## Run go fmt against code.
 	go fmt ./...
 
 vet: ## Run go vet against code.
-	go vet -mod=vendor ./...
+	go vet ./...
 
 ##@ Test
 
-GO_TEST := go test -mod=vendor
+GO_TEST := go test
 
 unit-test: fmt vet ## Run unit tests.
 	$(GO_TEST) -tags=unit_test ./...
@@ -73,7 +73,7 @@ install-tools: ## install tools for integration-test
 
 ##@ Build
 
-GO_BUILD := go build -mod=vendor
+GO_BUILD := go build
 
 build: generate fmt vet ## Build manager binary.
 	$(GOBIN)/go build -o bin/manager main.go
