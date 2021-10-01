@@ -30,3 +30,6 @@ jobs:
           go-version: 1.16.8
       - name: integration test
         run: make integration-test
+        env:
+          USE_EXISTING_CLUSTER: true
+          TEST_GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN_FOR_INTEGRATION_TEST }}
