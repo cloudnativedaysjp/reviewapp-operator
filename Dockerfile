@@ -13,6 +13,12 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY errors/ errors/
+COPY infrastructure/ infrastructure/
+COPY models/ models/
+COPY services/ services/
+COPY utils/ utils/
+COPY wire/ wire/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
