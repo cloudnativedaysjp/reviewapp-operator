@@ -49,6 +49,9 @@ type ReviewAppSpec struct {
 type ReviewAppStatus struct {
 	// TODO
 	Sync SyncStatus `json:"sync,omitempty"`
+
+	// AlreadySentMessage is used to decide sending message to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is true.
+	AlreadySentMessage bool `json:"alreadySentMessage,omitempty"`
 }
 
 type SyncStatus struct {

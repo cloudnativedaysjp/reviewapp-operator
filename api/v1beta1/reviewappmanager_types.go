@@ -63,8 +63,14 @@ type ReviewAppManagerSpecAppTarget struct {
 
 type ReviewAppManagerSpecAppConfig struct {
 
-	// Message is output to specified App Repositories' PR when reviewapp is synced
+	// Message is output to specified App Repository's PR when reviewapp is synced
+	// +optional
 	Message string `json:"message,omitempty"`
+
+	// SendMessageOnlyFirstTime is flag that Controller send comment only first time to App Repository's PR.
+	// +kubebuilder:default=true
+	// +optional
+	SendMessageOnlyFirstTime bool `json:"sendMessageOnlyFirstTime,omitempty"`
 }
 
 type ReviewAppManagerSpecInfraTarget struct {
