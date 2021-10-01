@@ -1,0 +1,81 @@
+name: test and build
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          args: "-c .github/.golangci.yml"
+
+  unit-test:
+    name: Unit Test
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16.8'
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Download Modules
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: go mod download
+      - name: unit test
+        run: make unit-test
+
+  build:
+    name: Build & Push Container Image
+    runs-on: ubuntu-20.04
+    needs:
+      - lint
+      - unit-test
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        run: |
+          export COMMIT=$(git rev-parse --short ${GITHUB_SHA})
+          case "${GITHUB_REF}" in
+          "refs/tags/"* )
+            export BRANCH_OR_TAG=${GITHUB_REF#refs/tags/}
+            ;;
+          "refs/heads/"* )
+            export BRANCH_OR_TAG=${GITHUB_REF#refs/heads/}
+            ;;
+          * )
+            if [ -n "${GITHUB_HEAD_REF}" ]; then
+              export BRANCH_OR_TAG=${GITHUB_HEAD_REF}
+            else
+              echo "GITHUB_REF=${GITHUB_REF} is invalid";exit 1
+            fi
+            ;;
+          esac
+          make docker-build && make docker-push

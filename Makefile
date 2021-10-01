@@ -81,11 +81,20 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	$(GOBIN)/go run ./main.go
 
+COMMIT ?= $(shell git rev-parse --short HEAD)
+BRANCH_OR_TAG ?= $(shell git rev-parse --abbrev-ref HEAD)
+
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG_NAME} .
+	docker build -t ${IMG_NAME}:latest .
+	docker tag ${IMG_NAME}:latest ${IMG_NAME}:${COMMIT}
+	docker tag ${IMG_NAME}:latest ${IMG_NAME}:${BRANCH_OR_TAG}
+	docker tag ${IMG_NAME}:latest ${IMG_NAME}:${BRANCH_OR_TAG}-${COMMIT}
 
 docker-push: ## Push docker image with the manager.
-	docker push ${IMG_NAME}
+	docker push ${IMG_NAME}:latest
+	docker push ${IMG_NAME}:${COMMIT}
+	docker push ${IMG_NAME}:${BRANCH_OR_TAG_NAME}
+	docker push ${IMG_NAME}:${BRANCH_OR_TAG_NAME}-${COMMIT}
 
 ##@ Deployment
 
