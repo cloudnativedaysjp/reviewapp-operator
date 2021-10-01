@@ -1,6 +1,6 @@
-
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG_NAME ?= public.ecr.aws/f5j9d0q5/reviewapp-operator
+IMG_TAG ?= public.ecr.aws/f5j9d0q5/reviewapp-operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -48,12 +48,14 @@ fmt: ## Run go fmt against code.
 	go fmt ./...
 
 vet: ## Run go vet against code.
-	go vet ./...
+	go vet -mod=vendor ./...
 
 ##@ Test
 
+GO_TEST := go test -mod=vendor
+
 unit-test: fmt vet ## Run unit tests.
-	go test -tags unit_test ./...
+	$(GO_TEST) -tags=unit_test ./...
 
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 USE_EXISTING_CLUSTER ?= "false" # this value must be true because this integration-test required full k8s.
@@ -62,7 +64,8 @@ integration-test: manifests generate fmt vet install-tools ## Run integration te
 	: USE_EXISTING_CLUSTER=${USE_EXISTING_CLUSTER}
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
-	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test -race -tags integration_test ./... -coverprofile cover.out
+	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR)
+	$(GO_TEST) -race -tags=integration_test ./... -coverprofile cover.out
 
 install-tools: ## install tools for integration-test
 	./hack/install-argocd-cli.sh
@@ -70,17 +73,19 @@ install-tools: ## install tools for integration-test
 
 ##@ Build
 
+GO_BUILD := go build -mod=vendor
+
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	$(GOBIN)/go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
+	$(GOBIN)/go run ./main.go
 
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG_NAME} .
 
 docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+	docker push ${IMG_NAME}
 
 ##@ Deployment
 
@@ -91,7 +96,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG_NAME}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
