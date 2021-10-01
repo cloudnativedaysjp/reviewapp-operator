@@ -67,10 +67,10 @@ type ReviewAppManagerSpecAppConfig struct {
 	// +optional
 	Message string `json:"message,omitempty"`
 
-	// SendMessageOnlyFirstTime is flag that Controller send comment only first time to App Repository's PR.
-	// +kubebuilder:default=true
+	// SendMessageEveryTime is flag. Controller send comment to App Repository's PR only first time if flag is false.
+	// +kubebuilder:default=false
 	// +optional
-	SendMessageOnlyFirstTime bool `json:"sendMessageOnlyFirstTime,omitempty"`
+	SendMessageEveryTime bool `json:"sendMessageEveryTime,omitempty"`
 }
 
 type ReviewAppManagerSpecInfraTarget struct {

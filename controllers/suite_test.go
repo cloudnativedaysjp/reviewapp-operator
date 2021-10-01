@@ -337,7 +337,8 @@ func newReviewApp() *dreamkastv1beta1.ReviewApp {
 				},
 			},
 			AppConfig: dreamkastv1beta1.ReviewAppManagerSpecAppConfig{
-				Message: `message`,
+				Message:              `message`,
+				SendMessageEveryTime: true,
 			},
 			InfraTarget: dreamkastv1beta1.ReviewAppManagerSpecInfraTarget{
 				Username:     testGitUsername,
