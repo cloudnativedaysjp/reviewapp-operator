@@ -93,8 +93,8 @@ docker-build: ## Build docker image with the manager.
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG_NAME}:latest
 	docker push ${IMG_NAME}:${COMMIT}
-	docker push ${IMG_NAME}:${BRANCH_OR_TAG_NAME}
-	docker push ${IMG_NAME}:${BRANCH_OR_TAG_NAME}-${COMMIT}
+	docker push ${IMG_NAME}:${BRANCH_OR_TAG}
+	docker push ${IMG_NAME}:${BRANCH_OR_TAG}-${COMMIT}
 
 ##@ Deployment
 
