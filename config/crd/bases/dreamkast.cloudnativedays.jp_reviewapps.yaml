@@ -42,9 +42,14 @@ spec:
                 description: TODO
                 properties:
                   message:
-                    description: Message is output to specified App Repositories'
-                      PR when reviewapp is synced
+                    description: Message is output to specified App Repository's PR
+                      when reviewapp is synced
                     type: string
+                  sendMessageOnlyFirstTime:
+                    default: true
+                    description: SendMessageOnlyFirstTime is flag that Controller
+                      send comment only first time to App Repository's PR.
+                    type: boolean
                 type: object
               appRepoPrNum:
                 description: AppPrNum is watched PR's number by this RA
@@ -197,6 +202,11 @@ spec:
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
             properties:
+              alreadySentMessage:
+                description: AlreadySentMessage is used to decide sending message
+                  to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is
+                  true.
+                type: boolean
               sync:
                 description: TODO
                 properties:

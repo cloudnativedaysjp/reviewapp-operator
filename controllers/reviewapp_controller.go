@@ -278,7 +278,8 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 
 	// if ArgoCD Application updated, send message to PR of AppRepo
 	if updated {
-		if ra.Spec.AppConfig.Message != "" {
+		if ra.Spec.AppConfig.Message != "" &&
+			(ra.Spec.AppConfig.SendMessageEveryTime || !ra.Status.AlreadySentMessage) {
 
 			// get gitRemoteRepo credential from Secret
 			gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
@@ -311,6 +312,7 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 
 		// update ReviewApp.Status
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
+		ra.Status.AlreadySentMessage = true
 	}
 
 	return ctrl.Result{}, nil
