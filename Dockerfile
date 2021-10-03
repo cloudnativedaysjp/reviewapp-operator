@@ -14,7 +14,7 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 COPY errors/ errors/
-COPY infrastructure/ infrastructure/
+COPY gateways/ gateways/
 COPY models/ models/
 COPY services/ services/
 COPY utils/ utils/
