@@ -1,10 +1,9 @@
-package git
+package gitcommand
 
 import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
+	"k8s.io/utils/exec"
 )
 
 const (
@@ -20,22 +20,23 @@ const (
 )
 
 type GitCommandDriver struct {
-	logger logr.Logger
+	logger  logr.Logger
+	exec    exec.Interface
+	baseDir string
 
-	baseDir  string
 	username string
 	token    string
 }
 
 // TODO: this impl only support https (ssh is not implemented yet)
-func NewGitCommandDriver(l logr.Logger) (*GitCommandDriver, error) {
+func NewGitCommandDriver(l logr.Logger, e exec.Interface) (*GitCommandDriver, error) {
 	// create basedir
 	basedir := models.BaseDir
 	if err := os.MkdirAll(basedir, 0755); err != nil {
 		return nil, err
 	}
 
-	return &GitCommandDriver{logger: l, baseDir: basedir}, nil
+	return &GitCommandDriver{logger: l, exec: e, baseDir: basedir}, nil
 }
 
 func (g *GitCommandDriver) WithCredential(username, token string) error {
@@ -64,7 +65,7 @@ func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (
 	}
 	// clone
 	url := strings.Join([]string{fmt.Sprintf(baseURL, g.username, g.token), org, repo}, "/") // https://<user>:<token>@github.com/<org>/<repo>
-	cmd := exec.CommandContext(ctx, "git", "clone", "-b", branch, url, downloadDir)
+	cmd := g.exec.CommandContext(ctx, "git", "clone", "-b", branch, url, downloadDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
@@ -98,8 +99,8 @@ func (g *GitCommandDriver) DeleteFile(ctx context.Context, gp models.GitProject,
 
 func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error) {
 	// stage に更新ファイルがない場合早期リターン
-	cmd := exec.CommandContext(ctx, "git", "status", "-s")
-	cmd.Dir = gp.DownlaodDir
+	cmd := g.exec.CommandContext(ctx, "git", "status", "-s")
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	} else if string(out) == "" {
@@ -110,29 +111,29 @@ func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProje
 	}
 
 	// add, commit, push
-	cmd = exec.CommandContext(ctx, "git", "config", "user.name", g.username)
-	cmd.Dir = gp.DownlaodDir
+	cmd = g.exec.CommandContext(ctx, "git", "config", "user.name", g.username)
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
-	cmd = exec.CommandContext(ctx, "git", "config", "user.email", fmt.Sprintf(noreplyEmail, g.username))
-	cmd.Dir = gp.DownlaodDir
+	cmd = g.exec.CommandContext(ctx, "git", "config", "user.email", fmt.Sprintf(noreplyEmail, g.username))
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
-	cmd = exec.CommandContext(ctx, "git", "add", "-A")
-	cmd.Dir = gp.DownlaodDir
+	cmd = g.exec.CommandContext(ctx, "git", "add", "-A")
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
 
-	cmd = exec.CommandContext(ctx, "git", "commit", "-m", message)
-	cmd.Dir = gp.DownlaodDir
+	cmd = g.exec.CommandContext(ctx, "git", "commit", "-m", message)
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
-	cmd = exec.CommandContext(ctx, "git", "push", "origin", "HEAD")
-	cmd.Dir = gp.DownlaodDir
+	cmd = g.exec.CommandContext(ctx, "git", "push", "origin", "HEAD")
+	cmd.SetDir(gp.DownlaodDir)
 	if out, err := cmd.Output(); err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)
 	}
@@ -143,8 +144,8 @@ func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProje
 }
 
 func (g *GitCommandDriver) updateHeadCommitSha(ctx context.Context, gp *models.GitProject) error {
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
-	cmd.Dir = gp.DownlaodDir
+	cmd := g.exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
+	cmd.SetDir(gp.DownlaodDir)
 	out, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf(`Error: %v: %v`, err, out)
@@ -154,10 +155,10 @@ func (g *GitCommandDriver) updateHeadCommitSha(ctx context.Context, gp *models.G
 }
 
 func (g *GitCommandDriver) HashLogs(ctx context.Context, gp models.GitProject, hash1, hash2 string) ([]string, error) {
-	cmd := exec.CommandContext(ctx, "git", "log", "--format=%H",
+	cmd := g.exec.CommandContext(ctx, "git", "log", "--format=%H",
 		fmt.Sprintf("%s...%s", hash1, hash2),
 	)
-	cmd.Dir = gp.DownlaodDir
+	cmd.SetDir(gp.DownlaodDir)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf(`Error: %v: %v`, err, out)

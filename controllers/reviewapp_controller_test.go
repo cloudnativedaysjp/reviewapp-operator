@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -65,7 +66,7 @@ var _ = Describe("ReviewApp controller", func() {
 		logger := glogr.NewWithOptions(glogr.Options{LogCaller: glogr.None})
 		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(logger)
 		Expect(err).ToNot(HaveOccurred())
-		gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(logger)
+		gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(logger, exec.New())
 		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppReconciler{
 			Client:                    k8sClient,

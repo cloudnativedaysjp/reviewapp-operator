@@ -1,4 +1,4 @@
-package git_iface
+package gitcommand_iface
 
 import (
 	"context"

@@ -6,22 +6,24 @@
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services/infrarepo"
 	"github.com/go-logr/logr"
+	"k8s.io/utils/exec"
 )
 
 // Injectors from wire.go:
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*apprepo.GitRemoteRepoAppService, error) {
-	gitApiPullRequestDriver := git.NewGitApiPullRequestDriver(l)
-	gitRemoteRepoAppService := apprepo.NewGitRemoteRepoAppService(gitApiPullRequestDriver, l)
+	gitApiDriver := gitapi.NewGitApiDriver(l)
+	gitRemoteRepoAppService := apprepo.NewGitRemoteRepoAppService(gitApiDriver, l)
 	return gitRemoteRepoAppService, nil
 }
 
-func NewGitRemoteRepoInfraService(l logr.Logger) (*infrarepo.GitRemoteRepoInfraService, error) {
-	gitCommandDriver, err := git.NewGitCommandDriver(l)
+func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*infrarepo.GitRemoteRepoInfraService, error) {
+	gitCommandDriver, err := gitcommand.NewGitCommandDriver(l, e)
 	if err != nil {
 		return nil, err
 	}
