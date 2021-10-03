@@ -5,25 +5,25 @@ import (
 
 	"github.com/go-logr/logr"
 
-	githubapi_iface "github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git/iface"
+	gitapi_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitapi/iface"
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoAppService struct {
-	gitPrRepo githubapi_iface.GitApiPullRequestIFace
+	gitapi gitapi_iface.GitApiIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoAppService(prIF githubapi_iface.GitApiPullRequestIFace, logger logr.Logger) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(prIF gitapi_iface.GitApiIFace, logger logr.Logger) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{prIF, logger}
 }
 
 func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*models.PullRequest, error) {
-	if err := s.gitPrRepo.WithCredential(username, token); err != nil {
+	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
-	prs, err := s.gitPrRepo.ListOpenPullRequests(ctx, org, repo)
+	prs, err := s.gitapi.ListOpenPullRequests(ctx, org, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -31,10 +31,10 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, 
 }
 
 func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*models.PullRequest, error) {
-	if err := s.gitPrRepo.WithCredential(username, token); err != nil {
+	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
-	pr, err := s.gitPrRepo.GetOpenPullRequest(ctx, org, repo, prNum)
+	pr, err := s.gitapi.GetOpenPullRequest(ctx, org, repo, prNum)
 	if err != nil {
 		return nil, err
 	}
@@ -42,10 +42,10 @@ func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, r
 }
 
 func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *models.PullRequest, message string, username, token string) error {
-	if err := s.gitPrRepo.WithCredential(username, token); err != nil {
+	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return err
 	}
-	if err := s.gitPrRepo.CommentToPullRequest(ctx, *pr, message); err != nil {
+	if err := s.gitapi.CommentToPullRequest(ctx, *pr, message); err != nil {
 		return err
 	}
 	return nil
@@ -59,14 +59,14 @@ func (s GitRemoteRepoAppService) CheckApplicationUpdated(
 	if hashInRA == hashInArgoCDApplication {
 		return true, nil
 	}
-	if err := s.gitPrRepo.WithCredential(username, token); err != nil {
+	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return false, err
 	}
-	pr, err := s.gitPrRepo.GetOpenPullRequest(ctx, org, repo, prNum)
+	pr, err := s.gitapi.GetOpenPullRequest(ctx, org, repo, prNum)
 	if err != nil {
 		return false, err
 	}
-	hashes, err := s.gitPrRepo.GetCommitHashes(ctx, *pr)
+	hashes, err := s.gitapi.GetCommitHashes(ctx, *pr)
 	if err != nil {
 		return false, err
 	}

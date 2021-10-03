@@ -8,17 +8,17 @@ import (
 	"github.com/go-logr/logr"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	git_iface "github.com/cloudnativedaysjp/reviewapp-operator/infrastructure/git/iface"
+	gitcommand_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand/iface"
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCodeRepo git_iface.GitCommandIFace
+	gitCommand gitcommand_iface.GitCommandIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF git_iface.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
+func NewGitRemoteRepoInfraService(gitCodeIF gitcommand_iface.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
 	return &GitRemoteRepoInfraService{gitCodeIF, logger}
 }
 
@@ -52,22 +52,22 @@ func (s GitRemoteRepoInfraService) UpdateManifests(
 	}
 
 	var gp *models.GitProject
-	// 処理中に誰かが同一ブランチにpushすると s.gitCodeRepo.CommitAndPush() に失敗するため、リトライする
+	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.gitCodeRepo.WithCredential(username, token); err != nil {
+			if err := s.gitCommand.WithCredential(username, token); err != nil {
 				return err
 			}
-			m, err := s.gitCodeRepo.Pull(ctx, org, repo, branch)
+			m, err := s.gitCommand.Pull(ctx, org, repo, branch)
 			if err != nil {
 				return err
 			}
 			for _, manifest := range inputManifests {
-				if err := s.gitCodeRepo.CreateFile(ctx, *m, manifest.Path, []byte(manifest.Content)); err != nil {
+				if err := s.gitCommand.CreateFile(ctx, *m, manifest.Path, []byte(manifest.Content)); err != nil {
 					return err
 				}
 			}
-			_, err = s.gitCodeRepo.CommitAndPush(ctx, *m, commitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, commitMsg)
 			if err != nil {
 				return err
 			}
@@ -94,22 +94,22 @@ func (s GitRemoteRepoInfraService) DeleteManifests(
 	}
 
 	var gp *models.GitProject
-	// 処理中に誰かが同一ブランチにpushすると s.gitCodeRepo.CommitAndPush() に失敗するため、リトライする
+	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.gitCodeRepo.WithCredential(username, token); err != nil {
+			if err := s.gitCommand.WithCredential(username, token); err != nil {
 				return err
 			}
-			m, err := s.gitCodeRepo.Pull(ctx, org, repo, branch)
+			m, err := s.gitCommand.Pull(ctx, org, repo, branch)
 			if err != nil {
 				return err
 			}
 			for _, manifest := range inputManifests {
-				if err := s.gitCodeRepo.DeleteFile(ctx, *m, manifest.Path); err != nil {
+				if err := s.gitCommand.DeleteFile(ctx, *m, manifest.Path); err != nil {
 					return err
 				}
 			}
-			_, err = s.gitCodeRepo.CommitAndPush(ctx, *m, commitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, commitMsg)
 			if err != nil {
 				return err
 			}
