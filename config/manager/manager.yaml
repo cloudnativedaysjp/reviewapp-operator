@@ -3,13 +3,13 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-  name: system
+  name: reviewapp-system
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: controller-manager
-  namespace: system
+  namespace: reviewapp-system
   labels:
     control-plane: controller-manager
 spec:
@@ -29,7 +29,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        image: public.ecr.aws/f5j9d0q5/reviewapp-operator:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
