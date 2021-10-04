@@ -45,10 +45,10 @@ spec:
                     description: Message is output to specified App Repository's PR
                       when reviewapp is synced
                     type: string
-                  sendMessageOnlyFirstTime:
-                    default: true
-                    description: SendMessageOnlyFirstTime is flag that Controller
-                      send comment only first time to App Repository's PR.
+                  sendMessageEveryTime:
+                    default: false
+                    description: SendMessageEveryTime is flag. Controller send comment
+                      to App Repository's PR only first time if flag is false.
                     type: boolean
                 type: object
               appRepoTarget:

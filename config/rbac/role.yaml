@@ -7,9 +7,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - dreamkast.cloudnativedays.jp
+  - ""
   resources:
-  - reviewappmanagers
+  - secrets
   verbs:
   - create
   - delete
@@ -21,9 +21,31 @@ rules:
 - apiGroups:
   - dreamkast.cloudnativedays.jp
   resources:
-  - reviewappmanagers/finalizers
+  - applicationtemplates
   verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - manifeststemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - reviewappmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
   - update
+  - watch
 - apiGroups:
   - dreamkast.cloudnativedays.jp
   resources:
