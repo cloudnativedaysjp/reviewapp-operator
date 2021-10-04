@@ -7,7 +7,7 @@ type PullRequest struct {
 	Repository    string
 	Number        int
 	HeadCommitSha string
-	Labels        []string // TODO
+	Labels        []string
 }
 
 func NewPullRequest(organization, repository string, number int, headCommitSha string, labels []string) *PullRequest {

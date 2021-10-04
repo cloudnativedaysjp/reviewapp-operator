@@ -69,11 +69,16 @@ func (g *GitApiDriver) GetOpenPullRequest(ctx context.Context, org, repo string,
 	if err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
+	var labels []string
+	for _, l := range pr.Labels {
+		labels = append(labels, *l.Name)
+	}
 	return &models.PullRequest{
 		Organization:  org,
 		Repository:    repo,
 		Number:        prNum,
 		HeadCommitSha: *pr.Head.SHA,
+		Labels:        labels,
 	}, nil
 }
 
