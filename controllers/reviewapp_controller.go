@@ -48,7 +48,12 @@ type ReviewAppReconciler struct {
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
-const finalizer = "reviewapp.finalizers.cloudnativedays.jp"
+const (
+	finalizer                                   = "reviewapp.finalizers.cloudnativedays.jp"
+	annotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
+	annotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
+	annotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
+)
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
@@ -136,7 +141,7 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromArgoCDAppStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -163,7 +168,7 @@ func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dre
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromArgoCDAppStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -183,20 +188,20 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 
 	// set annotations to Argo CD Application
 	argocdAppStr := ra.Spec.Application
-	argocdAppStr, err := kubernetes.SetAnnotationToArgoCDAppStr(ctx,
-		argocdAppStr, kubernetes.AnnotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization,
+	argocdAppStr, err := kubernetes.SetAnnotationToObjectStr(ctx,
+		argocdAppStr, annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	argocdAppStr, err = kubernetes.SetAnnotationToArgoCDAppStr(ctx,
-		argocdAppStr, kubernetes.AnnotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository,
+	argocdAppStr, err = kubernetes.SetAnnotationToObjectStr(ctx,
+		argocdAppStr, annotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	argocdAppStr, err = kubernetes.SetAnnotationToArgoCDAppStr(ctx,
-		argocdAppStr, kubernetes.AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha,
+	argocdAppStr, err = kubernetes.SetAnnotationToObjectStr(ctx,
+		argocdAppStr, annotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -243,7 +248,7 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
-		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, kubernetes.AnnotationAppCommitHashForArgoCDApplication,
+		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, annotationAppCommitHashForArgoCDApplication,
 	)
 	if err != nil {
 		if myerrors.IsNotFound(err) {

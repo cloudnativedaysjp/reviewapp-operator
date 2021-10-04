@@ -39,7 +39,6 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
@@ -146,9 +145,9 @@ var _ = Describe("ReviewApp controller", func() {
 		argocdApp := &argocd_application_v1alpha1.Application{}
 		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, argocdApp)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(argocdApp.Annotations[kubernetes.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-		Expect(argocdApp.Annotations[kubernetes.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-		Expect(argocdApp.Annotations[kubernetes.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+		Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+		Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+		Expect(argocdApp.Annotations[annotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 	})
 	Context("step2. apply ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
@@ -187,9 +186,9 @@ var _ = Describe("ReviewApp controller", func() {
 			argocdApp := &argocd_application_v1alpha1.Application{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, argocdApp)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(argocdApp.Annotations[kubernetes.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-			Expect(argocdApp.Annotations[kubernetes.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-			Expect(argocdApp.Annotations[kubernetes.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+			Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+			Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+			Expect(argocdApp.Annotations[annotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 		})
 	})
 	Context("step3. delete ReviewApp", func() {
