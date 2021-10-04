@@ -1,6 +1,5 @@
 # Image URL to use all building/pushing image targets
 IMG_NAME ?= public.ecr.aws/f5j9d0q5/reviewapp-operator
-IMG_TAG ?= public.ecr.aws/f5j9d0q5/reviewapp-operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 

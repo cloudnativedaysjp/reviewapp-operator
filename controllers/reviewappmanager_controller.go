@@ -46,7 +46,11 @@ type ReviewAppManagerReconciler struct {
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers/finalizers,verbs=update
+//+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=applicationtemplates,verbs=get;list;watch
+//+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=manifeststemplates,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("fetching ReviewAppManager resource: %s/%s", req.Namespace, req.Name))
@@ -139,7 +143,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 				at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name)
 				if err != nil {
 					if myerrors.IsNotFound(err) {
-						r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ram.Namespace, ram.Name))
+						r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name))
 						return ctrl.Result{}, nil
 					}
 					return ctrl.Result{}, err
@@ -158,7 +162,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mt.Namespace, mt.Name)
 					if err != nil {
 						if myerrors.IsNotFound(err) {
-							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), ram.Namespace, ram.Name))
+							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mt.Namespace, mt.Name))
 							return ctrl.Result{}, nil
 						}
 						return ctrl.Result{}, err
