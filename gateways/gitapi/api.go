@@ -2,11 +2,11 @@ package gitapi
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
+	"golang.org/x/xerrors"
 
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
@@ -33,7 +33,7 @@ func (g *GitApiDriver) WithCredential(username, token string) error {
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
-		return err
+		return xerrors.Errorf("%w", err)
 	}
 	g.username = username
 	g.client = client
@@ -43,11 +43,11 @@ func (g *GitApiDriver) WithCredential(username, token string) error {
 // TODO: 検索条件を指定可能にする (例. label xxx が付与されている PR は対象外)
 func (g *GitApiDriver) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*models.PullRequest, error) {
 	if !g.haveClient(ctx) {
-		return nil, fmt.Errorf("GitApiDriver have no client")
+		return nil, xerrors.Errorf("GitApiDriver have no client")
 	}
 	prs, _, err := g.client.PullRequests.List(ctx, org, repo, &github.PullRequestListOptions{State: "open"})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("%w", err)
 	}
 
 	var result []*models.PullRequest
@@ -63,11 +63,11 @@ func (g *GitApiDriver) ListOpenPullRequests(ctx context.Context, org, repo strin
 
 func (g *GitApiDriver) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*models.PullRequest, error) {
 	if !g.haveClient(ctx) {
-		return nil, fmt.Errorf("GitApiDriver have no client")
+		return nil, xerrors.Errorf("GitApiDriver have no client")
 	}
 	pr, _, err := g.client.PullRequests.Get(ctx, org, repo, prNum)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("%w", err)
 	}
 	return &models.PullRequest{
 		Organization:  org,
@@ -79,30 +79,30 @@ func (g *GitApiDriver) GetOpenPullRequest(ctx context.Context, org, repo string,
 
 func (g *GitApiDriver) CommentToPullRequest(ctx context.Context, pr models.PullRequest, comment string) error {
 	if !g.haveClient(ctx) {
-		return fmt.Errorf("GitApiDriver have no client")
+		return xerrors.Errorf("GitApiDriver have no client")
 	}
 	// get User
 	u, _, err := g.client.Users.Get(ctx, g.username)
 	if err != nil {
-		return err
+		return xerrors.Errorf("%w", err)
 	}
 	// post comment to PR
 	if _, _, err := g.client.Issues.CreateComment(ctx, pr.Organization, pr.Repository, pr.Number, &github.IssueComment{
 		Body: &comment,
 		User: u,
 	}); err != nil {
-		return err
+		return xerrors.Errorf("%w", err)
 	}
 	return nil
 }
 
 func (g *GitApiDriver) GetCommitHashes(ctx context.Context, prModel models.PullRequest) ([]string, error) {
 	if !g.haveClient(ctx) {
-		return nil, fmt.Errorf("GitApiDriver have no client")
+		return nil, xerrors.Errorf("GitApiDriver have no client")
 	}
 	prs, _, err := g.client.PullRequests.ListCommits(ctx, prModel.Organization, prModel.Repository, prModel.Number, &github.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("%w", err)
 	}
 	result := []string{}
 	for _, pr := range prs {

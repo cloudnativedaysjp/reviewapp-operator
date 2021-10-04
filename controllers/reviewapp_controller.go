@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -81,29 +82,30 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (result ctrl.Result, err error) {
 
+	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1beta1.ReviewAppStatus{}) ||
 		ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
 		result, err = r.reconcileCheckAppRepository(ctx, ra)
 		if err != nil {
-			return ctrl.Result{}, err
+			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingTemplates {
 		result, err = r.reconcileCheckAtAndMt(ctx, ra)
 		if err != nil {
-			return ctrl.Result{}, err
+			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeCheckedAppRepo {
 		result, err = r.reconcileUpdateInfraReposiotry(ctx, ra)
 		if err != nil {
-			return ctrl.Result{}, err
+			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo {
 		result, err = r.reconcileSendMessageToAppRepoPR(ctx, ra)
 		if err != nil {
-			return ctrl.Result{}, err
+			errs = append(errs, err)
 		}
 	}
 
@@ -111,7 +113,8 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{}, nil
+
+	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
 func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
