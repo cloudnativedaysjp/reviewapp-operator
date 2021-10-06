@@ -3,19 +3,15 @@ package services
 import (
 	"context"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
-	"github.com/go-logr/logr"
-
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoAppService struct {
 	gitapi gateways.GitApiIFace
-
-	Log logr.Logger
 }
 
-func NewGitRemoteRepoAppService(gitapi gateways.GitApiIFace, logger logr.Logger) *GitRemoteRepoAppService {
-	return &GitRemoteRepoAppService{gitapi, logger}
+func NewGitRemoteRepoAppService(gitapi gateways.GitApiIFace) *GitRemoteRepoAppService {
+	return &GitRemoteRepoAppService{gitapi}
 }
 
 func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*models.PullRequest, error) {

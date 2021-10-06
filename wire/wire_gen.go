@@ -16,7 +16,7 @@ import (
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
 	gitApiDriver := gateways.NewGitApiDriver(l)
-	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitApiDriver, l)
+	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitApiDriver)
 	return gitRemoteRepoAppService, nil
 }
 
@@ -25,6 +25,6 @@ func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.Gi
 	if err != nil {
 		return nil, err
 	}
-	gitRemoteRepoInfraService := services.NewGitRemoteRepoInfraService(gitCommandDriver, l)
+	gitRemoteRepoInfraService := services.NewGitRemoteRepoInfraService(gitCommandDriver)
 	return gitRemoteRepoInfraService, nil
 }
