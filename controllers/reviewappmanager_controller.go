@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -30,7 +31,6 @@ import (
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
@@ -41,7 +41,7 @@ type ReviewAppManagerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	GitRemoteRepoAppService *apprepo.GitRemoteRepoAppService
+	GitRemoteRepoAppService *services.GitRemoteRepoAppService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers,verbs=get;list;watch;create;update;patch;delete

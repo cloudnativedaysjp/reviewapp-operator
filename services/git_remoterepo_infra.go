@@ -1,4 +1,4 @@
-package infrarepo
+package services
 
 import (
 	"context"

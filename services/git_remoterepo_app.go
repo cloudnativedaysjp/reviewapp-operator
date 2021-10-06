@@ -1,4 +1,4 @@
-package apprepo
+package services
 
 import (
 	"context"
