@@ -72,8 +72,6 @@ install-tools: ## install tools for integration-test
 
 ##@ Build
 
-GO_BUILD := go build
-
 build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
