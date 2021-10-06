@@ -79,7 +79,7 @@ func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	gp := &models.GitProject{DownlaodDir: downloadDir}
+	gp := &models.GitProject{DownloadDir: downloadDir}
 	if err := g.updateHeadCommitSha(ctx, gp); err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
@@ -87,7 +87,7 @@ func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (
 }
 
 func (g *GitCommandDriver) CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error {
-	fpath := filepath.Join(gp.DownlaodDir, filename)
+	fpath := filepath.Join(gp.DownloadDir, filename)
 	if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
@@ -103,7 +103,7 @@ func (g *GitCommandDriver) CreateFile(ctx context.Context, gp models.GitProject,
 }
 
 func (g *GitCommandDriver) DeleteFile(ctx context.Context, gp models.GitProject, filename string) error {
-	fpath := filepath.Join(gp.DownlaodDir, filename)
+	fpath := filepath.Join(gp.DownloadDir, filename)
 	err := os.RemoveAll(fpath)
 	if err != nil {
 		return xerrors.Errorf("%w", err)
@@ -174,7 +174,7 @@ func (g *GitCommandDriver) runCommand(ctx context.Context, gp *models.GitProject
 
 	cc := g.exec.CommandContext(ctx, cmd, args...)
 	if gp != nil {
-		cc.SetDir(gp.DownlaodDir)
+		cc.SetDir(gp.DownloadDir)
 	}
 	cc.SetStdout(&stdout)
 	cc.SetStderr(&stderr)

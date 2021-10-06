@@ -4,6 +4,6 @@ const BaseDir = "/tmp"
 const DummyUsername = "dummy"
 
 type GitProject struct {
-	DownlaodDir     string
+	DownloadDir     string
 	LatestCommitSha string
 }
