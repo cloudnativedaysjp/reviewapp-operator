@@ -224,16 +224,20 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
-	gp, err := r.GitRemoteRepoInfraService.UpdateManifests(ctx,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Spec.InfraTarget.Branch,
-		fmt.Sprintf(
+	updateManifestParam := services.UpdateManifestsParam{
+		Org:    ra.Spec.InfraTarget.Organization,
+		Repo:   ra.Spec.InfraTarget.Repository,
+		Branch: ra.Spec.InfraTarget.Branch,
+		CommitMsg: fmt.Sprintf(
 			"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 			ra.Spec.AppTarget.Organization,
 			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
-		ra.Spec.InfraTarget.Username, gitRemoteRepoCred, ra,
-	)
+		Username: ra.Spec.InfraTarget.Username,
+		Token:    gitRemoteRepoCred,
+	}
+	gp, err := r.GitRemoteRepoInfraService.UpdateManifests(ctx, updateManifestParam, ra)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -340,16 +344,20 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 	}
 
 	// delete some manifests
-	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Spec.InfraTarget.Branch,
-		fmt.Sprintf(
+	deleteManifestsParam := services.DeleteManifestsParam{
+		Org:    ra.Spec.InfraTarget.Organization,
+		Repo:   ra.Spec.InfraTarget.Repository,
+		Branch: ra.Spec.InfraTarget.Branch,
+		CommitMsg: fmt.Sprintf(
 			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 			ra.Spec.AppTarget.Organization,
 			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
-		ra.Spec.InfraTarget.Username, gitRemoteRepoCred, ra,
-	); err != nil {
+		Username: ra.Spec.InfraTarget.Username,
+		Token:    gitRemoteRepoCred,
+	}
+	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx, deleteManifestsParam, ra); err != nil {
 		return ctrl.Result{}, err
 	}
 
