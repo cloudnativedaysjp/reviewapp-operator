@@ -75,10 +75,10 @@ install-tools: ## install tools for integration-test
 GO_BUILD := go build
 
 build: generate fmt vet ## Build manager binary.
-	$(GOBIN)/go build -o bin/manager main.go
+	go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	$(GOBIN)/go run ./main.go
+	go run ./main.go
 
 COMMIT ?= $(shell git rev-parse --short HEAD)
 BRANCH_OR_TAG ?= $(shell git rev-parse --abbrev-ref HEAD)
