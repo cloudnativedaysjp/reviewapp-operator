@@ -2,23 +2,23 @@ package services
 
 import (
 	"context"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"path/filepath"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/go-logr/logr"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	gitcommand_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand/iface"
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCommand gitcommand_iface.GitCommandIFace
+	gitCommand gateways.GitCommandIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF gitcommand_iface.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
+func NewGitRemoteRepoInfraService(gitCodeIF gateways.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
 	return &GitRemoteRepoInfraService{gitCodeIF, logger}
 }
 

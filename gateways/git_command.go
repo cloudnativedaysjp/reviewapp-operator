@@ -1,4 +1,4 @@
-package gitcommand
+package gateways
 
 import (
 	"bytes"
@@ -20,6 +20,14 @@ const (
 	baseURL      = `https://%s:%s@github.com`
 	noreplyEmail = `%s@users.noreply.github.com`
 )
+
+type GitCommandIFace interface {
+	WithCredential(username, token string) error
+	Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error)
+	CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error
+	DeleteFile(ctx context.Context, gp models.GitProject, filename string) error
+	CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error)
+}
 
 type GitCommandDriver struct {
 	logger  logr.Logger

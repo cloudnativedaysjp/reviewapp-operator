@@ -2,20 +2,19 @@ package services
 
 import (
 	"context"
-
+	gitapi2 "github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/go-logr/logr"
 
-	gitapi_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitapi/iface"
 	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoAppService struct {
-	gitapi gitapi_iface.GitApiIFace
+	gitapi gitapi2.GitApiIFace
 
 	Log logr.Logger
 }
 
-func NewGitRemoteRepoAppService(prIF gitapi_iface.GitApiIFace, logger logr.Logger) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(prIF gitapi2.GitApiIFace, logger logr.Logger) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{prIF, logger}
 }
 

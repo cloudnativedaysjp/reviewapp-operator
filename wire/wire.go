@@ -3,21 +3,17 @@
 package wire
 
 import (
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 	"k8s.io/utils/exec"
-
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitapi"
-	gitapi_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitapi/iface"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
-	gitcommand_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand/iface"
 )
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
 	wire.Build(
-		gitapi.NewGitApiDriver,
-		wire.Bind(new(gitapi_iface.GitApiIFace), new(*gitapi.GitApiDriver)),
+		gateways.NewGitApiDriver,
+		wire.Bind(new(gateways.GitApiIFace), new(*gateways.GitApiDriver)),
 		services.NewGitRemoteRepoAppService,
 	)
 	return nil, nil
@@ -25,8 +21,8 @@ func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppServic
 
 func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.GitRemoteRepoInfraService, error) {
 	wire.Build(
-		gitcommand.NewGitCommandDriver,
-		wire.Bind(new(gitcommand_iface.GitCommandIFace), new(*gitcommand.GitCommandDriver)),
+		gateways.NewGitCommandDriver,
+		wire.Bind(new(gitcommand.GitCommandIFace), new(*gateways.GitCommandDriver)),
 		services.NewGitRemoteRepoInfraService,
 	)
 	return nil, nil
