@@ -160,6 +160,7 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	return ctrl.Result{}, nil
 }
 
+// comment: 何を行う関数なのか、関数名から読み取れませんでした
 func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
