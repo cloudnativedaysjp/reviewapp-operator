@@ -12,8 +12,8 @@ import (
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
 	wire.Build(
-		gateways.NewGitApiDriver,
-		wire.Bind(new(gateways.GitApiIFace), new(*gateways.GitApiDriver)),
+		gateways.NewGitHubApiDriver,
+		wire.Bind(new(gateways.GitHubApiIFace), new(*gateways.GitHubApiDriver)),
 		services.NewGitRemoteRepoAppService,
 	)
 	return nil, nil

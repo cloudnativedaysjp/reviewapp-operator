@@ -7,10 +7,10 @@ import (
 )
 
 type GitRemoteRepoAppService struct {
-	gitapi gateways.GitApiIFace
+	gitapi gateways.GitHubApiIFace
 }
 
-func NewGitRemoteRepoAppService(gitapi gateways.GitApiIFace) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(gitapi gateways.GitHubApiIFace) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{gitapi}
 }
 

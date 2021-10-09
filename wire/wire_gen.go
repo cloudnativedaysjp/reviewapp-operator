@@ -15,7 +15,7 @@ import (
 // Injectors from wire.go:
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
-	gitApiDriver := gateways.NewGitApiDriver(l)
+	gitApiDriver := gateways.NewGitHubApiDriver(l)
 	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitApiDriver)
 	return gitRemoteRepoAppService, nil
 }
