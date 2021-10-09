@@ -276,7 +276,7 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 	}
 
 	//
-	updated, err := r.GitRemoteRepoAppService.CheckApplicationUpdated(ctx,
+	updated, err := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx,
 		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
 		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
 		ra.Status.Sync.AppRepoLatestCommitSha, hashInArgoCDApplication,

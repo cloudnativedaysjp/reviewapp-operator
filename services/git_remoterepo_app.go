@@ -46,7 +46,7 @@ func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *models.Pu
 	return nil
 }
 
-func (s GitRemoteRepoAppService) CheckApplicationUpdated(
+func (s GitRemoteRepoAppService) IsApplicationUpdated(
 	ctx context.Context, org, repo string, prNum int,
 	username, token string,
 	hashInRA, hashInArgoCDApplication string,
