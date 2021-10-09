@@ -46,18 +46,24 @@ func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *models.Pu
 	return nil
 }
 
-func (s GitRemoteRepoAppService) IsApplicationUpdated(
-	ctx context.Context, org, repo string, prNum int,
-	username, token string,
-	hashInRA, hashInArgoCDApplication string,
-) (bool, error) {
-	if hashInRA == hashInArgoCDApplication {
+type IsApplicationUpdatedParam struct {
+	Org                     string
+	Repo                    string
+	PrNum                   int
+	Username                string
+	Token                   string
+	HashInRA                string
+	HashInArgoCDApplication string
+}
+
+func (s GitRemoteRepoAppService) IsApplicationUpdated(ctx context.Context, param IsApplicationUpdatedParam) (bool, error) {
+	if param.HashInRA == param.HashInArgoCDApplication {
 		return true, nil
 	}
-	if err := s.gitapi.WithCredential(username, token); err != nil {
+	if err := s.gitapi.WithCredential(param.Username, param.Token); err != nil {
 		return false, err
 	}
-	pr, err := s.gitapi.GetOpenPullRequest(ctx, org, repo, prNum)
+	pr, err := s.gitapi.GetOpenPullRequest(ctx, param.Org, param.Repo, param.PrNum)
 	if err != nil {
 		return false, err
 	}
@@ -67,7 +73,7 @@ func (s GitRemoteRepoAppService) IsApplicationUpdated(
 	}
 
 	for _, hash := range hashes {
-		if hash == hashInArgoCDApplication {
+		if hash == param.HashInArgoCDApplication {
 			return true, nil
 		}
 	}

@@ -276,11 +276,16 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 	}
 
 	//
-	updated, err := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx,
-		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
-		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-		ra.Status.Sync.AppRepoLatestCommitSha, hashInArgoCDApplication,
-	)
+	param := services.IsApplicationUpdatedParam{
+		Org:                     ra.Spec.AppTarget.Organization,
+		Repo:                    ra.Spec.AppTarget.Repository,
+		PrNum:                   ra.Spec.AppPrNum,
+		Username:                ra.Spec.AppTarget.Username,
+		Token:                   gitRemoteRepoCred,
+		HashInRA:                ra.Status.Sync.AppRepoLatestCommitSha,
+		HashInArgoCDApplication: hashInArgoCDApplication,
+	}
+	updated, err := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx, param)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
