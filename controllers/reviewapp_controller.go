@@ -251,6 +251,8 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	return ctrl.Result{}, nil
 }
 
+// comment: 一度PRにコメントした後にReviewAppが更新されると、投稿済みコメントを消して再度コメントしてもいいかもしれないなと思いました。
+// そうすると積んだコミットがArgoCDに反映されたのがわかって便利かなと。
 func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
