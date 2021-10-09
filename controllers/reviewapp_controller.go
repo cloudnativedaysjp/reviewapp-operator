@@ -143,7 +143,7 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.GetNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -170,7 +170,7 @@ func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dre
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.GetNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
