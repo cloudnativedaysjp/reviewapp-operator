@@ -68,6 +68,7 @@ func (g *Git) WithCredential(username, token string) error {
 	return nil
 }
 
+// comment: 関数名と処理内容が一致していないので、名前を変えるとよさそうです。
 func (g *Git) Pull(ctx context.Context, org, repo, branch string) (*GitProject, error) {
 	downloadDir := filepath.Join(g.baseDir, org, repo)
 	// rmdir if already exists
