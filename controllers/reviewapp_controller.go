@@ -79,6 +79,8 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return r.reconcile(ctx, ra)
 }
 
+// comment: この関数内で呼んでいるreconcile~の関数名ですが、reconcileとCheck、reconcileとUpdateのように動詞が続いているのが気になりました。
+// reconcileCheckAppRepository なら reconcileAppRepository , reconcileUpdateInfraReposiotry なら reconcileInfraReposiotry という名前がよいように思います。
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (result ctrl.Result, err error) {
 
 	errs := []error{}
