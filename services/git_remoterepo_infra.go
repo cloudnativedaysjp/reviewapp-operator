@@ -2,19 +2,18 @@ package services
 
 import (
 	"context"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
 	"path/filepath"
 
 	"github.com/cenkalti/backoff/v4"
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCommand gateways.GitCommandIFace
+	gitCommand wrapper.GitIFace
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF gateways.GitCommandIFace) *GitRemoteRepoInfraService {
+func NewGitRemoteRepoInfraService(gitCodeIF wrapper.GitIFace) *GitRemoteRepoInfraService {
 	return &GitRemoteRepoInfraService{gitCodeIF}
 }
 
@@ -40,7 +39,7 @@ type UpdateManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*models.GitProject, error) {
+func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*wrapper.GitProject, error) {
 	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
 		Content: ra.Spec.Application,
 		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
@@ -52,7 +51,7 @@ func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param Up
 		})
 	}
 
-	var gp *models.GitProject
+	var gp *wrapper.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
@@ -89,7 +88,7 @@ type DeleteManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*models.GitProject, error) {
+func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*wrapper.GitProject, error) {
 	inputManifests := append([]DeleteManifestsInput{}, DeleteManifestsInput{
 		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
@@ -99,7 +98,7 @@ func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param De
 		})
 	}
 
-	var gp *models.GitProject
+	var gp *wrapper.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {

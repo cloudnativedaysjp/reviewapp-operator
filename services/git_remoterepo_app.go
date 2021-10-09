@@ -2,19 +2,18 @@ package services
 
 import (
 	"context"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
 )
 
 type GitRemoteRepoAppService struct {
-	gitapi gateways.GitHubApiIFace
+	gitapi wrapper.GitHubIFace
 }
 
-func NewGitRemoteRepoAppService(gitapi gateways.GitHubApiIFace) *GitRemoteRepoAppService {
+func NewGitRemoteRepoAppService(gitapi wrapper.GitHubIFace) *GitRemoteRepoAppService {
 	return &GitRemoteRepoAppService{gitapi}
 }
 
-func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*models.PullRequest, error) {
+func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*wrapper.PullRequest, error) {
 	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
@@ -25,7 +24,7 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, 
 	return prs, nil
 }
 
-func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*models.PullRequest, error) {
+func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*wrapper.PullRequest, error) {
 	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
@@ -36,7 +35,7 @@ func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, r
 	return pr, nil
 }
 
-func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *models.PullRequest, message string, username, token string) error {
+func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *wrapper.PullRequest, message string, username, token string) error {
 	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return err
 	}

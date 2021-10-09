@@ -1,4 +1,4 @@
-package gateways
+package wrapper
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
@@ -19,17 +18,23 @@ import (
 const (
 	baseURL      = `https://%s:%s@github.com`
 	noreplyEmail = `%s@users.noreply.github.com`
+	BaseDir      = "/tmp"
 )
 
-type GitCommandIFace interface {
-	WithCredential(username, token string) error
-	Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error)
-	CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error
-	DeleteFile(ctx context.Context, gp models.GitProject, filename string) error
-	CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error)
+type GitProject struct {
+	DownloadDir     string
+	LatestCommitSha string
 }
 
-type GitCommandDriver struct {
+type GitIFace interface {
+	WithCredential(username, token string) error
+	Pull(ctx context.Context, org, repo, branch string) (*GitProject, error)
+	CreateFile(ctx context.Context, gp GitProject, filename string, contents []byte) error
+	DeleteFile(ctx context.Context, gp GitProject, filename string) error
+	CommitAndPush(ctx context.Context, gp GitProject, message string) (*GitProject, error)
+}
+
+type Git struct {
 	logger  logr.Logger
 	exec    exec.Interface
 	baseDir string
@@ -39,17 +44,17 @@ type GitCommandDriver struct {
 }
 
 // TODO: this impl only support https (ssh is not implemented yet)
-func NewGitCommandDriver(l logr.Logger, e exec.Interface) (*GitCommandDriver, error) {
+func NewGit(l logr.Logger, e exec.Interface) (*Git, error) {
 	// create basedir
-	basedir := models.BaseDir
+	basedir := BaseDir
 	if err := os.MkdirAll(basedir, 0755); err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
 
-	return &GitCommandDriver{logger: l, exec: e, baseDir: basedir}, nil
+	return &Git{logger: l, exec: e, baseDir: basedir}, nil
 }
 
-func (g *GitCommandDriver) WithCredential(username, token string) error {
+func (g *Git) WithCredential(username, token string) error {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -63,7 +68,7 @@ func (g *GitCommandDriver) WithCredential(username, token string) error {
 	return nil
 }
 
-func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (*models.GitProject, error) {
+func (g *Git) Pull(ctx context.Context, org, repo, branch string) (*GitProject, error) {
 	downloadDir := filepath.Join(g.baseDir, org, repo)
 	// rmdir if already exists
 	if _, err := os.Stat(downloadDir); !os.IsNotExist(err) {
@@ -79,14 +84,14 @@ func (g *GitCommandDriver) Pull(ctx context.Context, org, repo, branch string) (
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	gp := &models.GitProject{DownloadDir: downloadDir}
+	gp := &GitProject{DownloadDir: downloadDir}
 	if err := g.updateHeadCommitSha(ctx, gp); err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
 	return gp, nil
 }
 
-func (g *GitCommandDriver) CreateFile(ctx context.Context, gp models.GitProject, filename string, contents []byte) error {
+func (g *Git) CreateFile(ctx context.Context, gp GitProject, filename string, contents []byte) error {
 	fpath := filepath.Join(gp.DownloadDir, filename)
 	if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 		return xerrors.Errorf("%w", err)
@@ -102,7 +107,7 @@ func (g *GitCommandDriver) CreateFile(ctx context.Context, gp models.GitProject,
 	return nil
 }
 
-func (g *GitCommandDriver) DeleteFile(ctx context.Context, gp models.GitProject, filename string) error {
+func (g *Git) DeleteFile(ctx context.Context, gp GitProject, filename string) error {
 	fpath := filepath.Join(gp.DownloadDir, filename)
 	err := os.RemoveAll(fpath)
 	if err != nil {
@@ -111,7 +116,7 @@ func (g *GitCommandDriver) DeleteFile(ctx context.Context, gp models.GitProject,
 	return nil
 }
 
-func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProject, message string) (*models.GitProject, error) {
+func (g *Git) CommitAndPush(ctx context.Context, gp GitProject, message string) (*GitProject, error) {
 	// stage に更新ファイルがない場合早期リターン
 	stdout, stderr, err := g.runCommand(ctx, &gp, "git", "status", "-s")
 	if err != nil {
@@ -150,7 +155,7 @@ func (g *GitCommandDriver) CommitAndPush(ctx context.Context, gp models.GitProje
 	return &gp, nil
 }
 
-func (g *GitCommandDriver) updateHeadCommitSha(ctx context.Context, gp *models.GitProject) error {
+func (g *Git) updateHeadCommitSha(ctx context.Context, gp *GitProject) error {
 	stdout, stderr, err := g.runCommand(ctx, gp, "git", "rev-parse", "HEAD")
 	if err != nil {
 		return xerrors.Errorf(`Error: %v`, stderr.String())
@@ -160,7 +165,7 @@ func (g *GitCommandDriver) updateHeadCommitSha(ctx context.Context, gp *models.G
 	return nil
 }
 
-func (g *GitCommandDriver) HashLogs(ctx context.Context, gp models.GitProject, hash1, hash2 string) ([]string, error) {
+func (g *Git) HashLogs(ctx context.Context, gp GitProject, hash1, hash2 string) ([]string, error) {
 	stdout, stderr, err := g.runCommand(ctx, &gp, "git", "log", "--format=%H", fmt.Sprintf("%s...%s", hash1, hash2))
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
@@ -168,7 +173,7 @@ func (g *GitCommandDriver) HashLogs(ctx context.Context, gp models.GitProject, h
 	return strings.Split(strings.TrimRight(stdout.String(), "\n"), "\n"), nil
 }
 
-func (g *GitCommandDriver) runCommand(ctx context.Context, gp *models.GitProject, cmd string, args ...string) (bytes.Buffer, bytes.Buffer, error) {
+func (g *Git) runCommand(ctx context.Context, gp *GitProject, cmd string, args ...string) (bytes.Buffer, bytes.Buffer, error) {
 	stdout := bytes.Buffer{}
 	stderr := bytes.Buffer{}
 

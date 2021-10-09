@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -30,7 +31,6 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
@@ -96,7 +96,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
 		isCandidate := false
 		for _, l := range pr.Labels {
-			if l == models.CandidateLabelName {
+			if l == wrapper.CandidateLabelName {
 				isCandidate = true
 			}
 		}
