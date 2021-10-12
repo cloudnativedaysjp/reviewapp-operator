@@ -9,12 +9,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-func GetApplicationTemplate(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1beta1.ApplicationTemplate, error) {
-	var at dreamkastv1beta1.ApplicationTemplate
+func GetApplicationTemplate(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1alpha1.ApplicationTemplate, error) {
+	var at dreamkastv1alpha1.ApplicationTemplate
 	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &at); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(at), err)
 		if apierrors.IsNotFound(err) {

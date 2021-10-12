@@ -32,7 +32,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
@@ -44,7 +44,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 
 	BeforeEach(func() {
 		// remove finalizers before delete resources
-		raList := &dreamkastv1beta1.ReviewAppList{}
+		raList := &dreamkastv1alpha1.ReviewAppList{}
 		err := k8sClient.List(ctx, raList, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		for _, ra := range raList.Items {
@@ -53,13 +53,13 @@ var _ = Describe("ReviewAppManager controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 		// delete resources
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ReviewAppManager{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ReviewAppManager{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ReviewApp{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ReviewApp{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ApplicationTemplate{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ApplicationTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ManifestsTemplate{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ManifestsTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		// Control external resources: close PR for test
@@ -97,7 +97,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 
 	AfterEach(func() {
 		// remove finalizers before delete resources
-		raList := &dreamkastv1beta1.ReviewAppList{}
+		raList := &dreamkastv1alpha1.ReviewAppList{}
 		err := k8sClient.List(ctx, raList, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 		for _, ra := range raList.Items {
@@ -106,13 +106,13 @@ var _ = Describe("ReviewAppManager controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 		// delete resources
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ReviewAppManager{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ReviewAppManager{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ReviewApp{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ReviewApp{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ApplicationTemplate{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ApplicationTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1beta1.ManifestsTemplate{}, client.InNamespace(testNamespace))
+		err = k8sClient.DeleteAllOf(ctx, &dreamkastv1alpha1.ManifestsTemplate{}, client.InNamespace(testNamespace))
 		Expect(err).NotTo(HaveOccurred())
 
 		stopFunc()
@@ -129,7 +129,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 		ram, err := createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
-		ra := dreamkastv1beta1.ReviewApp{}
+		ra := dreamkastv1alpha1.ReviewApp{}
 		Eventually(func() error {
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
 		}).Should(Succeed())
@@ -185,7 +185,7 @@ metadata:
 		Expect(err).NotTo(HaveOccurred())
 
 		// wait to run reconcile loop
-		ra := dreamkastv1beta1.ReviewApp{}
+		ra := dreamkastv1alpha1.ReviewApp{}
 		Eventually(func() error {
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
 			if err != nil {
@@ -209,7 +209,7 @@ metadata:
 		_, err = createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
-		updated := dreamkastv1beta1.ReviewAppManager{}
+		updated := dreamkastv1alpha1.ReviewAppManager{}
 		Eventually(func() error {
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram"}, &updated)
 			if err != nil {
@@ -224,7 +224,7 @@ metadata:
 	//! [test]
 })
 
-func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv1beta1.ReviewAppManager, error) {
+func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv1alpha1.ReviewAppManager, error) {
 	at := newApplicationTemplate()
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err

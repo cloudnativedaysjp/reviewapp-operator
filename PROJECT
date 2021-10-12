@@ -11,8 +11,8 @@ resources:
   domain: cloudnativedays.jp
   group: dreamkast
   kind: ReviewAppManager
-  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
+  version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
@@ -20,8 +20,8 @@ resources:
   domain: cloudnativedays.jp
   group: dreamkast
   kind: ApplicationTemplate
-  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
+  version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
@@ -29,8 +29,8 @@ resources:
   domain: cloudnativedays.jp
   group: dreamkast
   kind: ManifestsTemplate
-  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
+  version: v1alpha1
 - api:
     crdVersion: v1
     namespaced: true
@@ -38,6 +38,6 @@ resources:
   domain: cloudnativedays.jp
   group: dreamkast
   kind: ReviewApp
-  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

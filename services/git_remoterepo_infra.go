@@ -6,7 +6,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 )
 
@@ -40,7 +40,7 @@ type UpdateManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*gateways.GitProject, error) {
+func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1alpha1.ReviewApp) (*gateways.GitProject, error) {
 	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
 		Content: ra.Spec.Application,
 		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
@@ -89,7 +89,7 @@ type DeleteManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*gateways.GitProject, error) {
+func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1alpha1.ReviewApp) (*gateways.GitProject, error) {
 	inputManifests := append([]DeleteManifestsInput{}, DeleteManifestsInput{
 		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})

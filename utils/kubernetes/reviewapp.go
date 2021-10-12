@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
@@ -24,8 +24,8 @@ type PullRequest struct {
 	Number       int
 }
 
-func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr *PullRequest) *dreamkastv1beta1.ReviewApp {
-	return &dreamkastv1beta1.ReviewApp{
+func NewReviewAppFromReviewAppManager(ram *dreamkastv1alpha1.ReviewAppManager, pr *PullRequest) *dreamkastv1alpha1.ReviewApp {
+	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-%d",
 				ram.Name,
@@ -35,7 +35,7 @@ func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr
 			),
 			Namespace: ram.Namespace,
 		},
-		Spec: dreamkastv1beta1.ReviewAppSpec{
+		Spec: dreamkastv1alpha1.ReviewAppSpec{
 			AppTarget:   ram.Spec.AppTarget,
 			InfraTarget: ram.Spec.InfraTarget,
 			AppPrNum:    pr.Number,
@@ -43,8 +43,8 @@ func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr
 	}
 }
 
-func GetReviewApp(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1beta1.ReviewApp, error) {
-	var ra dreamkastv1beta1.ReviewApp
+func GetReviewApp(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1alpha1.ReviewApp, error) {
+	var ra dreamkastv1alpha1.ReviewApp
 	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ra); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ra), err)
 		if apierrors.IsNotFound(err) {
@@ -55,8 +55,8 @@ func GetReviewApp(ctx context.Context, c client.Client, namespace, name string) 
 	return &ra, nil
 }
 
-func ApplyReviewAppWithOwnerRef(ctx context.Context, c client.Client, ra *dreamkastv1beta1.ReviewApp, owner metav1.Object) error {
-	raApplied := &dreamkastv1beta1.ReviewApp{
+func ApplyReviewAppWithOwnerRef(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, owner metav1.Object) error {
+	raApplied := &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ra.Name,
 			Namespace: ra.Namespace,
@@ -74,8 +74,8 @@ func ApplyReviewAppWithOwnerRef(ctx context.Context, c client.Client, ra *dreamk
 	return nil
 }
 
-func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1beta1.ReviewApp) error {
-	var raCurrent dreamkastv1beta1.ReviewApp
+func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp) error {
+	var raCurrent dreamkastv1alpha1.ReviewApp
 	if err := c.Get(ctx, types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}, &raCurrent); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(raCurrent), err)
 		if apierrors.IsNotFound(err) {
@@ -92,7 +92,7 @@ func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1
 }
 
 func DeleteReviewApp(ctx context.Context, c client.Client, namespace, name string) error {
-	ra := dreamkastv1beta1.ReviewApp{
+	ra := dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
@@ -104,7 +104,7 @@ func DeleteReviewApp(ctx context.Context, c client.Client, namespace, name strin
 	return nil
 }
 
-func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1beta1.ReviewApp, finalizers ...string) error {
+func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
 	raPatched := *ra.DeepCopy()
 	for _, f := range finalizers {
 		controllerutil.AddFinalizer(&raPatched, f)
@@ -116,7 +116,7 @@ func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkas
 	return nil
 }
 
-func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1beta1.ReviewApp, finalizers ...string) error {
+func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
 	raPatched := *ra.DeepCopy()
 	for _, f := range finalizers {
 		if controllerutil.ContainsFinalizer(&raPatched, f) {

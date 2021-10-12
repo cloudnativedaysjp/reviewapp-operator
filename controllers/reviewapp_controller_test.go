@@ -37,7 +37,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
@@ -121,10 +121,10 @@ var _ = Describe("ReviewApp controller", func() {
 				err := testutils.SyncArgoCDApplication(argocdCLIPath, "reviewapps")
 				g.Expect(err).NotTo(HaveOccurred())
 				// get status of RA
-				ra := &dreamkastv1beta1.ReviewApp{}
+				ra := &dreamkastv1alpha1.ReviewApp{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, ra)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1beta1.SyncStatusCodeWatchingAppRepo))
+				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
 				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-1"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
@@ -166,10 +166,10 @@ var _ = Describe("ReviewApp controller", func() {
 			}, timeout, interval).Should(Succeed())
 		})
 		It("should update status", func() {
-			ra := &dreamkastv1beta1.ReviewApp{}
+			ra := &dreamkastv1alpha1.ReviewApp{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, ra)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1beta1.SyncStatusCodeWatchingAppRepo))
+			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
 			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-1"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 			Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
@@ -193,7 +193,7 @@ var _ = Describe("ReviewApp controller", func() {
 	})
 	Context("step3. delete ReviewApp", func() {
 		It("should succeed to delete ReviewApp", func() {
-			err := k8sClient.Delete(context.Background(), &dreamkastv1beta1.ReviewApp{
+			err := k8sClient.Delete(context.Background(), &dreamkastv1alpha1.ReviewApp{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-1",
 					Namespace: testNamespace,
@@ -231,7 +231,7 @@ var _ = Describe("ReviewApp controller", func() {
 	//! [test]
 })
 
-func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1beta1.ReviewApp, error) {
+func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1.ReviewApp, error) {
 	argoCDApp := newArgoCDApplication()
 	if err := k8sClient.Create(context.Background(), argoCDApp); err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1beta1.
 	return ra, nil
 }
 
-func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1beta1.ReviewApp, error) {
+func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1.ReviewApp, error) {
 	nsYaml := `apiVersion: v1
 kind: Namespace
 metadata:
@@ -254,7 +254,7 @@ metadata:
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "dreamkast.cloudnativedays.jp",
-		Version: "v1beta1",
+		Version: "v1alpha1",
 		Kind:    "ReviewApp",
 	})
 	patch.SetNamespace(testNamespace)
@@ -274,7 +274,7 @@ metadata:
 		return nil, err
 	}
 
-	ra := dreamkastv1beta1.ReviewApp{}
+	ra := dreamkastv1alpha1.ReviewApp{}
 	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra); err != nil {
 		return nil, err
 	}

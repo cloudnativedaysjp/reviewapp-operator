@@ -10,12 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-func GetReviewAppManager(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1beta1.ReviewAppManager, error) {
-	var ram dreamkastv1beta1.ReviewAppManager
+func GetReviewAppManager(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1alpha1.ReviewAppManager, error) {
+	var ram dreamkastv1alpha1.ReviewAppManager
 	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ram); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ram), err)
 		if apierrors.IsNotFound(err) {
@@ -26,8 +26,8 @@ func GetReviewAppManager(ctx context.Context, c client.Client, namespace, name s
 	return &ram, nil
 }
 
-func UpdateReviewAppManagerStatus(ctx context.Context, c client.Client, ram *dreamkastv1beta1.ReviewAppManager) error {
-	var ramCurrent dreamkastv1beta1.ReviewAppManager
+func UpdateReviewAppManagerStatus(ctx context.Context, c client.Client, ram *dreamkastv1alpha1.ReviewAppManager) error {
+	var ramCurrent dreamkastv1alpha1.ReviewAppManager
 	if err := c.Get(ctx, types.NamespacedName{Name: ram.Name, Namespace: ram.Namespace}, &ramCurrent); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(ramCurrent), err)
 		if apierrors.IsNotFound(err) {
@@ -42,7 +42,7 @@ func UpdateReviewAppManagerStatus(ctx context.Context, c client.Client, ram *dre
 	return nil
 }
 
-func PickVariablesFromReviewAppManager(ctx context.Context, ram *dreamkastv1beta1.ReviewAppManager) map[string]string {
+func PickVariablesFromReviewAppManager(ctx context.Context, ram *dreamkastv1alpha1.ReviewAppManager) map[string]string {
 	vars := make(map[string]string)
 	for _, line := range ram.Spec.Variables {
 		idx := strings.Index(line, "=")

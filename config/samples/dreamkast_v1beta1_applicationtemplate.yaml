@@ -1,4 +1,4 @@
-apiVersion: dreamkast.cloudnativedays.jp/v1beta1
+apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
 kind: ApplicationTemplate
 metadata:
   name: applicationtemplate-sample

@@ -1,4 +1,4 @@
-package v1beta1
+package v1alpha1
 
 type NamespacedName struct {
 	Namespace string `json:"namespace"`

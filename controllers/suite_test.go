@@ -45,7 +45,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
 	//+kubebuilder:scaffold:imports
 )
@@ -121,7 +121,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = dreamkastv1beta1.AddToScheme(scheme)
+	err = dreamkastv1alpha1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 	err = argocd_application_v1alpha1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
@@ -197,7 +197,7 @@ func newSecret() *corev1.Secret {
 	}
 }
 
-func newApplicationTemplate() *dreamkastv1beta1.ApplicationTemplate {
+func newApplicationTemplate() *dreamkastv1alpha1.ApplicationTemplate {
 	app := `apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -216,19 +216,19 @@ spec:
     automated:
       prune: true`
 
-	return &dreamkastv1beta1.ApplicationTemplate{
+	return &dreamkastv1alpha1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "applicationtemplate-test-ram",
 			Namespace: testNamespace,
 		},
-		Spec: dreamkastv1beta1.ApplicationTemplateSpec{
+		Spec: dreamkastv1alpha1.ApplicationTemplateSpec{
 			StableTemplate:    app,
 			CandidateTemplate: app,
 		},
 	}
 }
 
-func newManifestsTemplate() *dreamkastv1beta1.ManifestsTemplate {
+func newManifestsTemplate() *dreamkastv1alpha1.ManifestsTemplate {
 	kustomizationYaml := `apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
@@ -243,26 +243,26 @@ metadata:
 	m["kustomization.yaml"] = kustomizationYaml
 	m["ns.yaml"] = nsYaml
 
-	return &dreamkastv1beta1.ManifestsTemplate{
+	return &dreamkastv1alpha1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "manifeststemplate-test-ram",
 			Namespace: testNamespace,
 		},
-		Spec: dreamkastv1beta1.ManifestsTemplateSpec{
+		Spec: dreamkastv1alpha1.ManifestsTemplateSpec{
 			StableData:    m,
 			CandidateData: m,
 		},
 	}
 }
 
-func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
-	return &dreamkastv1beta1.ReviewAppManager{
+func newReviewAppManager() *dreamkastv1alpha1.ReviewAppManager {
+	return &dreamkastv1alpha1.ReviewAppManager{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ram",
 			Namespace: testNamespace,
 		},
-		Spec: dreamkastv1beta1.ReviewAppManagerSpec{
-			AppTarget: dreamkastv1beta1.ReviewAppManagerSpecAppTarget{
+		Spec: dreamkastv1alpha1.ReviewAppManagerSpec{
+			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
 				Username:     testGitUsername,
 				Organization: testGitAppOrganization,
 				Repository:   testGitAppRepository,
@@ -273,7 +273,7 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 					Key: "token",
 				},
 			},
-			AppConfig: dreamkastv1beta1.ReviewAppManagerSpecAppConfig{
+			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
 				Message: `
 * {{.AppRepo.Organization}}
 * {{.AppRepo.Repository}}
@@ -283,7 +283,7 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 * {{.Variables.AppRepositoryAlias}}
 * {{.Variables.dummy}}`,
 			},
-			InfraTarget: dreamkastv1beta1.ReviewAppManagerSpecInfraTarget{
+			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
 				Username:     testGitUsername,
 				Organization: testGitInfraOrganization,
 				Repository:   testGitInfraRepository,
@@ -295,16 +295,16 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 					Key: "token",
 				},
 			},
-			InfraConfig: dreamkastv1beta1.ReviewAppManagerSpecInfraConfig{
-				Manifests: dreamkastv1beta1.ReviewAppManagerSpecInfraManifests{
-					Templates: []dreamkastv1beta1.NamespacedName{{
+			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
+				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
+					Templates: []dreamkastv1alpha1.NamespacedName{{
 						Namespace: testNamespace,
 						Name:      "manifeststemplate-test-ram",
 					}},
 					Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
 				},
-				ArgoCDApp: dreamkastv1beta1.ReviewAppManagerSpecInfraArgoCDApp{
-					Template: dreamkastv1beta1.NamespacedName{
+				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
+					Template: dreamkastv1alpha1.NamespacedName{
 						Namespace: testNamespace,
 						Name:      "applicationtemplate-test-ram",
 					},
@@ -318,14 +318,14 @@ func newReviewAppManager() *dreamkastv1beta1.ReviewAppManager {
 	}
 }
 
-func newReviewApp() *dreamkastv1beta1.ReviewApp {
-	return &dreamkastv1beta1.ReviewApp{
+func newReviewApp() *dreamkastv1alpha1.ReviewApp {
+	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-1",
 			Namespace: testNamespace,
 		},
-		Spec: dreamkastv1beta1.ReviewAppSpec{
-			AppTarget: dreamkastv1beta1.ReviewAppManagerSpecAppTarget{
+		Spec: dreamkastv1alpha1.ReviewAppSpec{
+			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
 				Username:     testGitUsername,
 				Organization: testGitAppOrganization,
 				Repository:   testGitAppRepository,
@@ -336,11 +336,11 @@ func newReviewApp() *dreamkastv1beta1.ReviewApp {
 					Key: "token",
 				},
 			},
-			AppConfig: dreamkastv1beta1.ReviewAppManagerSpecAppConfig{
+			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
 				Message:              `message`,
 				SendMessageEveryTime: true,
 			},
-			InfraTarget: dreamkastv1beta1.ReviewAppManagerSpecInfraTarget{
+			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
 				Username:     testGitUsername,
 				Organization: testGitInfraOrganization,
 				Repository:   testGitInfraRepository,
@@ -352,16 +352,16 @@ func newReviewApp() *dreamkastv1beta1.ReviewApp {
 					Key: "token",
 				},
 			},
-			InfraConfig: dreamkastv1beta1.ReviewAppManagerSpecInfraConfig{
-				Manifests: dreamkastv1beta1.ReviewAppManagerSpecInfraManifests{
-					Templates: []dreamkastv1beta1.NamespacedName{{
+			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
+				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
+					Templates: []dreamkastv1alpha1.NamespacedName{{
 						Namespace: testNamespace,
 						Name:      "manifeststemplate-test-ra",
 					}},
 					Dirpath: "overlays/dev/test-ra-1",
 				},
-				ArgoCDApp: dreamkastv1beta1.ReviewAppManagerSpecInfraArgoCDApp{
-					Template: dreamkastv1beta1.NamespacedName{
+				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
+					Template: dreamkastv1alpha1.NamespacedName{
 						Namespace: testNamespace,
 						Name:      "applicationtemplate-test-ra",
 					},
@@ -387,7 +387,7 @@ spec:
     automated:
       prune: true`,
 			Manifests: map[string]string{
-				"kustomization.yaml": `apiVersion: kustomize.config.k8s.io/v1beta1
+				"kustomization.yaml": `apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Kustomization
 namespace: demo-dev-test-ra-1
 bases:
