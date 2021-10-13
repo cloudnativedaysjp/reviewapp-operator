@@ -103,7 +103,11 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		}
 
 		// generate RA struct
-		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, pr)
+		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, &kubernetes.PullRequest{
+			Organization: pr.Organization,
+			Repository:   pr.Repository,
+			Number:       pr.Number,
+		})
 		ra.Spec.AppTarget = ram.Spec.AppTarget
 		ra.Spec.InfraTarget = ram.Spec.InfraTarget
 
