@@ -2,11 +2,12 @@ package services
 
 import (
 	"context"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"path/filepath"
 
 	"github.com/cenkalti/backoff/v4"
+
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 )
 
 type GitRemoteRepoInfraService struct {
