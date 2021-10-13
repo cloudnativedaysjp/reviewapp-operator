@@ -88,9 +88,9 @@ const (
 	// SyncStatusCodeWatchingAppRepo indicates that TODO
 	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
 	// SyncStatusCodeWatchingTemplates indicates that TODO
-	SyncStatusCodeWatchingTemplates SyncStatusCode = "WatchingTemplate"
-	// SyncStatusCodeUpdatedAppRepo indicates that watched updated app repo & will update manifests to infra repo
-	SyncStatusCodeCheckedAppRepo SyncStatusCode = "CheckedAppRepo"
+	SyncStatusCodeWatchingTemplates SyncStatusCode = "WatchingTemplates"
+	// SyncStatusCodeNeedToUpdateInfraRepo indicates that watched updated app repo & will update manifests to infra repo
+	SyncStatusCodeNeedToUpdateInfraRepo SyncStatusCode = "NeedToUpdateInfraRepo"
 	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
 	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
 )

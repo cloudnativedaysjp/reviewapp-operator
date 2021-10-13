@@ -87,25 +87,25 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1beta1.ReviewAppStatus{}) ||
 		ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
-		result, err = r.reconcileCheckAppRepository(ctx, ra)
+		result, err = r.confirmAppRepoIsUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingTemplates {
-		result, err = r.reconcileCheckAtAndMt(ctx, ra)
+		result, err = r.confirmTemplatesAreUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeCheckedAppRepo {
-		result, err = r.reconcileUpdateInfraReposiotry(ctx, ra)
+	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo {
+		result, err = r.deployReviewAppManifestsToInfraRepo(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo {
-		result, err = r.reconcileSendMessageToAppRepoPR(ctx, ra)
+		result, err = r.commentToAppRepoPullRequest(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -119,7 +119,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
-func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 
 	// get gitRemoteRepo credential from Secret
@@ -156,7 +156,7 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	ra.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingTemplates
 	}
@@ -164,7 +164,7 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 }
 
 // comment: 何を行う関数なのか、関数名から読み取れませんでした
-func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
 		updated = true
@@ -183,14 +183,14 @@ func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dre
 	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 
 	// set annotations to Argo CD Application
 	argocdAppStr := ra.Spec.Application
@@ -257,7 +257,7 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 
 // comment: 一度PRにコメントした後にReviewAppが更新されると、投稿済みコメントを消して再度コメントしてもいいかもしれないなと思いました。
 // そうすると積んだコミットがArgoCDに反映されたのがわかって便利かなと。
-func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
 		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, annotationAppCommitHashForArgoCDApplication,
