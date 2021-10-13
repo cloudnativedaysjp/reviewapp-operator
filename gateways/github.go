@@ -1,4 +1,4 @@
-package wrapper
+package gateways
 
 import (
 	"context"

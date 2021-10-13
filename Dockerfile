@@ -10,7 +10,6 @@ COPY api/ api/
 COPY controllers/ controllers/
 COPY errors/ errors/
 COPY gateways/ gateways/
-COPY models/ models/
 COPY services/ services/
 COPY utils/ utils/
 COPY wire/ wire/

@@ -7,7 +7,7 @@ package wire
 
 import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/exec"
 )
@@ -15,13 +15,13 @@ import (
 // Injectors from wire.go:
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
-	gitApiDriver := wrapper.NewGitHub(l)
+	gitApiDriver := gateways.NewGitHub(l)
 	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitApiDriver)
 	return gitRemoteRepoAppService, nil
 }
 
 func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.GitRemoteRepoInfraService, error) {
-	gitCommandDriver, err := wrapper.NewGit(l, e)
+	gitCommandDriver, err := gateways.NewGit(l, e)
 	if err != nil {
 		return nil, err
 	}

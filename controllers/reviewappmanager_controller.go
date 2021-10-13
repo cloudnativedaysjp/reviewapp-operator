@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -97,7 +97,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
 		isCandidate := false
 		for _, l := range pr.Labels {
-			if l == wrapper.CandidateLabelName {
+			if l == gateways.CandidateLabelName {
 				isCandidate = true
 			}
 		}

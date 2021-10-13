@@ -3,7 +3,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"reflect"
 	"strings"
 
@@ -19,7 +19,7 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr *wrapper.PullRequest) *dreamkastv1beta1.ReviewApp {
+func NewReviewAppFromReviewAppManager(ram *dreamkastv1beta1.ReviewAppManager, pr *gateways.PullRequest) *dreamkastv1beta1.ReviewApp {
 	return &dreamkastv1beta1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-%d",

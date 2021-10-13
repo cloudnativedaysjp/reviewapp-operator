@@ -4,7 +4,7 @@ package wire
 
 import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wrapper"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 	"k8s.io/utils/exec"
@@ -12,8 +12,8 @@ import (
 
 func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
 	wire.Build(
-		wrapper.NewGitHubDriver,
-		wire.Bind(new(wrapper.GitHubIFace), new(*wrapper.GitHub)),
+		gateways.NewGitHubDriver,
+		wire.Bind(new(gateways.GitHubIFace), new(*gateways.GitHub)),
 		services.NewGitRemoteRepoAppService,
 	)
 	return nil, nil
@@ -21,8 +21,8 @@ func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppServic
 
 func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.GitRemoteRepoInfraService, error) {
 	wire.Build(
-		wrapper.NewGitCommandDriver,
-		wire.Bind(new(gitcommand.GitCommandIFace), new(*wrapper.Git)),
+		gateways.NewGitCommandDriver,
+		wire.Bind(new(gitcommand.GitCommandIFace), new(*gateways.Git)),
 		services.NewGitRemoteRepoInfraService,
 	)
 	return nil, nil
