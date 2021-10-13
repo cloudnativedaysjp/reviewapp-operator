@@ -67,7 +67,6 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return r.reconcile(ctx, ram)
 }
 
-// question: このreconcileは定期的に走る認識なんですが、どうやって定期的に実行されるんでしたっけ…？忘れてしまった。
 func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamkastv1beta1.ReviewAppManager) (ctrl.Result, error) {
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,

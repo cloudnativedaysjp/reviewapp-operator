@@ -79,9 +79,6 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return r.reconcile(ctx, ra)
 }
 
-// comment: この関数内で呼んでいるreconcile~の関数名ですが、reconcileとCheck、reconcileとUpdateのように動詞が続いているのが気になりました。
-// reconcileCheckAppRepository なら reconcileAppRepository , reconcileUpdateInfraReposiotry なら reconcileInfraReposiotry という名前がよいように思います。
-// 追記: でもreconcileDeleteは割とよく使われてるしあんまり気にしなくてもいいかも
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (result ctrl.Result, err error) {
 
 	errs := []error{}
@@ -163,7 +160,6 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 	return ctrl.Result{}, nil
 }
 
-// comment: 何を行う関数なのか、関数名から読み取れませんでした
 func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
@@ -255,8 +251,6 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	return ctrl.Result{}, nil
 }
 
-// comment: 一度PRにコメントした後にReviewAppが更新されると、投稿済みコメントを消して再度コメントしてもいいかもしれないなと思いました。
-// そうすると積んだコミットがArgoCDに反映されたのがわかって便利かなと。
 func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
