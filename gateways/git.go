@@ -28,7 +28,7 @@ type GitProject struct {
 
 type GitIFace interface {
 	WithCredential(username, token string) error
-	Pull(ctx context.Context, org, repo, branch string) (*GitProject, error)
+	ForceClone(ctx context.Context, org, repo, branch string) (*GitProject, error)
 	CreateFile(ctx context.Context, gp GitProject, filename string, contents []byte) error
 	DeleteFile(ctx context.Context, gp GitProject, filename string) error
 	CommitAndPush(ctx context.Context, gp GitProject, message string) (*GitProject, error)
@@ -69,7 +69,7 @@ func (g *Git) WithCredential(username, token string) error {
 }
 
 // comment: 関数名と処理内容が一致していないので、名前を変えるとよさそうです。
-func (g *Git) Pull(ctx context.Context, org, repo, branch string) (*GitProject, error) {
+func (g *Git) ForceClone(ctx context.Context, org, repo, branch string) (*GitProject, error) {
 	downloadDir := filepath.Join(g.baseDir, org, repo)
 	// rmdir if already exists
 	if _, err := os.Stat(downloadDir); !os.IsNotExist(err) {

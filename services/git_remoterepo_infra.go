@@ -59,7 +59,7 @@ func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param Up
 			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.gitCommand.Pull(ctx, param.Org, param.Repo, param.Branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param De
 			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.gitCommand.Pull(ctx, param.Org, param.Repo, param.Branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
