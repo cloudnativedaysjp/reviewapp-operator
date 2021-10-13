@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func GetNamespacedNameFromObjectStr(ctx context.Context, objectStr string) (types.NamespacedName, error) {
+func PickNamespacedNameFromObjectStr(ctx context.Context, objectStr string) (types.NamespacedName, error) {
 	var obj unstructured.Unstructured
 	err := yaml.Unmarshal([]byte(objectStr), &obj)
 	if err != nil {
