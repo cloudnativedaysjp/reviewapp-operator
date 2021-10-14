@@ -18,7 +18,7 @@ spec:
     singular: manifeststemplate
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ManifestsTemplate is the Schema for the manifeststemplates API

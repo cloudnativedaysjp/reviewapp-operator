@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
@@ -67,7 +67,7 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return r.reconcile(ctx, ram)
 }
 
-func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamkastv1beta1.ReviewAppManager) (ctrl.Result, error) {
+func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamkastv1alpha1.ReviewAppManager) (ctrl.Result, error) {
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
 		r.Client, ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key,
@@ -90,7 +90,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 	}
 
 	// apply ReviewApp
-	var syncedPullRequests []dreamkastv1beta1.ReviewAppManagerStatusSyncedPullRequests
+	var syncedPullRequests []dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests
 	for _, pr := range prs {
 
 		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
@@ -189,7 +189,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		}
 
 		// set values for update status
-		syncedPullRequests = append(syncedPullRequests, dreamkastv1beta1.ReviewAppManagerStatusSyncedPullRequests{
+		syncedPullRequests = append(syncedPullRequests, dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests{
 			Organization:  pr.Organization,
 			Repository:    pr.Repository,
 			Number:        pr.Number,
@@ -223,15 +223,15 @@ loop:
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReviewAppManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dreamkastv1beta1.ReviewAppManager{}).
-		Owns(&dreamkastv1beta1.ReviewApp{}).
+		For(&dreamkastv1alpha1.ReviewAppManager{}).
+		Owns(&dreamkastv1alpha1.ReviewApp{}).
 		// TODO: at, mt 更新時にも reconcile が走るようにする
 		// Watches(
-		// 	&source.Kind{Type: &dreamkastv1beta1.ApplicationTemplate{}},
+		// 	&source.Kind{Type: &dreamkastv1alpha1.ApplicationTemplate{}},
 		// 	&handler.EnqueueRequestForObject{},
 		// ).
 		// Watches(
-		// 	&source.Kind{Type: &dreamkastv1beta1.ManifestsTemplate{}},
+		// 	&source.Kind{Type: &dreamkastv1alpha1.ManifestsTemplate{}},
 		// 	&handler.EnqueueRequestForObject{},
 		// ).
 		Complete(r)

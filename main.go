@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 	//+kubebuilder:scaffold:imports
@@ -47,7 +47,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(dreamkastv1beta1.AddToScheme(scheme))
+	utilruntime.Must(dreamkastv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(argocd_application_v1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }

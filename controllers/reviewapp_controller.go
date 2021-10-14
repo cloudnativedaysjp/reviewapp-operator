@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
@@ -79,29 +79,29 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return r.reconcile(ctx, ra)
 }
 
-func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (result ctrl.Result, err error) {
+func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
 
 	errs := []error{}
-	if reflect.DeepEqual(ra.Status, dreamkastv1beta1.ReviewAppStatus{}) ||
-		ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
+	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) ||
+		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo {
 		result, err = r.confirmAppRepoIsUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingTemplates {
+	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingTemplates {
 		result, err = r.confirmTemplatesAreUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo {
+	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo {
 		result, err = r.deployReviewAppManifestsToInfraRepo(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo {
+	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo {
 		result, err = r.commentToAppRepoPullRequest(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
@@ -116,7 +116,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
-func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 
 	// get gitRemoteRepo credential from Secret
@@ -153,14 +153,14 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	ra.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
+		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingTemplates
+		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingTemplates
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
 		updated = true
@@ -179,14 +179,14 @@ func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra
 	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
+		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
+		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 
 	// set annotations to Argo CD Application
 	argocdAppStr := ra.Spec.Application
@@ -243,7 +243,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo
+	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
 	ra.Status.Sync.InfraRepoLatestCommitSha = gp.LatestCommitSha
 	ra.Status.Sync.Application = argocdAppStrWithoutAnnotations
 	ra.Status.Sync.Manifests = ra.Spec.Manifests
@@ -251,7 +251,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
 		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, annotationAppCommitHashForArgoCDApplication,
@@ -328,14 +328,14 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, r
 		}
 
 		// update ReviewApp.Status
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
+		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
 		ra.Status.AlreadySentMessage = true
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
 		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
@@ -377,6 +377,6 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&dreamkastv1beta1.ReviewApp{}).
+		For(&dreamkastv1alpha1.ReviewApp{}).
 		Complete(r)
 }

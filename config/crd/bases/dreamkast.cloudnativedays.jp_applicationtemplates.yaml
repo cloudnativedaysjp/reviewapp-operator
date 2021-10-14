@@ -18,7 +18,7 @@ spec:
     singular: applicationtemplate
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ApplicationTemplate is the Schema for the applicationtemplates
