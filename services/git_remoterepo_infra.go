@@ -1,25 +1,21 @@
-package infrarepo
+package services
 
 import (
 	"context"
 	"path/filepath"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/go-logr/logr"
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
-	gitcommand_iface "github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand/iface"
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 )
 
 type GitRemoteRepoInfraService struct {
-	gitCommand gitcommand_iface.GitCommandIFace
-
-	Log logr.Logger
+	gitCommand gateways.GitIFace
 }
 
-func NewGitRemoteRepoInfraService(gitCodeIF gitcommand_iface.GitCommandIFace, logger logr.Logger) *GitRemoteRepoInfraService {
-	return &GitRemoteRepoInfraService{gitCodeIF, logger}
+func NewGitRemoteRepoInfraService(gitCodeIF gateways.GitIFace) *GitRemoteRepoInfraService {
+	return &GitRemoteRepoInfraService{gitCodeIF}
 }
 
 /* Inputs of some functions */
@@ -35,11 +31,16 @@ var (
 	b = backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3)
 )
 
-func (s GitRemoteRepoInfraService) UpdateManifests(
-	ctx context.Context, org, repo, branch, commitMsg string,
-	username, token string,
-	ra *dreamkastv1beta1.ReviewApp,
-) (*models.GitProject, error) {
+type UpdateManifestsParam struct {
+	Org       string
+	Repo      string
+	Branch    string
+	CommitMsg string
+	Username  string
+	Token     string
+}
+
+func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*gateways.GitProject, error) {
 	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
 		Content: ra.Spec.Application,
 		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
@@ -51,14 +52,14 @@ func (s GitRemoteRepoInfraService) UpdateManifests(
 		})
 	}
 
-	var gp *models.GitProject
+	var gp *gateways.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.gitCommand.WithCredential(username, token); err != nil {
+			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.gitCommand.Pull(ctx, org, repo, branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
@@ -67,7 +68,7 @@ func (s GitRemoteRepoInfraService) UpdateManifests(
 					return err
 				}
 			}
-			_, err = s.gitCommand.CommitAndPush(ctx, *m, commitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
 			if err != nil {
 				return err
 			}
@@ -79,11 +80,16 @@ func (s GitRemoteRepoInfraService) UpdateManifests(
 	return gp, nil
 }
 
-func (s GitRemoteRepoInfraService) DeleteManifests(
-	ctx context.Context, org, repo, branch, commitMsg string,
-	username, token string,
-	ra *dreamkastv1beta1.ReviewApp,
-) (*models.GitProject, error) {
+type DeleteManifestsParam struct {
+	Org       string
+	Repo      string
+	Branch    string
+	CommitMsg string
+	Username  string
+	Token     string
+}
+
+func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1beta1.ReviewApp) (*gateways.GitProject, error) {
 	inputManifests := append([]DeleteManifestsInput{}, DeleteManifestsInput{
 		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
@@ -93,14 +99,14 @@ func (s GitRemoteRepoInfraService) DeleteManifests(
 		})
 	}
 
-	var gp *models.GitProject
+	var gp *gateways.GitProject
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.gitCommand.WithCredential(username, token); err != nil {
+			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.gitCommand.Pull(ctx, org, repo, branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
@@ -109,7 +115,7 @@ func (s GitRemoteRepoInfraService) DeleteManifests(
 					return err
 				}
 			}
-			_, err = s.gitCommand.CommitAndPush(ctx, *m, commitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
 			if err != nil {
 				return err
 			}

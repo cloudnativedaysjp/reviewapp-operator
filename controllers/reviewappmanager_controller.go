@@ -29,8 +29,8 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
@@ -41,7 +41,7 @@ type ReviewAppManagerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	GitRemoteRepoAppService *apprepo.GitRemoteRepoAppService
+	GitRemoteRepoAppService *services.GitRemoteRepoAppService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewappmanagers,verbs=get;list;watch;create;update;patch;delete
@@ -96,13 +96,17 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
 		isCandidate := false
 		for _, l := range pr.Labels {
-			if l == models.CandidateLabelName {
+			if l == gateways.CandidateLabelName {
 				isCandidate = true
 			}
 		}
 
 		// generate RA struct
-		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, pr)
+		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, &kubernetes.PullRequest{
+			Organization: pr.Organization,
+			Repository:   pr.Repository,
+			Number:       pr.Number,
+		})
 		ra.Spec.AppTarget = ram.Spec.AppTarget
 		ra.Spec.InfraTarget = ram.Spec.InfraTarget
 

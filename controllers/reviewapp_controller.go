@@ -29,8 +29,7 @@ import (
 
 	dreamkastv1beta1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1beta1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services/apprepo"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services/infrarepo"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 )
 
@@ -40,8 +39,8 @@ type ReviewAppReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	GitRemoteRepoAppService   *apprepo.GitRemoteRepoAppService
-	GitRemoteRepoInfraService *infrarepo.GitRemoteRepoInfraService
+	GitRemoteRepoAppService   *services.GitRemoteRepoAppService
+	GitRemoteRepoInfraService *services.GitRemoteRepoInfraService
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
@@ -85,25 +84,25 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1beta1.ReviewAppStatus{}) ||
 		ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingAppRepo {
-		result, err = r.reconcileCheckAppRepository(ctx, ra)
+		result, err = r.confirmAppRepoIsUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeWatchingTemplates {
-		result, err = r.reconcileCheckAtAndMt(ctx, ra)
+		result, err = r.confirmTemplatesAreUpdated(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeCheckedAppRepo {
-		result, err = r.reconcileUpdateInfraReposiotry(ctx, ra)
+	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo {
+		result, err = r.deployReviewAppManifestsToInfraRepo(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1beta1.SyncStatusCodeUpdatedInfraRepo {
-		result, err = r.reconcileSendMessageToAppRepoPR(ctx, ra)
+		result, err = r.commentToAppRepoPullRequest(ctx, ra)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -117,7 +116,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1beta
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
-func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 
 	// get gitRemoteRepo credential from Secret
@@ -154,14 +153,14 @@ func (r *ReviewAppReconciler) reconcileCheckAppRepository(ctx context.Context, r
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	ra.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingTemplates
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
 	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
 		updated = true
@@ -180,14 +179,14 @@ func (r *ReviewAppReconciler) reconcileCheckAtAndMt(ctx context.Context, ra *dre
 	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	if updated {
-		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeCheckedAppRepo
+		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
 		ra.Status.Sync.Status = dreamkastv1beta1.SyncStatusCodeWatchingAppRepo
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 
 	// set annotations to Argo CD Application
 	argocdAppStr := ra.Spec.Application
@@ -225,16 +224,20 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
-	gp, err := r.GitRemoteRepoInfraService.UpdateManifests(ctx,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Spec.InfraTarget.Branch,
-		fmt.Sprintf(
+	updateManifestParam := services.UpdateManifestsParam{
+		Org:    ra.Spec.InfraTarget.Organization,
+		Repo:   ra.Spec.InfraTarget.Repository,
+		Branch: ra.Spec.InfraTarget.Branch,
+		CommitMsg: fmt.Sprintf(
 			"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 			ra.Spec.AppTarget.Organization,
 			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
-		ra.Spec.InfraTarget.Username, gitRemoteRepoCred, ra,
-	)
+		Username: ra.Spec.InfraTarget.Username,
+		Token:    gitRemoteRepoCred,
+	}
+	gp, err := r.GitRemoteRepoInfraService.UpdateManifests(ctx, updateManifestParam, ra)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -248,7 +251,7 @@ func (r *ReviewAppReconciler) reconcileUpdateInfraReposiotry(ctx context.Context
 	return ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1beta1.ReviewApp) (ctrl.Result, error) {
 	// check appRepoSha from annotations in ArgoCD Application
 	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
 		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, annotationAppCommitHashForArgoCDApplication,
@@ -273,11 +276,16 @@ func (r *ReviewAppReconciler) reconcileSendMessageToAppRepoPR(ctx context.Contex
 	}
 
 	//
-	updated, err := r.GitRemoteRepoAppService.CheckApplicationUpdated(ctx,
-		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
-		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-		ra.Status.Sync.AppRepoLatestCommitSha, hashInArgoCDApplication,
-	)
+	param := services.IsApplicationUpdatedParam{
+		Org:                     ra.Spec.AppTarget.Organization,
+		Repo:                    ra.Spec.AppTarget.Repository,
+		PrNum:                   ra.Spec.AppPrNum,
+		Username:                ra.Spec.AppTarget.Username,
+		Token:                   gitRemoteRepoCred,
+		HashInRA:                ra.Status.Sync.AppRepoLatestCommitSha,
+		HashInArgoCDApplication: hashInArgoCDApplication,
+	}
+	updated, err := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx, param)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -341,16 +349,20 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 	}
 
 	// delete some manifests
-	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Spec.InfraTarget.Branch,
-		fmt.Sprintf(
+	deleteManifestsParam := services.DeleteManifestsParam{
+		Org:    ra.Spec.InfraTarget.Organization,
+		Repo:   ra.Spec.InfraTarget.Repository,
+		Branch: ra.Spec.InfraTarget.Branch,
+		CommitMsg: fmt.Sprintf(
 			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 			ra.Spec.AppTarget.Organization,
 			ra.Spec.AppTarget.Repository,
 			ra.Status.Sync.AppRepoLatestCommitSha,
 		),
-		ra.Spec.InfraTarget.Username, gitRemoteRepoCred, ra,
-	); err != nil {
+		Username: ra.Spec.InfraTarget.Username,
+		Token:    gitRemoteRepoCred,
+	}
+	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx, deleteManifestsParam, ra); err != nil {
 		return ctrl.Result{}, err
 	}
 
