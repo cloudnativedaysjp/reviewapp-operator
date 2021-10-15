@@ -247,9 +247,9 @@ func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 	nsYaml := `apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
-	annotations:
-	  modified: "true"`
+  name: demo-dev-test-ra-1
+  annotations:
+    modified: "true"`
 
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{

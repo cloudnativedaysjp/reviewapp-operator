@@ -14,6 +14,7 @@ concurrency: integration-test
 jobs:
   integration-test:
     name: Integration Test
+    if: ${{ ! contains(github.event.pull_request.title, '[dreamkast-releasebot]') }}
     runs-on: ubuntu-20.04
     timeout-minutes: 20
     steps:

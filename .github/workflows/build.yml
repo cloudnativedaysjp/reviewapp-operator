@@ -5,6 +5,7 @@ on: push
 jobs:
   lint:
     name: Lint
+    if: ${{ ! contains(github.event.pull_request.title, '[dreamkast-releasebot]') }}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -16,6 +17,7 @@ jobs:
 
   unit-test:
     name: Unit Test
+    if: ${{ ! contains(github.event.pull_request.title, '[dreamkast-releasebot]') }}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
@@ -38,6 +40,7 @@ jobs:
 
   build:
     name: Build & Push Container Image
+    if: ${{ ! contains(github.event.pull_request.title, '[dreamkast-releasebot]') }}
     runs-on: ubuntu-20.04
     needs:
       - lint
