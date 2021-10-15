@@ -3,8 +3,8 @@
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
+	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 	"k8s.io/utils/exec"
