@@ -38,7 +38,8 @@ jobs:
           - name: public.ecr.aws/f5j9d0q5/reviewapp-operator
             newTag: ${{ steps.bump-semver.outputs.new_version }}
           _EOL_
-          kustomize build config/default/ > install.yaml
+          kustomize build config/crd/ > install.yaml
+          kustomize build config/default/ >> install.yaml
 
       - uses: softprops/action-gh-release@v1
         if: ${{ steps.release-label.outputs.level != null }}
