@@ -40,7 +40,7 @@ jobs:
           _EOL_
           kustomize build config/default/ > install.yaml
 
-      - uses: actions/create-release@v1
+      - uses: softprops/action-gh-release@v1
         if: ${{ steps.release-label.outputs.level != null }}
         with:
           tag_name: ${{ steps.bump-semver.outputs.new_version }}
