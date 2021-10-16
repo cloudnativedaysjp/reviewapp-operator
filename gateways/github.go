@@ -14,15 +14,17 @@ const CandidateLabelName = "candidate-template"
 type PullRequest struct {
 	Organization  string
 	Repository    string
+	Branch        string
 	Number        int
 	HeadCommitSha string
 	Labels        []string
 }
 
-func NewPullRequest(organization, repository string, number int, headCommitSha string, labels []string) *PullRequest {
+func NewPullRequest(organization, repository, branch string, number int, headCommitSha string, labels []string) *PullRequest {
 	return &PullRequest{
 		Organization:  organization,
 		Repository:    repository,
+		Branch:        branch,
 		Number:        number,
 		HeadCommitSha: headCommitSha,
 		Labels:        labels,
@@ -82,7 +84,7 @@ func (g *GitHub) ListOpenPullRequests(ctx context.Context, org, repo string) ([]
 		for _, l := range pr.Labels {
 			labels = append(labels, *l.Name)
 		}
-		result = append(result, NewPullRequest(org, repo, *pr.Number, *pr.Head.SHA, labels))
+		result = append(result, NewPullRequest(org, repo, pr.Head.GetRef(), pr.GetNumber(), pr.Head.GetSHA(), labels))
 	}
 	return result, nil
 }
@@ -99,13 +101,7 @@ func (g *GitHub) GetOpenPullRequest(ctx context.Context, org, repo string, prNum
 	for _, l := range pr.Labels {
 		labels = append(labels, *l.Name)
 	}
-	return &PullRequest{
-		Organization:  org,
-		Repository:    repo,
-		Number:        prNum,
-		HeadCommitSha: *pr.Head.SHA,
-		Labels:        labels,
-	}, nil
+	return NewPullRequest(org, repo, pr.Head.GetRef(), prNum, pr.Head.GetSHA(), labels), nil
 }
 
 func (g *GitHub) CommentToPullRequest(ctx context.Context, pr PullRequest, comment string) error {

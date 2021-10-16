@@ -16,6 +16,7 @@ type TemplateValue struct {
 type TemplateValueAppRepoInfo struct {
 	Organization    string
 	Repository      string
+	Branch          string
 	PrNumber        int
 	LatestCommitSha string
 }
@@ -27,12 +28,12 @@ type TemplateValueInfraRepoInfo struct {
 }
 
 func NewTemplateValue(
-	appOrg, appRepo string, appPrNum int, appLatestCommitSha string,
+	appOrg, appRepo, appBranch string, appPrNum int, appLatestCommitSha string,
 	infraOrg, infraRepo, infraLatestCommitSha string,
 	variables map[string]string,
 ) *TemplateValue {
 	return &TemplateValue{
-		TemplateValueAppRepoInfo{appOrg, appRepo, appPrNum, appLatestCommitSha},
+		TemplateValueAppRepoInfo{appOrg, appRepo, appBranch, appPrNum, appLatestCommitSha},
 		TemplateValueInfraRepoInfo{infraOrg, infraRepo, infraLatestCommitSha},
 		variables,
 	}

@@ -50,7 +50,7 @@ type ReviewAppManagerReconciler struct {
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=applicationtemplates,verbs=get;list;watch
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=manifeststemplates,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	r.Log.Info(fmt.Sprintf("fetching ReviewAppManager resource: %s/%s", req.Namespace, req.Name))
@@ -113,7 +113,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		// Templating
 		{
 			v := template.NewTemplateValue(
-				pr.Organization, pr.Repository, pr.Number, pr.HeadCommitSha,
+				pr.Organization, pr.Repository, pr.Branch, pr.Number, pr.HeadCommitSha,
 				ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
 				kubernetes.PickVariablesFromReviewAppManager(ctx, ram),
 			)
@@ -162,11 +162,11 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 				}
 			}
 			{ // get ManifestsTemplate & template to ra.Spec.Manifests
-				for _, mt := range ram.Spec.InfraConfig.Manifests.Templates {
-					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mt.Namespace, mt.Name)
+				for _, mtNN := range ram.Spec.InfraConfig.Manifests.Templates {
+					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
 					if err != nil {
 						if myerrors.IsNotFound(err) {
-							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mt.Namespace, mt.Name))
+							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
 							return ctrl.Result{}, nil
 						}
 						return ctrl.Result{}, err
