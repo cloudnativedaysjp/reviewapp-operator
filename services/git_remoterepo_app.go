@@ -25,15 +25,25 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, 
 	return prs, nil
 }
 
-func (s *GitRemoteRepoAppService) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*gateways.PullRequest, error) {
+func (s *GitRemoteRepoAppService) GetPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*gateways.PullRequest, error) {
 	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
-	pr, err := s.gitapi.GetOpenPullRequest(ctx, org, repo, prNum)
+	pr, err := s.gitapi.GetPullRequest(ctx, org, repo, prNum)
 	if err != nil {
 		return nil, err
 	}
 	return pr, nil
+}
+
+func (s *GitRemoteRepoAppService) IsCandidatePr(pr *gateways.PullRequest) bool {
+	isCandidate := false
+	for _, l := range pr.Labels {
+		if l == gateways.CandidateLabelName {
+			isCandidate = true
+		}
+	}
+	return isCandidate
 }
 
 func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *gateways.PullRequest, message string, username, token string) error {
@@ -63,7 +73,7 @@ func (s GitRemoteRepoAppService) IsApplicationUpdated(ctx context.Context, param
 	if err := s.gitapi.WithCredential(param.Username, param.Token); err != nil {
 		return false, err
 	}
-	pr, err := s.gitapi.GetOpenPullRequest(ctx, param.Org, param.Repo, param.PrNum)
+	pr, err := s.gitapi.GetPullRequest(ctx, param.Org, param.Repo, param.PrNum)
 	if err != nil {
 		return false, err
 	}

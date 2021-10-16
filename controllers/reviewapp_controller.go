@@ -29,8 +29,10 @@ import (
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -82,6 +84,14 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
 
+	if result, err := r.prepare(ctx, ra); err != nil {
+		if myerrors.IsNotFound(err) {
+			return result, nil
+		}
+		return result, err
+	}
+
+	// run/skip processes by ReviewApp state
 	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) ||
 		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo {
@@ -117,34 +127,78 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alph
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
-func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
-	var updated bool
+func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
+	ra.Tmp.Manifests = make(map[string]string)
 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx, r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}
-
 	// check PRs specified by spec.appRepo.repository
-	pr, err := r.GitRemoteRepoAppService.GetOpenPullRequest(ctx,
+	pr, err := r.GitRemoteRepoAppService.GetPullRequest(ctx,
 		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
 		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	ra.Tmp.PullRequest = (dreamkastv1alpha1.ReviewAppTmpPr)(*pr)
 
-	if pr.HeadCommitSha != ra.Status.Sync.AppRepoLatestCommitSha {
+	// template ApplicationTemplate & ManifestsTemplate
+	v := template.NewTemplateValue(
+		pr.Organization, pr.Repository, pr.Branch, pr.Number, pr.HeadCommitSha,
+		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
+		kubernetes.PickVariablesFromReviewApp(ctx, ra),
+	)
+	// get ApplicationTemplate & template to applicationStr
+	at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name)
+	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name))
+		}
+		return ctrl.Result{}, err
+	}
+	if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
+		ra.Tmp.Application, err = v.Templating(at.Spec.CandidateTemplate)
+	} else {
+		ra.Tmp.Application, err = v.Templating(at.Spec.StableTemplate)
+	}
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// get ManifestsTemplate & template to manifestsStr
+	for _, mtNN := range ra.Spec.InfraConfig.Manifests.Templates {
+		mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
+		if err != nil {
+			if myerrors.IsNotFound(err) {
+				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
+			}
+			return ctrl.Result{}, err
+		}
+		if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
+			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.CandidateData)
+		} else {
+			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.StableData)
+		}
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+	var updated bool
+	if ra.Tmp.PullRequest.HeadCommitSha != ra.Status.Sync.AppRepoLatestCommitSha {
 		updated = true
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Tmp.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -152,7 +206,7 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 	// update ReviewApp.Status
 	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
-	ra.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
+	ra.Status.Sync.AppRepoLatestCommitSha = ra.Tmp.PullRequest.HeadCommitSha
 	if updated {
 		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
@@ -162,16 +216,17 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 }
 
 func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+	// confirm
 	var updated bool
-	if !reflect.DeepEqual(ra.Spec.Application, ra.Status.Sync.Application) {
+	if !reflect.DeepEqual(ra.Tmp.Application, ra.Status.Sync.Application) {
 		updated = true
 	}
-	if !reflect.DeepEqual(ra.Spec.Manifests, ra.Status.Sync.Manifests) {
+	if !reflect.DeepEqual(ra.Tmp.Manifests, ra.Status.Sync.Manifests) {
 		updated = true
 	}
 
 	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Spec.Application)
+	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Tmp.Application)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -190,7 +245,7 @@ func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra
 func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 
 	// set annotations to Argo CD Application
-	argocdAppStr := ra.Spec.Application
+	argocdAppStr := ra.Tmp.Application
 	argocdAppStr, err := kubernetes.SetAnnotationToObjectStr(ctx,
 		argocdAppStr, annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization,
 	)
@@ -209,8 +264,6 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	argocdAppStrWithoutAnnotations := ra.Spec.Application
-	ra.Spec.Application = argocdAppStr
 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
@@ -246,8 +299,6 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	// update ReviewApp.Status
 	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
 	ra.Status.Sync.InfraRepoLatestCommitSha = gp.LatestCommitSha
-	ra.Status.Sync.Application = argocdAppStrWithoutAnnotations
-	ra.Status.Sync.Manifests = ra.Spec.Manifests
 
 	return ctrl.Result{}, nil
 }
@@ -311,16 +362,8 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, r
 				return ctrl.Result{}, err
 			}
 
-			//
-			pr, err := r.GitRemoteRepoAppService.GetOpenPullRequest(ctx,
-				ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
-				ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-			)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
 			// Send Message to AppRepo's PR
+			pr := (*gateways.PullRequest)(&ra.Tmp.PullRequest)
 			if err := r.GitRemoteRepoAppService.SendMessage(ctx,
 				pr, ra.Spec.AppConfig.Message, ra.Spec.AppTarget.Username, gitRemoteRepoCred,
 			); err != nil {

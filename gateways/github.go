@@ -34,7 +34,7 @@ func NewPullRequest(organization, repository, branch string, number int, headCom
 type GitHubIFace interface {
 	WithCredential(username, token string) error
 	ListOpenPullRequests(ctx context.Context, org, repo string) ([]*PullRequest, error)
-	GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error)
+	GetPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error)
 	CommentToPullRequest(ctx context.Context, pr PullRequest, comment string) error
 	GetCommitHashes(ctx context.Context, pr PullRequest) ([]string, error)
 }
@@ -89,7 +89,7 @@ func (g *GitHub) ListOpenPullRequests(ctx context.Context, org, repo string) ([]
 	return result, nil
 }
 
-func (g *GitHub) GetOpenPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error) {
+func (g *GitHub) GetPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error) {
 	if !g.haveClient(ctx) {
 		return nil, xerrors.Errorf("GitHub have no client")
 	}

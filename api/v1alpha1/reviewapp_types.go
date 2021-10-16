@@ -35,14 +35,11 @@ type ReviewAppSpec struct {
 	// TODO
 	InfraConfig ReviewAppManagerSpecInfraConfig `json:"infraRepoConfig"`
 
+	// Variables is available to use input of Application & Manifest Template
+	Variables []string `json:"variables,omitempty"`
+
 	// AppPrNum is watched PR's number by this RA
 	AppPrNum int `json:"appRepoPrNum"`
-
-	// Application is manifest of ArgoCD Application resource
-	Application string `json:"application"`
-
-	// Manifests is other manifests
-	Manifests map[string]string `json:"manifests,omitempty"`
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
@@ -95,6 +92,21 @@ const (
 	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
 )
 
+type ReviewAppTmp struct {
+	PullRequest ReviewAppTmpPr
+	Application string
+	Manifests   map[string]string
+}
+
+type ReviewAppTmpPr struct {
+	Organization  string
+	Repository    string
+	Branch        string
+	Number        int
+	HeadCommitSha string
+	Labels        []string
+}
+
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
@@ -106,6 +118,8 @@ type ReviewApp struct {
 
 	Spec   ReviewAppSpec   `json:"spec,omitempty"`
 	Status ReviewAppStatus `json:"status,omitempty"`
+
+	Tmp ReviewAppTmp `json:"-"`
 }
 
 //+kubebuilder:object:root=true
