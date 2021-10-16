@@ -93,9 +93,10 @@ const (
 )
 
 type ReviewAppTmp struct {
-	PullRequest ReviewAppTmpPr
-	Application string
-	Manifests   map[string]string
+	PullRequest                ReviewAppTmpPr
+	Application                string
+	ApplicationWithAnnotations string
+	Manifests                  map[string]string
 }
 
 type ReviewAppTmpPr struct {

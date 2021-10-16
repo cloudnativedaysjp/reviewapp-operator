@@ -264,6 +264,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	ra.Tmp.ApplicationWithAnnotations = argocdAppStr
 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
