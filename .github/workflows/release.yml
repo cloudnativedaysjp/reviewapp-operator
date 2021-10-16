@@ -39,6 +39,7 @@ jobs:
             newTag: ${{ steps.bump-semver.outputs.new_version }}
           _EOL_
           kustomize build config/crd/ > install.yaml
+          echo "---" >> install.yaml
           kustomize build config/default/ >> install.yaml
 
       - uses: softprops/action-gh-release@v1
@@ -51,7 +52,7 @@ jobs:
             # Quick Start
 
             ```
-            kubectl create namaspace reviewapp-operator-system
+            kubectl create namespace reviewapp-operator-system
             kubectl apply -n reviewapp-operator-system -f https://github.com/cloudnativedaysjp/reviewapp-operator/releases/download/${{ steps.bump-semver.outputs.new_version }}/install.yaml
             ```
           files: install.yaml
