@@ -236,6 +236,14 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 	if err := k8sClient.Create(context.Background(), argoCDApp); err != nil {
 		return nil, err
 	}
+	at := newApplicationTemplate("applicationtemplate-test-ra")
+	if err := k8sClient.Create(ctx, at); err != nil {
+		return nil, err
+	}
+	mt := newManifestsTemplate("manifeststemplate-test-ra")
+	if err := k8sClient.Create(ctx, mt); err != nil {
+		return nil, err
+	}
 	ra := newReviewApp()
 	if err := k8sClient.Create(ctx, ra); err != nil {
 		return nil, err

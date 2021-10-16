@@ -197,7 +197,7 @@ func newSecret() *corev1.Secret {
 	}
 }
 
-func newApplicationTemplate() *dreamkastv1alpha1.ApplicationTemplate {
+func newApplicationTemplate(name string) *dreamkastv1alpha1.ApplicationTemplate {
 	app := `apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -218,7 +218,7 @@ spec:
 
 	return &dreamkastv1alpha1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "applicationtemplate-test-ram",
+			Name:      name,
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1alpha1.ApplicationTemplateSpec{
@@ -228,7 +228,7 @@ spec:
 	}
 }
 
-func newManifestsTemplate() *dreamkastv1alpha1.ManifestsTemplate {
+func newManifestsTemplate(name string) *dreamkastv1alpha1.ManifestsTemplate {
 	kustomizationYaml := `apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
@@ -245,7 +245,7 @@ metadata:
 
 	return &dreamkastv1alpha1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "manifeststemplate-test-ram",
+			Name:      name,
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1alpha1.ManifestsTemplateSpec{
@@ -369,35 +369,6 @@ func newReviewApp() *dreamkastv1alpha1.ReviewApp {
 				},
 			},
 			AppPrNum: testGitAppPrNumForRA,
-			Application: `apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: "test-ra-1"
-  namespace: argocd
-spec:
-  project: "default"
-  destination:
-    namespace: "test-ra-1"
-    server: "https://kubernetes.default.svc"
-  source:
-    repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-    path: "overlays/dev/test-ra-1"
-    targetRevision: master
-  syncPolicy:
-    automated:
-      prune: true`,
-			Manifests: map[string]string{
-				"kustomization.yaml": `apiVersion: kustomize.config.k8s.io/v1alpha1
-kind: Kustomization
-namespace: demo-dev-test-ra-1
-bases:
-- ../../../base
-- ./ns.yaml`,
-				"ns.yaml": `apiVersion: v1
-kind: Namespace
-metadata:
-  name: demo-dev-test-ra-1`,
-			},
 		},
 	}
 }
