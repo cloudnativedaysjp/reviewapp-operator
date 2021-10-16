@@ -162,11 +162,11 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 				}
 			}
 			{ // get ManifestsTemplate & template to ra.Spec.Manifests
-				for _, mt := range ram.Spec.InfraConfig.Manifests.Templates {
-					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mt.Namespace, mt.Name)
+				for _, mtNN := range ram.Spec.InfraConfig.Manifests.Templates {
+					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
 					if err != nil {
 						if myerrors.IsNotFound(err) {
-							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mt.Namespace, mt.Name))
+							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
 							return ctrl.Result{}, nil
 						}
 						return ctrl.Result{}, err
