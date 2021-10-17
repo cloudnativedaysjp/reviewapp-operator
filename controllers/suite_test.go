@@ -234,14 +234,32 @@ kind: Kustomization
 namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
 bases:
 - ../../../base
-- ./ns.yaml`
-	nsYaml := `apiVersion: v1
+- ./manifests.yaml`
+	manifestsYaml := `apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}`
+  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:{{.AppRepo.LatestCommitSha}}`
 	m := make(map[string]string)
 	m["kustomization.yaml"] = kustomizationYaml
-	m["ns.yaml"] = nsYaml
+	m["manifests.yaml"] = manifestsYaml
 
 	return &dreamkastv1alpha1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{

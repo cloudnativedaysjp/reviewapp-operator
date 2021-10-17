@@ -138,7 +138,7 @@ var _ = Describe("ReviewApp controller", func() {
 		Expect(files).To(Equal([]string{
 			".apps/dev/test-ra-1.yaml",
 			"overlays/dev/test-ra-1/kustomization.yaml",
-			"overlays/dev/test-ra-1/ns.yaml",
+			"overlays/dev/test-ra-1/manifests.yaml",
 		}))
 	})
 	It("should check Argo CD Application", func() {
@@ -179,7 +179,7 @@ var _ = Describe("ReviewApp controller", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
-				"overlays/dev/test-ra-1/ns.yaml",
+				"overlays/dev/test-ra-1/manifests.yaml",
 			}))
 		})
 		It("should check Argo CD Application", func() {
@@ -224,7 +224,7 @@ var _ = Describe("ReviewApp controller", func() {
 			Expect(files).To(Equal([]string{
 				".apps/dev/test-ra-1.yaml",
 				"overlays/dev/test-ra-1/kustomization.yaml",
-				"overlays/dev/test-ra-1/ns.yaml",
+				"overlays/dev/test-ra-1/manifests.yaml",
 			}))
 		})
 	})
@@ -252,12 +252,30 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 }
 
 func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1.ReviewApp, error) {
-	nsYaml := `apiVersion: v1
+	manifestsYaml := `apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-test-ra-1
+  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
   annotations:
-    modified: "true"`
+    modified: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:{{.AppRepo.LatestCommitSha}}`
 
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
@@ -272,7 +290,7 @@ metadata:
 			"message": "modified",
 		},
 		"manifests": map[string]string{
-			"ns.yaml": nsYaml,
+			"manifests.yaml": manifestsYaml,
 		},
 	}
 	if err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
