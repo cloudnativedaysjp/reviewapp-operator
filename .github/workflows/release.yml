@@ -23,7 +23,6 @@ jobs:
           kustomize build config/default/ >> install.yaml
 
       - uses: softprops/action-gh-release@v1
-        if: ${{ steps.release-label.outputs.level != null }}
         with:
           tag_name: ${{ steps.bump-semver.outputs.new_version }}
           draft: false
