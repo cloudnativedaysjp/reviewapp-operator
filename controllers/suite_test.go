@@ -339,7 +339,7 @@ func newReviewAppManager() *dreamkastv1alpha1.ReviewAppManager {
 func newReviewApp() *dreamkastv1alpha1.ReviewApp {
 	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-1",
+			Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-2",
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1alpha1.ReviewAppSpec{
@@ -376,15 +376,18 @@ func newReviewApp() *dreamkastv1alpha1.ReviewApp {
 						Namespace: testNamespace,
 						Name:      "manifeststemplate-test-ra",
 					}},
-					Dirpath: "overlays/dev/test-ra-1",
+					Dirpath: "overlays/dev/test-ra-2",
 				},
 				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
 					Template: dreamkastv1alpha1.NamespacedName{
 						Namespace: testNamespace,
 						Name:      "applicationtemplate-test-ra",
 					},
-					Filepath: ".apps/dev/test-ra-1.yaml",
+					Filepath: ".apps/dev/test-ra-2.yaml",
 				},
+			},
+			Variables: []string{
+				"AppRepositoryAlias=test-ra",
 			},
 			AppPrNum: testGitAppPrNumForRA,
 		},

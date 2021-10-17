@@ -204,14 +204,24 @@ spec:
                   to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is
                   true.
                 type: boolean
+              manifestsCache:
+                description: ManifestsCache is used in "confirm Templates Are Updated"
+                  for confirm templates updated
+                properties:
+                  application:
+                    description: Application is manifest of ArgoCD Application resource
+                    type: string
+                  manifests:
+                    additionalProperties:
+                      type: string
+                    description: Manifests is other manifests
+                    type: object
+                type: object
               sync:
                 description: TODO
                 properties:
                   appRepoLatestCommitSha:
                     description: TODO
-                    type: string
-                  application:
-                    description: Application is manifest of ArgoCD Application resource
                     type: string
                   applicationName:
                     description: TODO
@@ -222,11 +232,6 @@ spec:
                   infraRepoLatestCommitSha:
                     description: TODO
                     type: string
-                  manifests:
-                    additionalProperties:
-                      type: string
-                    description: Manifests is other manifests
-                    type: object
                   status:
                     description: Status is the sync state of the comparison
                     type: string
