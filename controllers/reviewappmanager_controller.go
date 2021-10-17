@@ -100,11 +100,12 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		})
 		ra.Spec.AppTarget = ram.Spec.AppTarget
 		ra.Spec.InfraTarget = ram.Spec.InfraTarget
+		ra.Spec.Variables = ram.Spec.Variables
 
 		// Templating
 		v := template.NewTemplateValue(
-			pr.Organization, pr.Repository, pr.Branch, pr.Number, pr.HeadCommitSha,
-			ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
+			pr.Organization, pr.Repository, pr.Branch, pr.Number,
+			ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository,
 			kubernetes.PickVariablesFromReviewAppManager(ctx, ram),
 		)
 		{ // template from ram.Spec.AppConfig to ra.Spec.AppConfig

@@ -22,21 +22,35 @@ type TemplateValueAppRepoInfo struct {
 }
 
 type TemplateValueInfraRepoInfo struct {
-	Organization    string
-	Repository      string
-	LatestCommitSha string
+	Organization string
+	Repository   string
+	// TODO: #56
+	//LatestCommitSha string
 }
 
 func NewTemplateValue(
-	appOrg, appRepo, appBranch string, appPrNum int, appLatestCommitSha string,
-	infraOrg, infraRepo, infraLatestCommitSha string,
+	appOrg, appRepo, appBranch string, appPrNum int,
+	infraOrg, infraRepo string,
 	variables map[string]string,
 ) *TemplateValue {
 	return &TemplateValue{
-		TemplateValueAppRepoInfo{appOrg, appRepo, appBranch, appPrNum, appLatestCommitSha},
-		TemplateValueInfraRepoInfo{infraOrg, infraRepo, infraLatestCommitSha},
+		TemplateValueAppRepoInfo{
+			Organization: appOrg,
+			Repository:   appRepo,
+			Branch:       appBranch,
+			PrNumber:     appPrNum,
+		},
+		TemplateValueInfraRepoInfo{
+			Organization: infraOrg,
+			Repository:   infraRepo,
+		},
 		variables,
 	}
+}
+
+func (v TemplateValue) WithAppRepoLatestCommitSha(sha string) *TemplateValue {
+	v.AppRepo.LatestCommitSha = sha
+	return &v
 }
 
 func (v TemplateValue) Templating(text string) (string, error) {

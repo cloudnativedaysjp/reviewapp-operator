@@ -98,9 +98,6 @@ spec:
                 - repository
                 - username
                 type: object
-              application:
-                description: Application is manifest of ArgoCD Application resource
-                type: string
               infraRepoConfig:
                 description: TODO
                 properties:
@@ -186,16 +183,16 @@ spec:
                 - repository
                 - username
                 type: object
-              manifests:
-                additionalProperties:
+              variables:
+                description: Variables is available to use input of Application &
+                  Manifest Template
+                items:
                   type: string
-                description: Manifests is other manifests
-                type: object
+                type: array
             required:
             - appRepoConfig
             - appRepoPrNum
             - appRepoTarget
-            - application
             - infraRepoConfig
             - infraRepoTarget
             type: object

@@ -150,10 +150,12 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1
 
 	// template ApplicationTemplate & ManifestsTemplate
 	v := template.NewTemplateValue(
-		pr.Organization, pr.Repository, pr.Branch, pr.Number, pr.HeadCommitSha,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
+		pr.Organization, pr.Repository, pr.Branch, pr.Number,
+		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
 		kubernetes.PickVariablesFromReviewApp(ctx, ra),
 	)
+	v.WithAppRepoLatestCommitSha(pr.HeadCommitSha)
+
 	// get ApplicationTemplate & template to applicationStr
 	at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name)
 	if err != nil {
@@ -170,6 +172,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+
 	// get ManifestsTemplate & template to manifestsStr
 	for _, mtNN := range ra.Spec.InfraConfig.Manifests.Templates {
 		mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)

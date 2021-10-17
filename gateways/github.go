@@ -127,13 +127,13 @@ func (g *GitHub) GetCommitHashes(ctx context.Context, prModel PullRequest) ([]st
 	if !g.haveClient(ctx) {
 		return nil, xerrors.Errorf("GitHub have no client")
 	}
-	prs, _, err := g.client.PullRequests.ListCommits(ctx, prModel.Organization, prModel.Repository, prModel.Number, &github.ListOptions{})
+	prCommits, _, err := g.client.PullRequests.ListCommits(ctx, prModel.Organization, prModel.Repository, prModel.Number, &github.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
 	result := []string{}
-	for _, pr := range prs {
-		result = append(result, *pr.Commit.SHA)
+	for _, prCommit := range prCommits {
+		result = append(result, prCommit.Commit.GetSHA())
 	}
 	return result, nil
 }

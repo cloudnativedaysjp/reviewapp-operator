@@ -19,6 +19,14 @@ rules:
   - update
   - watch
 - apiGroups:
+  - argoproj.io
+  resources:
+  - applications
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - dreamkast.cloudnativedays.jp
   resources:
   - applicationtemplates
