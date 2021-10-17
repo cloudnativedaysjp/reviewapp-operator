@@ -122,10 +122,10 @@ var _ = Describe("ReviewApp controller", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				// get status of RA
 				ra := &dreamkastv1alpha1.ReviewApp{}
-				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, ra)
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
-				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-1"))
+				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
 				g.Expect(ra.Status.Sync.InfraRepoLatestCommitSha).NotTo(BeEmpty())
@@ -136,14 +136,14 @@ var _ = Describe("ReviewApp controller", func() {
 		files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(files).To(Equal([]string{
-			".apps/dev/test-ra-1.yaml",
-			"overlays/dev/test-ra-1/kustomization.yaml",
-			"overlays/dev/test-ra-1/ns.yaml",
+			".apps/dev/test-ra-2.yaml",
+			"overlays/dev/test-ra-2/kustomization.yaml",
+			"overlays/dev/test-ra-2/manifests.yaml",
 		}))
 	})
 	It("should check Argo CD Application", func() {
 		argocdApp := &argocd_application_v1alpha1.Application{}
-		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, argocdApp)
+		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
 		Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
@@ -167,10 +167,10 @@ var _ = Describe("ReviewApp controller", func() {
 		})
 		It("should update status", func() {
 			ra := &dreamkastv1alpha1.ReviewApp{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, ra)
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
-			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-1"))
+			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 			Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
 			Expect(ra.Status.Sync.InfraRepoLatestCommitSha).NotTo(BeEmpty())
@@ -179,12 +179,12 @@ var _ = Describe("ReviewApp controller", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
-				"overlays/dev/test-ra-1/ns.yaml",
+				"overlays/dev/test-ra-2/manifests.yaml",
 			}))
 		})
 		It("should check Argo CD Application", func() {
 			argocdApp := &argocd_application_v1alpha1.Application{}
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, argocdApp)
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
 			Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
@@ -195,7 +195,7 @@ var _ = Describe("ReviewApp controller", func() {
 		It("should succeed to delete ReviewApp", func() {
 			err := k8sClient.Delete(context.Background(), &dreamkastv1alpha1.ReviewApp{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-1",
+					Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-2",
 					Namespace: testNamespace,
 				},
 			})
@@ -208,7 +208,7 @@ var _ = Describe("ReviewApp controller", func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				// check
 				argocdApp := argocd_application_v1alpha1.Application{}
-				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-1"}, &argocdApp)
+				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, &argocdApp)
 				if err != nil {
 					if apierrors.IsNotFound(err) {
 						return nil
@@ -222,9 +222,9 @@ var _ = Describe("ReviewApp controller", func() {
 			files, err := ghClient.GetDeletedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
-				".apps/dev/test-ra-1.yaml",
-				"overlays/dev/test-ra-1/kustomization.yaml",
-				"overlays/dev/test-ra-1/ns.yaml",
+				".apps/dev/test-ra-2.yaml",
+				"overlays/dev/test-ra-2/kustomization.yaml",
+				"overlays/dev/test-ra-2/manifests.yaml",
 			}))
 		})
 	})
@@ -236,6 +236,14 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 	if err := k8sClient.Create(context.Background(), argoCDApp); err != nil {
 		return nil, err
 	}
+	at := newApplicationTemplate("applicationtemplate-test-ra")
+	if err := k8sClient.Create(ctx, at); err != nil {
+		return nil, err
+	}
+	mt := newManifestsTemplate("manifeststemplate-test-ra")
+	if err := k8sClient.Create(ctx, mt); err != nil {
+		return nil, err
+	}
 	ra := newReviewApp()
 	if err := k8sClient.Create(ctx, ra); err != nil {
 		return nil, err
@@ -244,38 +252,75 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 }
 
 func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1.ReviewApp, error) {
-	nsYaml := `apiVersion: v1
+	{ // patch to ManifestsTemplate
+		manifestsYaml := `apiVersion: v1
 kind: Namespace
 metadata:
-  name: demo-dev-test-ra-1
+  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
   annotations:
-    modified: "true"`
-
-	patch := &unstructured.Unstructured{}
-	patch.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "dreamkast.cloudnativedays.jp",
-		Version: "v1alpha1",
-		Kind:    "ReviewApp",
-	})
-	patch.SetNamespace(testNamespace)
-	patch.SetName("test-ra-shotakitazawa-reviewapp-operator-demo-app-1")
-	patch.UnstructuredContent()["spec"] = map[string]interface{}{
-		"appRepoConfig": map[string]interface{}{
-			"message": "modified",
-		},
-		"manifests": map[string]string{
-			"ns.yaml": nsYaml,
-		},
+    modified: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:{{.AppRepo.LatestCommitSha}}`
+		patch := &unstructured.Unstructured{}
+		patch.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "dreamkast.cloudnativedays.jp",
+			Version: "v1alpha1",
+			Kind:    "ManifestsTemplate",
+		})
+		patch.SetNamespace(testNamespace)
+		patch.SetName("manifeststemplate-test-ra")
+		patch.UnstructuredContent()["spec"] = map[string]interface{}{
+			"stable": map[string]interface{}{
+				"manifests.yaml": manifestsYaml,
+			},
+		}
+		if err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			FieldManager: testReviewappControllerName,
+			Force:        pointer.Bool(true),
+		}); err != nil {
+			return nil, err
+		}
 	}
-	if err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
-		FieldManager: testReviewappControllerName,
-		Force:        pointer.Bool(true),
-	}); err != nil {
-		return nil, err
+	{ // patch to ReviewApp
+		patch := &unstructured.Unstructured{}
+		patch.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "dreamkast.cloudnativedays.jp",
+			Version: "v1alpha1",
+			Kind:    "ReviewApp",
+		})
+		patch.SetNamespace(testNamespace)
+		patch.SetName("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
+		patch.UnstructuredContent()["spec"] = map[string]interface{}{
+			"appRepoConfig": map[string]interface{}{
+				"message": "modified",
+			},
+		}
+		if err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			FieldManager: testReviewappControllerName,
+			Force:        pointer.Bool(true),
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	ra := dreamkastv1alpha1.ReviewApp{}
-	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra); err != nil {
+	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, &ra); err != nil {
 		return nil, err
 	}
 	return &ra, nil

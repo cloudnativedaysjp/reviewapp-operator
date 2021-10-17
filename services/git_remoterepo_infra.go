@@ -40,12 +40,14 @@ type UpdateManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context, param UpdateManifestsParam, ra *dreamkastv1alpha1.ReviewApp) (*gateways.GitProject, error) {
+func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context,
+	param UpdateManifestsParam, ra *dreamkastv1alpha1.ReviewApp,
+) (*gateways.GitProject, error) {
 	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
-		Content: ra.Spec.Application,
+		Content: ra.Tmp.ApplicationWithAnnotations,
 		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
-	for filename, manifest := range ra.Spec.Manifests {
+	for filename, manifest := range ra.Tmp.Manifests {
 		inputManifests = append(inputManifests, UpdateManifestsInput{
 			Content: manifest,
 			Path:    filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
@@ -89,11 +91,13 @@ type DeleteManifestsParam struct {
 	Token     string
 }
 
-func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context, param DeleteManifestsParam, ra *dreamkastv1alpha1.ReviewApp) (*gateways.GitProject, error) {
+func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context,
+	param DeleteManifestsParam, ra *dreamkastv1alpha1.ReviewApp,
+) (*gateways.GitProject, error) {
 	inputManifests := append([]DeleteManifestsInput{}, DeleteManifestsInput{
 		Path: ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
-	for filename := range ra.Spec.Manifests {
+	for filename := range ra.Tmp.Manifests {
 		inputManifests = append(inputManifests, DeleteManifestsInput{
 			Path: filepath.Join(ra.Spec.InfraConfig.Manifests.Dirpath, filename),
 		})

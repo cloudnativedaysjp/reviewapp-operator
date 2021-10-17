@@ -29,7 +29,6 @@ import (
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
@@ -93,14 +92,6 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 	var syncedPullRequests []dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests
 	for _, pr := range prs {
 
-		// if PR labeled with models.CandidateLabelName, using candidate template in ApplicationTemplate / ManifestsTemplate
-		isCandidate := false
-		for _, l := range pr.Labels {
-			if l == gateways.CandidateLabelName {
-				isCandidate = true
-			}
-		}
-
 		// generate RA struct
 		ra := kubernetes.NewReviewAppFromReviewAppManager(ram, &kubernetes.PullRequest{
 			Organization: pr.Organization,
@@ -109,77 +100,38 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		})
 		ra.Spec.AppTarget = ram.Spec.AppTarget
 		ra.Spec.InfraTarget = ram.Spec.InfraTarget
+		ra.Spec.Variables = ram.Spec.Variables
 
 		// Templating
-		{
-			v := template.NewTemplateValue(
-				pr.Organization, pr.Repository, pr.Branch, pr.Number, pr.HeadCommitSha,
-				ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository, ra.Status.Sync.InfraRepoLatestCommitSha,
-				kubernetes.PickVariablesFromReviewAppManager(ctx, ram),
-			)
-			{ // template from ram.Spec.AppConfig to ra.Spec.AppConfig
-				out, err := yaml.Marshal(&ram.Spec.AppConfig)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				appConfigStr, err := v.Templating(string(out))
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				if err := yaml.Unmarshal([]byte(appConfigStr), &ra.Spec.AppConfig); err != nil {
-					return ctrl.Result{}, err
-				}
+		v := template.NewTemplateValue(
+			pr.Organization, pr.Repository, pr.Branch, pr.Number,
+			ram.Spec.InfraTarget.Organization, ram.Spec.InfraTarget.Repository,
+			kubernetes.PickVariablesFromReviewAppManager(ctx, ram),
+		)
+		{ // template from ram.Spec.AppConfig to ra.Spec.AppConfig
+			out, err := yaml.Marshal(&ram.Spec.AppConfig)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
-			{ // template from ram.Spec.InfraConfig to ra.Spec.InfraConfig
-				out, err := yaml.Marshal(&ram.Spec.InfraConfig)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				infraConfigStr, err := v.Templating(string(out))
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				if err := yaml.Unmarshal([]byte(infraConfigStr), &ra.Spec.InfraConfig); err != nil {
-					return ctrl.Result{}, err
-				}
+			appConfigStr, err := v.Templating(string(out))
+			if err != nil {
+				return ctrl.Result{}, err
 			}
-			{ // get ApplicationTemplate & template to ra.Spec.Application
-				at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name)
-				if err != nil {
-					if myerrors.IsNotFound(err) {
-						r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ram.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ram.Spec.InfraConfig.ArgoCDApp.Template.Name))
-						return ctrl.Result{}, nil
-					}
-					return ctrl.Result{}, err
-				}
-				if isCandidate {
-					ra.Spec.Application, err = v.Templating(at.Spec.CandidateTemplate)
-				} else {
-					ra.Spec.Application, err = v.Templating(at.Spec.StableTemplate)
-				}
-				if err != nil {
-					return ctrl.Result{}, err
-				}
+			if err := yaml.Unmarshal([]byte(appConfigStr), &ra.Spec.AppConfig); err != nil {
+				return ctrl.Result{}, err
 			}
-			{ // get ManifestsTemplate & template to ra.Spec.Manifests
-				for _, mtNN := range ram.Spec.InfraConfig.Manifests.Templates {
-					mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
-					if err != nil {
-						if myerrors.IsNotFound(err) {
-							r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
-							return ctrl.Result{}, nil
-						}
-						return ctrl.Result{}, err
-					}
-					if isCandidate {
-						ra.Spec.Manifests, err = v.MapTemplatingAndAppend(ra.Spec.Manifests, mt.Spec.CandidateData)
-					} else {
-						ra.Spec.Manifests, err = v.MapTemplatingAndAppend(ra.Spec.Manifests, mt.Spec.StableData)
-					}
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-				}
+		}
+		{ // template from ram.Spec.InfraConfig to ra.Spec.InfraConfig
+			out, err := yaml.Marshal(&ram.Spec.InfraConfig)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			infraConfigStr, err := v.Templating(string(out))
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if err := yaml.Unmarshal([]byte(infraConfigStr), &ra.Spec.InfraConfig); err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 

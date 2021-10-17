@@ -129,3 +129,17 @@ func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dream
 	}
 	return nil
 }
+
+func PickVariablesFromReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) map[string]string {
+	vars := make(map[string]string)
+	for _, line := range ra.Spec.Variables {
+		idx := strings.Index(line, "=")
+		if idx == -1 {
+			// TODO
+			// r.Log.Info(fmt.Sprintf("RA %s: .Spec.Variables[%d] is invalid", ram.Name, i))
+			continue
+		}
+		vars[line[:idx]] = line[idx+1:]
+	}
+	return vars
+}

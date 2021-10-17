@@ -143,33 +143,6 @@ var _ = Describe("ReviewAppManager controller", func() {
 * reviewapp-operator-demo-infra
 * test-ram
 * <no value>`))
-		Expect(ra.Spec.Application).To(Equal(`apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: "test-ram-1"
-  namespace: argocd
-spec:
-  project: "default"
-  destination:
-    namespace: "test-ram-1"
-    server: "https://kubernetes.default.svc"
-  source:
-    repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
-    path: "overlays/dev/test-ram-1"
-    targetRevision: master
-  syncPolicy:
-    automated:
-      prune: true`))
-		Expect(ra.Spec.Manifests["kustomization.yaml"]).To(Equal(`apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-namespace: demo-dev-test-ram-1
-bases:
-- ../../../base
-- ./ns.yaml`))
-		Expect(ra.Spec.Manifests["ns.yaml"]).To(Equal(`apiVersion: v1
-kind: Namespace
-metadata:
-  name: demo-dev-test-ram-1`))
 	})
 
 	It("should delete ReviewApp when PR is closed", func() {
@@ -225,11 +198,11 @@ metadata:
 })
 
 func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv1alpha1.ReviewAppManager, error) {
-	at := newApplicationTemplate()
+	at := newApplicationTemplate("applicationtemplate-test-ram")
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err
 	}
-	mt := newManifestsTemplate()
+	mt := newManifestsTemplate("manifeststemplate-test-ram")
 	if err := k8sClient.Create(ctx, mt); err != nil {
 		return nil, err
 	}
