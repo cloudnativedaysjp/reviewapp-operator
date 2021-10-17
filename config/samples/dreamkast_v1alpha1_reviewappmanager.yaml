@@ -25,7 +25,6 @@ spec:
       * {{.AppRepo.LatestCommitSha}}
       * {{.InfraRepo.Organization}}
       * {{.InfraRepo.Repository}}
-      * {{.InfraRepo.LatestCommitSha}}
       * {{.Variables.AppRepositoryAlias}}
       * {{.Variables.dummy}}
   infraRepoTarget:

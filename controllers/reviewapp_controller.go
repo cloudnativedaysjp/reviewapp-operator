@@ -69,6 +69,13 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if result, err := r.prepare(ctx, ra); err != nil {
+		if myerrors.IsNotFound(err) {
+			return result, nil
+		}
+		return result, err
+	}
+
 	// Add Finalizers
 	if err := kubernetes.AddFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
 		return ctrl.Result{}, err
@@ -83,13 +90,6 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
-
-	if result, err := r.prepare(ctx, ra); err != nil {
-		if myerrors.IsNotFound(err) {
-			return result, nil
-		}
-		return result, err
-	}
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
@@ -154,7 +154,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1
 		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
 		kubernetes.PickVariablesFromReviewApp(ctx, ra),
 	)
-	v.WithAppRepoLatestCommitSha(pr.HeadCommitSha)
+	v = v.WithAppRepoLatestCommitSha(pr.HeadCommitSha)
 
 	// get ApplicationTemplate & template to applicationStr
 	at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name)
@@ -192,6 +192,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1
 		}
 	}
 	return ctrl.Result{}, nil
+
 }
 
 func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
@@ -221,10 +222,10 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	// confirm
 	var updated bool
-	if !reflect.DeepEqual(ra.Tmp.Application, ra.Status.Sync.Application) {
+	if !reflect.DeepEqual(ra.Tmp.Application, ra.Status.ManifestsCache.Application) {
 		updated = true
 	}
-	if !reflect.DeepEqual(ra.Tmp.Manifests, ra.Status.Sync.Manifests) {
+	if !reflect.DeepEqual(ra.Tmp.Manifests, ra.Status.ManifestsCache.Manifests) {
 		updated = true
 	}
 
@@ -303,6 +304,8 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	// update ReviewApp.Status
 	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
 	ra.Status.Sync.InfraRepoLatestCommitSha = gp.LatestCommitSha
+	ra.Status.ManifestsCache.Application = ra.Tmp.Application
+	ra.Status.ManifestsCache.Manifests = ra.Tmp.Manifests
 
 	return ctrl.Result{}, nil
 }

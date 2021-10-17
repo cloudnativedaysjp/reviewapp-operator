@@ -47,6 +47,9 @@ type ReviewAppStatus struct {
 	// TODO
 	Sync SyncStatus `json:"sync,omitempty"`
 
+	// ManifestsCache is used in "confirm Templates Are Updated" for confirm templates updated
+	ManifestsCache ManifestsCache `json:"manifestsCache,omitempty"`
+
 	// AlreadySentMessage is used to decide sending message to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is true.
 	AlreadySentMessage bool `json:"alreadySentMessage,omitempty"`
 }
@@ -67,6 +70,9 @@ type SyncStatus struct {
 
 	// TODO
 	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
+}
+
+type ManifestsCache struct {
 
 	// Application is manifest of ArgoCD Application resource
 	Application string `json:"application,omitempty"`

@@ -44,7 +44,7 @@ func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context,
 	param UpdateManifestsParam, ra *dreamkastv1alpha1.ReviewApp,
 ) (*gateways.GitProject, error) {
 	inputManifests := append([]UpdateManifestsInput{}, UpdateManifestsInput{
-		Content: ra.Tmp.Application,
+		Content: ra.Tmp.ApplicationWithAnnotations,
 		Path:    ra.Spec.InfraConfig.ArgoCDApp.Filepath,
 	})
 	for filename, manifest := range ra.Tmp.Manifests {
