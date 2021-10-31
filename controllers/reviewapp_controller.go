@@ -31,7 +31,6 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -120,74 +119,6 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alph
 	}
 
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
-}
-
-func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
-	ra.Tmp.Manifests = make(map[string]string)
-
-	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx, r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-		}
-		return ctrl.Result{}, err
-	}
-	// check PRs specified by spec.appRepo.repository
-	pr, err := r.GitRemoteRepoAppService.GetPullRequest(ctx,
-		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
-		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-	)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	ra.Tmp.PullRequest = (dreamkastv1alpha1.ReviewAppTmpPr)(*pr)
-
-	// template ApplicationTemplate & ManifestsTemplate
-	v := template.NewTemplateValue(
-		pr.Organization, pr.Repository, pr.Branch, pr.Number,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
-		kubernetes.PickVariablesFromReviewApp(ctx, ra),
-	)
-	v = v.WithAppRepoLatestCommitSha(pr.HeadCommitSha)
-
-	// get ApplicationTemplate & template to applicationStr
-	at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name))
-		}
-		return ctrl.Result{}, err
-	}
-	if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
-		ra.Tmp.Application, err = v.Templating(at.Spec.CandidateTemplate)
-	} else {
-		ra.Tmp.Application, err = v.Templating(at.Spec.StableTemplate)
-	}
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// get ManifestsTemplate & template to manifestsStr
-	for _, mtNN := range ra.Spec.InfraConfig.Manifests.Templates {
-		mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
-		if err != nil {
-			if myerrors.IsNotFound(err) {
-				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
-			}
-			return ctrl.Result{}, err
-		}
-		if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
-			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.CandidateData)
-		} else {
-			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.StableData)
-		}
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	return ctrl.Result{}, nil
-
 }
 
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
