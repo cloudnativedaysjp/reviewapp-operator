@@ -92,7 +92,7 @@ func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GitRemoteRepoAppService{
-				gitapi: tt.fields.gitapi(),
+				GitApi: tt.fields.gitapi(),
 			}
 			got, err := s.ListOpenPullRequest(tt.args.ctx, tt.args.org, tt.args.repo, tt.args.username, tt.args.token)
 			if (err != nil) != tt.wantErr {
@@ -190,7 +190,7 @@ func TestGitRemoteRepoAppService_GetPullRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GitRemoteRepoAppService{
-				gitapi: tt.fields.gitapi(),
+				GitApi: tt.fields.gitapi(),
 			}
 			got, err := s.GetPullRequest(tt.args.ctx, tt.args.org, tt.args.repo, tt.args.prNum, tt.args.username, tt.args.token)
 			if (err != nil) != tt.wantErr {
@@ -244,7 +244,7 @@ func TestGitRemoteRepoAppService_IsCandidatePr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GitRemoteRepoAppService{
-				gitapi: tt.fields.gitapi(),
+				GitApi: tt.fields.gitapi(),
 			}
 			if got := s.IsCandidatePr(tt.args.pr); got != tt.want {
 				t.Errorf("GitRemoteRepoAppService.IsCandidatePr() = %v, want %v", got, tt.want)
@@ -336,7 +336,7 @@ func TestGitRemoteRepoAppService_SendMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &GitRemoteRepoAppService{
-				gitapi: tt.fields.gitapi(),
+				GitApi: tt.fields.gitapi(),
 			}
 			if err := s.SendMessage(tt.args.ctx, tt.args.pr, tt.args.message, tt.args.username, tt.args.token); (err != nil) != tt.wantErr {
 				t.Errorf("GitRemoteRepoAppService.SendMessage() error = %v, wantErr %v", err, tt.wantErr)

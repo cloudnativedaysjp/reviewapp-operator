@@ -7,7 +7,7 @@ import (
 )
 
 type GitRemoteRepoAppService struct {
-	gitapi gateways.GitHubIFace
+	GitApi gateways.GitHubIFace
 }
 
 func NewGitRemoteRepoAppService(gitapi gateways.GitHubIFace) *GitRemoteRepoAppService {
@@ -15,10 +15,10 @@ func NewGitRemoteRepoAppService(gitapi gateways.GitHubIFace) *GitRemoteRepoAppSe
 }
 
 func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*gateways.PullRequest, error) {
-	if err := s.gitapi.WithCredential(username, token); err != nil {
+	if err := s.GitApi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
-	prs, err := s.gitapi.ListOpenPullRequests(ctx, org, repo)
+	prs, err := s.GitApi.ListOpenPullRequests(ctx, org, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -26,10 +26,10 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, 
 }
 
 func (s *GitRemoteRepoAppService) GetPullRequest(ctx context.Context, org, repo string, prNum int, username, token string) (*gateways.PullRequest, error) {
-	if err := s.gitapi.WithCredential(username, token); err != nil {
+	if err := s.GitApi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
-	pr, err := s.gitapi.GetPullRequest(ctx, org, repo, prNum)
+	pr, err := s.GitApi.GetPullRequest(ctx, org, repo, prNum)
 	if err != nil {
 		return nil, err
 	}
@@ -47,10 +47,10 @@ func (s *GitRemoteRepoAppService) IsCandidatePr(pr *gateways.PullRequest) bool {
 }
 
 func (s *GitRemoteRepoAppService) SendMessage(ctx context.Context, pr *gateways.PullRequest, message string, username, token string) error {
-	if err := s.gitapi.WithCredential(username, token); err != nil {
+	if err := s.GitApi.WithCredential(username, token); err != nil {
 		return err
 	}
-	if err := s.gitapi.CommentToPullRequest(ctx, *pr, message); err != nil {
+	if err := s.GitApi.CommentToPullRequest(ctx, *pr, message); err != nil {
 		return err
 	}
 	return nil

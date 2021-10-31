@@ -90,7 +90,7 @@ func TestGitRemoteRepoInfraService_UpdateManifests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := GitRemoteRepoInfraService{
-				gitCommand: tt.fields.gitCommand(),
+				GitCommand: tt.fields.gitCommand(),
 			}
 			got, err := s.UpdateManifests(tt.args.ctx, tt.args.param, tt.args.ra)
 			if (err != nil) != tt.wantErr {
@@ -181,7 +181,7 @@ func TestGitRemoteRepoInfraService_DeleteManifests(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := GitRemoteRepoInfraService{
-				gitCommand: tt.fields.gitCommand(),
+				GitCommand: tt.fields.gitCommand(),
 			}
 			got, err := s.DeleteManifests(tt.args.ctx, tt.args.param, tt.args.ra)
 			if (err != nil) != tt.wantErr {
