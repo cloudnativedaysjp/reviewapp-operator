@@ -85,7 +85,6 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
 		return r.reconcileDelete(ctx, ra)
 	}
-
 	return r.reconcile(ctx, ra)
 }
 
@@ -210,7 +209,6 @@ func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *d
 	// update ReviewApp.Status
 	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
 	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
-	ra.Status.Sync.AppRepoLatestCommitSha = ra.Tmp.PullRequest.HeadCommitSha
 	if updated {
 		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
 	} else {
@@ -322,37 +320,11 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, r
 		return ctrl.Result{}, err
 	}
 
-	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
-		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
-	)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
-	}
-
-	//
-	param := services.IsApplicationUpdatedParam{
-		Org:                     ra.Spec.AppTarget.Organization,
-		Repo:                    ra.Spec.AppTarget.Repository,
-		PrNum:                   ra.Spec.AppPrNum,
-		Username:                ra.Spec.AppTarget.Username,
-		Token:                   gitRemoteRepoCred,
+	// if ArgoCD Application updated, send message to PR of AppRepo
+	updated := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx, services.IsApplicationUpdatedParam{
 		HashInRA:                ra.Status.Sync.AppRepoLatestCommitSha,
 		HashInArgoCDApplication: hashInArgoCDApplication,
-	}
-	updated, err := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx, param)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
-	}
-
-	// if ArgoCD Application updated, send message to PR of AppRepo
+	})
 	if updated {
 		if ra.Spec.AppConfig.Message != "" &&
 			(ra.Spec.AppConfig.SendMessageEveryTime || !ra.Status.AlreadySentMessage) {
