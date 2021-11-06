@@ -11,7 +11,7 @@ import (
 )
 
 type GitRemoteRepoInfraService struct {
-	GitCommand gateways.GitIFace
+	gitCommand gateways.GitIFace
 }
 
 func NewGitRemoteRepoInfraService(gitCodeIF gateways.GitIFace) *GitRemoteRepoInfraService {
@@ -58,19 +58,19 @@ func (s GitRemoteRepoInfraService) UpdateManifests(ctx context.Context,
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.GitCommand.WithCredential(param.Username, param.Token); err != nil {
+			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.GitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
 			for _, manifest := range inputManifests {
-				if err := s.GitCommand.CreateFile(ctx, *m, manifest.Path, []byte(manifest.Content)); err != nil {
+				if err := s.gitCommand.CreateFile(ctx, *m, manifest.Path, []byte(manifest.Content)); err != nil {
 					return err
 				}
 			}
-			_, err = s.GitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
 			if err != nil {
 				return err
 			}
@@ -107,19 +107,19 @@ func (s GitRemoteRepoInfraService) DeleteManifests(ctx context.Context,
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	if err := backoff.Retry(
 		func() error {
-			if err := s.GitCommand.WithCredential(param.Username, param.Token); err != nil {
+			if err := s.gitCommand.WithCredential(param.Username, param.Token); err != nil {
 				return err
 			}
-			m, err := s.GitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
+			m, err := s.gitCommand.ForceClone(ctx, param.Org, param.Repo, param.Branch)
 			if err != nil {
 				return err
 			}
 			for _, manifest := range inputManifests {
-				if err := s.GitCommand.DeleteFile(ctx, *m, manifest.Path); err != nil {
+				if err := s.gitCommand.DeleteFile(ctx, *m, manifest.Path); err != nil {
 					return err
 				}
 			}
-			_, err = s.GitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
+			_, err = s.gitCommand.CommitAndPush(ctx, *m, param.CommitMsg)
 			if err != nil {
 				return err
 			}
