@@ -27,6 +27,5 @@ func GetSecretValue(ctx context.Context, c client.Client, namespace, name, key s
 	if !ok {
 		return "", xerrors.Errorf("Secret %s does not have key %s", name, key)
 	}
-	// base64 decode
 	return string(d), nil
 }
