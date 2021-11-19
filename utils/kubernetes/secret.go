@@ -17,7 +17,7 @@ func GetSecretValue(ctx context.Context, c client.Client, namespace, name, key s
 	// get value from secret
 	var secret corev1.Secret
 	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &secret); err != nil {
-		wrapedErr := xerrors.Errorf("Error to Delete %s: %w", reflect.TypeOf(secret), err)
+		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(secret), err)
 		if apierrors.IsNotFound(err) {
 			return "", myerrors.K8sResourceNotFound{Err: wrapedErr}
 		}
@@ -27,6 +27,5 @@ func GetSecretValue(ctx context.Context, c client.Client, namespace, name, key s
 	if !ok {
 		return "", xerrors.Errorf("Secret %s does not have key %s", name, key)
 	}
-	// base64 decode
 	return string(d), nil
 }

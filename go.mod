@@ -7,6 +7,8 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/go-logr/glogr v0.4.0
 	github.com/go-logr/logr v0.4.0
+	github.com/golang/mock v1.5.0
+	github.com/google/go-cmp v0.5.6
 	github.com/google/go-github/v39 v39.1.0
 	github.com/google/wire v0.5.0
 	github.com/onsi/ginkgo v1.16.4
