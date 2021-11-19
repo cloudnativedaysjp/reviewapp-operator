@@ -111,6 +111,7 @@ type ReviewAppTmpPr struct {
 	Branch        string
 	Number        int
 	HeadCommitSha string
+	Title         string
 	Labels        []string
 }
 

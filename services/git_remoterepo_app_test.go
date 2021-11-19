@@ -1,5 +1,3 @@
-//+build unit_test
-
 package services
 
 import (
@@ -11,9 +9,10 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/mock"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-cmp/cmp"
 )
 
-func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
+func TestGitRemoteRepoAppService_ListOpenPullRequestWithSpecificConditions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	testUsername := "testuser"
@@ -23,16 +22,22 @@ func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
 	testPrNum := 1
 	testBranchName := "testbranch"
 	testHeadCommitSha := "1234567"
+	testPrTitle := "title-ok"
+	testPrTitleIgnored := "title-ignore"
+	testPrLabel := "label-ok"
+	testPrLabelIgnored := "label-ignore"
 
 	type fields struct {
 		gitapi func() gateways.GitHubIFace
 	}
 	type args struct {
-		ctx      context.Context
-		org      string
-		repo     string
-		username string
-		token    string
+		ctx            context.Context
+		org            string
+		repo           string
+		username       string
+		token          string
+		ignoreLabels   []string
+		ignoreTitleExp string
 	}
 	tests := []struct {
 		name    string
@@ -53,16 +58,19 @@ func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
 						Number:        testPrNum,
 						Branch:        testBranchName,
 						HeadCommitSha: testHeadCommitSha,
+						Title:         testPrTitle,
 					}}, nil,
 				)
 				return c
 			}},
 			args: args{
-				ctx:      context.Background(),
-				org:      testOrg,
-				repo:     testRepo,
-				username: testUsername,
-				token:    testToken,
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{},
+				ignoreTitleExp: "",
 			},
 			want: []*gateways.PullRequest{{
 				Organization:  testOrg,
@@ -70,22 +78,179 @@ func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
 				Number:        testPrNum,
 				Branch:        testBranchName,
 				HeadCommitSha: testHeadCommitSha,
+				Title:         testPrTitle,
 			}},
 			wantErr: false,
 		},
 		{
-			name: "abnormal (invalid credential)",
+			name: "normal(ignoreLabels)_01",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabel},
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
+				ignoreTitleExp: "",
+			},
+			want: []*gateways.PullRequest{{
+				Organization:  testOrg,
+				Repository:    testRepo,
+				Number:        testPrNum,
+				Branch:        testBranchName,
+				HeadCommitSha: testHeadCommitSha,
+				Title:         testPrTitle,
+				Labels:        []string{testPrLabel},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreLabels)_02",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{{
+						Organization:  testOrg,
+						Repository:    testRepo,
+						Number:        testPrNum,
+						Branch:        testBranchName,
+						HeadCommitSha: testHeadCommitSha,
+						Title:         testPrTitle,
+						Labels:        []string{testPrLabelIgnored},
+					}}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
+				ignoreTitleExp: "",
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreTitleExp)_01",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want: []*gateways.PullRequest{{
+				Organization:  testOrg,
+				Repository:    testRepo,
+				Number:        testPrNum,
+				Branch:        testBranchName,
+				HeadCommitSha: testHeadCommitSha,
+				Title:         testPrTitle,
+			}},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreTitleExp)_02",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{{
+						Organization:  testOrg,
+						Repository:    testRepo,
+						Number:        testPrNum,
+						Branch:        testBranchName,
+						HeadCommitSha: testHeadCommitSha,
+						Title:         testPrTitleIgnored,
+					}}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "abnormal(invalid_credential)",
 			fields: fields{func() gateways.GitHubIFace {
 				c := mock.NewMockGitHubIFace(ctrl)
 				c.EXPECT().WithCredential(testUsername, testToken).Return(fmt.Errorf("invalid credential"))
 				return c
 			}},
 			args: args{
-				ctx:      context.Background(),
-				org:      testOrg,
-				repo:     testRepo,
-				username: testUsername,
-				token:    testToken,
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{},
+				ignoreTitleExp: "",
 			},
 			want:    nil,
 			wantErr: true,
@@ -96,13 +261,13 @@ func TestGitRemoteRepoAppService_ListOpenPullRequest(t *testing.T) {
 			s := &GitRemoteRepoAppService{
 				gitapi: tt.fields.gitapi(),
 			}
-			got, err := s.ListOpenPullRequest(tt.args.ctx, tt.args.org, tt.args.repo, tt.args.username, tt.args.token)
+			got, err := s.ListOpenPullRequestWithSpecificConditions(tt.args.ctx, tt.args.org, tt.args.repo, tt.args.username, tt.args.token, tt.args.ignoreLabels, tt.args.ignoreTitleExp)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GitRemoteRepoAppService.ListOpenPullRequest() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GitRemoteRepoAppService.ListOpenPullRequestWithSpecificConditions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GitRemoteRepoAppService.ListOpenPullRequest() = %v, want %v", got, tt.want)
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("GitRemoteRepoAppService.ListOpenPullRequestWithSpecificConditions(): %v", diff)
 			}
 		})
 	}

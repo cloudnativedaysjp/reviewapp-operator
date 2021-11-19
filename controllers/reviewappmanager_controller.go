@@ -80,9 +80,10 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 	}
 
 	// list PRs
-	prs, err := r.GitRemoteRepoAppService.ListOpenPullRequest(ctx,
+	prs, err := r.GitRemoteRepoAppService.ListOpenPullRequestWithSpecificConditions(ctx,
 		ram.Spec.AppTarget.Organization, ram.Spec.AppTarget.Repository,
 		ram.Spec.AppTarget.Username, gitRemoteRepoCred,
+		ram.Spec.AppTarget.IgnoreLabels, ram.Spec.AppTarget.IgnoreTitleExp,
 	)
 	if err != nil {
 		return ctrl.Result{}, err
