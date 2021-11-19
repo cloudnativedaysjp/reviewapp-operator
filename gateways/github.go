@@ -17,16 +17,18 @@ type PullRequest struct {
 	Branch        string
 	Number        int
 	HeadCommitSha string
+	Title         string
 	Labels        []string
 }
 
-func NewPullRequest(organization, repository, branch string, number int, headCommitSha string, labels []string) *PullRequest {
+func NewPullRequest(organization, repository, branch string, number int, headCommitSha string, title string, labels []string) *PullRequest {
 	return &PullRequest{
 		Organization:  organization,
 		Repository:    repository,
 		Branch:        branch,
 		Number:        number,
 		HeadCommitSha: headCommitSha,
+		Title:         title,
 		Labels:        labels,
 	}
 }
@@ -84,7 +86,7 @@ func (g *GitHub) ListOpenPullRequests(ctx context.Context, org, repo string) ([]
 		for _, l := range pr.Labels {
 			labels = append(labels, *l.Name)
 		}
-		result = append(result, NewPullRequest(org, repo, pr.Head.GetRef(), pr.GetNumber(), pr.Head.GetSHA(), labels))
+		result = append(result, NewPullRequest(org, repo, pr.Head.GetRef(), pr.GetNumber(), pr.Head.GetSHA(), pr.GetTitle(), labels))
 	}
 	return result, nil
 }
@@ -101,7 +103,7 @@ func (g *GitHub) GetPullRequest(ctx context.Context, org, repo string, prNum int
 	for _, l := range pr.Labels {
 		labels = append(labels, *l.Name)
 	}
-	return NewPullRequest(org, repo, pr.Head.GetRef(), prNum, pr.Head.GetSHA(), labels), nil
+	return NewPullRequest(org, repo, pr.Head.GetRef(), prNum, pr.Head.GetSHA(), pr.GetTitle(), labels), nil
 }
 
 func (g *GitHub) CommentToPullRequest(ctx context.Context, pr PullRequest, comment string) error {

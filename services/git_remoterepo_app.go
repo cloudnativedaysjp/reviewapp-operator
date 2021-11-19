@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"regexp"
 
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 )
@@ -14,7 +15,10 @@ func NewGitRemoteRepoAppService(gitapi gateways.GitHubIFace) *GitRemoteRepoAppSe
 	return &GitRemoteRepoAppService{gitapi}
 }
 
-func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, repo string, username, token string) ([]*gateways.PullRequest, error) {
+func (s *GitRemoteRepoAppService) ListOpenPullRequestWithSpecificConditions(
+	ctx context.Context, org, repo string, username, token string,
+	ignoreLabels []string, ignoreTitleExp string,
+) ([]*gateways.PullRequest, error) {
 	if err := s.gitapi.WithCredential(username, token); err != nil {
 		return nil, err
 	}
@@ -22,6 +26,36 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequest(ctx context.Context, org, 
 	if err != nil {
 		return nil, err
 	}
+
+	// prepare anonymous function using below
+	remove := func(slice []*gateways.PullRequest, idx int) []*gateways.PullRequest {
+		if idx == len(prs)-1 {
+			return slice[:idx]
+		} else {
+			return append(slice[:idx], slice[idx+1:]...)
+		}
+	}
+
+	// exclude PRs with specific labels
+	for idx, pr := range prs {
+		for _, actualLabel := range pr.Labels {
+			for _, ignoreLabel := range ignoreLabels {
+				if actualLabel == ignoreLabel {
+					prs = remove(prs, idx)
+				}
+			}
+		}
+	}
+	// exclude PRs with specific titles
+	if ignoreTitleExp != "" {
+		r := regexp.MustCompile(ignoreTitleExp)
+		for idx, pr := range prs {
+			if r.Match([]byte(pr.Title)) {
+				prs = remove(prs, idx)
+			}
+		}
+	}
+
 	return prs, nil
 }
 
