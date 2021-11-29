@@ -144,6 +144,10 @@ type ReviewAppManagerStatusSyncedPullRequests struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ram
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="app_organization",type="string",JSONPath=".spec.appRepoTarget.organization",description="Name of Application Repository's Organization"
+//+kubebuilder:printcolumn:name="app_repository",type="string",JSONPath=".spec.appRepoTarget.repository",description="Name of Application Repository"
+//+kubebuilder:printcolumn:name="infra_organization",type="string",JSONPath=".spec.infraRepoTarget.organization",description="Name of Infra Repository's Organization"
+//+kubebuilder:printcolumn:name="infra_repository",type="string",JSONPath=".spec.infraRepoTarget.repository",description="Name of Infra Repository"
 
 // ReviewAppManager is the Schema for the reviewappmanagers API
 type ReviewAppManager struct {
