@@ -18,7 +18,24 @@ spec:
     singular: reviewappmanager
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: Name of Application Repository's Organization
+      jsonPath: .spec.appRepoTarget.organization
+      name: app_organization
+      type: string
+    - description: Name of Application Repository
+      jsonPath: .spec.appRepoTarget.repository
+      name: app_repository
+      type: string
+    - description: Name of Infra Repository's Organization
+      jsonPath: .spec.infraRepoTarget.organization
+      name: infra_organization
+      type: string
+    - description: Name of Infra Repository
+      jsonPath: .spec.infraRepoTarget.repository
+      name: infra_repository
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ReviewAppManager is the Schema for the reviewappmanagers API

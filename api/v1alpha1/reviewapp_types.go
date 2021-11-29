@@ -118,10 +118,11 @@ type ReviewAppTmpPr struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="AppOrganization",type="string",JSONPath=".spec.appRepoTarget.organization",description="Name of Application Repository's Organization"
-//+kubebuilder:printcolumn:name="AppRepository",type="string",JSONPath=".spec.appRepoTarget.repository",description="Name of Application Repository"
-//+kubebuilder:printcolumn:name="InfraOrganization",type="string",JSONPath=".spec.infraRepoTarget.organization",description="Name of Infra Repository's Organization"
-//+kubebuilder:printcolumn:name="InfraRepository",type="string",JSONPath=".spec.infraRepoTarget.repository",description="Name of Infra Repository"
+//+kubebuilder:printcolumn:name="app_organization",type="string",JSONPath=".spec.appRepoTarget.organization",description="Name of Application Repository's Organization"
+//+kubebuilder:printcolumn:name="app_repository",type="string",JSONPath=".spec.appRepoTarget.repository",description="Name of Application Repository"
+//+kubebuilder:printcolumn:name="app_pr_num",type="integer",JSONPath=".spec.appRepoPrNum",description="Number of Application Repository's PullRequest"
+//+kubebuilder:printcolumn:name="infra_organization",type="string",JSONPath=".spec.infraRepoTarget.organization",description="Name of Infra Repository's Organization"
+//+kubebuilder:printcolumn:name="infra_repository",type="string",JSONPath=".spec.infraRepoTarget.repository",description="Name of Infra Repository"
 
 
 // ReviewApp is the Schema for the reviewapp API
