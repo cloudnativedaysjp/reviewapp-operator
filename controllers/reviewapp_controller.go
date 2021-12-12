@@ -31,6 +31,7 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -84,6 +85,7 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
+	metrics.SetMetrics(*ra)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
@@ -122,6 +124,8 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alph
 }
 
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+	metrics.RemoveMetrics(*ra)
+
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
 		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
