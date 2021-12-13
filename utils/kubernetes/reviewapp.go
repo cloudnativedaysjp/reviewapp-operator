@@ -9,7 +9,10 @@ import (
 	"golang.org/x/xerrors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -83,10 +86,10 @@ func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1
 		}
 		return wrapedErr
 	}
-	patch := client.MergeFrom(&raCurrent)
 
-	if err := c.Status().Patch(ctx, ra, patch); err != nil {
-		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(raCurrent), err)
+	raCurrent.Status = ra.Status
+	if err := c.Status().Update(ctx, &raCurrent); err != nil {
+		return xerrors.Errorf("Error to Update %s: %w", reflect.TypeOf(raCurrent), err)
 	}
 	return nil
 }
@@ -105,27 +108,48 @@ func DeleteReviewApp(ctx context.Context, c client.Client, namespace, name strin
 }
 
 func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
-	raPatched := *ra.DeepCopy()
+	patch := &unstructured.Unstructured{}
+	patch.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "dreamkast.cloudnativedays.jp",
+		Version: "v1alpha1",
+		Kind:    "ReviewApp",
+	})
+	patch.SetNamespace(ra.Namespace)
+	patch.SetName(ra.Name)
+	patch.SetFinalizers(ra.Finalizers)
 	for _, f := range finalizers {
-		controllerutil.AddFinalizer(&raPatched, f)
+		controllerutil.AddFinalizer(patch, f)
 	}
-	patch := client.MergeFrom(ra)
-	if err := c.Patch(ctx, &raPatched, patch); err != nil {
-		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(raPatched), err)
+
+	if err := c.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: "reviewapp-operator",
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(ra), err)
 	}
 	return nil
 }
 
 func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
-	raPatched := *ra.DeepCopy()
+	patch := &unstructured.Unstructured{}
+	patch.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "dreamkast.cloudnativedays.jp",
+		Version: "v1alpha1",
+		Kind:    "ReviewApp",
+	})
+	patch.SetNamespace(ra.Namespace)
+	patch.SetName(ra.Name)
+	patch.SetFinalizers(ra.Finalizers)
 	for _, f := range finalizers {
-		if controllerutil.ContainsFinalizer(&raPatched, f) {
-			controllerutil.RemoveFinalizer(&raPatched, f)
+		if controllerutil.ContainsFinalizer(patch, f) {
+			controllerutil.RemoveFinalizer(patch, f)
 		}
 	}
-	patch := client.MergeFrom(ra)
-	if err := c.Patch(ctx, &raPatched, patch); err != nil {
-		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(raPatched), err)
+	if err := c.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+		FieldManager: "reviewapp-operator",
+		Force:        pointer.Bool(true),
+	}); err != nil {
+		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(ra), err)
 	}
 	return nil
 }

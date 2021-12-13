@@ -29,15 +29,16 @@ func GetReviewAppManager(ctx context.Context, c client.Client, namespace, name s
 func UpdateReviewAppManagerStatus(ctx context.Context, c client.Client, ram *dreamkastv1alpha1.ReviewAppManager) error {
 	var ramCurrent dreamkastv1alpha1.ReviewAppManager
 	if err := c.Get(ctx, types.NamespacedName{Name: ram.Name, Namespace: ram.Namespace}, &ramCurrent); err != nil {
-		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(ramCurrent), err)
+		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ramCurrent), err)
 		if apierrors.IsNotFound(err) {
 			return myerrors.K8sResourceNotFound{Err: wrapedErr}
 		}
 		return wrapedErr
 	}
-	patch := client.MergeFrom(&ramCurrent)
-	if err := c.Status().Patch(ctx, ram, patch); err != nil {
-		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(ram), err)
+
+	ramCurrent.Status = ram.Status
+	if err := c.Status().Update(ctx, &ramCurrent); err != nil {
+		return xerrors.Errorf("Error to Update %s: %w", reflect.TypeOf(ramCurrent), err)
 	}
 	return nil
 }

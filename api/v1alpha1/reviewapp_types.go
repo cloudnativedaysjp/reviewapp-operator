@@ -124,7 +124,6 @@ type ReviewAppTmpPr struct {
 //+kubebuilder:printcolumn:name="infra_organization",type="string",JSONPath=".spec.infraRepoTarget.organization",description="Name of Infra Repository's Organization"
 //+kubebuilder:printcolumn:name="infra_repository",type="string",JSONPath=".spec.infraRepoTarget.repository",description="Name of Infra Repository"
 
-
 // ReviewApp is the Schema for the reviewapp API
 type ReviewApp struct {
 	metav1.TypeMeta   `json:",inline"`
