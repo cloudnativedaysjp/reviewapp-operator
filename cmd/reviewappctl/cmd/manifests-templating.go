@@ -139,7 +139,9 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 	if err != nil {
 		return err
 	}
-	ioutil.WriteFile(mto.output, data, 0644)
+	if err := ioutil.WriteFile(mto.output, data, 0644); err != nil {
+		return err
+	}
 	fmt.Printf("output to %s\n", mto.output)
 	return nil
 }
