@@ -8,7 +8,7 @@ func NewErrorFilenameIsEmpty() *ErrorFilenameIsEmpty {
 	return &ErrorFilenameIsEmpty{}
 }
 func (e ErrorFilenameIsEmpty) Error() string {
-	return fmt.Sprintf("filename is empty")
+	return "filename is empty"
 }
 
 type ErrorFileNotFound struct {
