@@ -58,7 +58,7 @@ jobs:
             # Release Note
 
             ${{ steps.regex-match.outputs.group1 }}
-          files:
-            - install.yaml
-            - reviewappctl-darwin-amd64
-            - reviewappctl-linux-amd64
+          files: |
+            install.yaml
+            reviewappctl-darwin-amd64
+            reviewappctl-linux-amd64
