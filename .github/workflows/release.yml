@@ -1,4 +1,4 @@
-name: Push a new tag when labeled PR was merged
+name: Release action
 
 on:
   push:
@@ -34,12 +34,12 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -o reviewappctl-linux-amd64 cmd/reviewappctl/main.go
           GOOS=darwin GOARCH=amd64 go build -o reviewappctl-darwin-amd64 cmd/reviewappctl/main.go
 
-     - name: Get sentence of Release Note from Pull Request
-       uses: actions-ecosystem/action-regex-match@v2
-       id: regex-match
-       with:
-         text: ${{ github.event.pull_request.body }}
-         regex: '```release_note([\s\S]*)```'
+      - name: Get sentence of Release Note from Pull Request
+        uses: actions-ecosystem/action-regex-match@v2
+        id: regex-match
+        with:
+          text: ${{ github.event.pull_request.body }}
+          regex: '```release_note([\s\S]*)```'
 
       - name: Release
         uses: softprops/action-gh-release@v1
