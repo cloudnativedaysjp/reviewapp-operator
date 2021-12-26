@@ -34,6 +34,13 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -o reviewappctl-linux-amd64 cmd/reviewappctl/main.go
           GOOS=darwin GOARCH=amd64 go build -o reviewappctl-darwin-amd64 cmd/reviewappctl/main.go
 
+     - name: Get sentence of Release Note from Pull Request
+       uses: actions-ecosystem/action-regex-match@v2
+       id: regex-match
+       with:
+         text: ${{ github.event.pull_request.body }}
+         regex: '```release_note([\s\S]*)```'
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
@@ -47,6 +54,10 @@ jobs:
             kubectl create namespace reviewapp-operator-system
             kubectl apply -n reviewapp-operator-system -f https://github.com/cloudnativedaysjp/reviewapp-operator/releases/download/${{ steps.variables.outputs.version }}/install.yaml
             ```
+
+            # Release Note
+
+            ${{ steps.regex-match.outputs.group1 }}
           files:
             - install.yaml
             - reviewappctl-darwin-amd64
