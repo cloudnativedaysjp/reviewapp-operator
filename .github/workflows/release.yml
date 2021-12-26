@@ -14,26 +14,30 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: ^1.16
+      - name: Setup variables
+        id: variables
+        run: echo "::set-output name=version::${GITHUB_REF##*/}"
 
-      - name: set image to kustomization.yaml
+      - name: Set image to kustomization.yaml
         run: |
           cd config/default/
-          kustomize edit set image public.ecr.aws/f5j9d0q5/reviewapp-operator:${{ steps.bump-semver.outputs.new_version }}
+          kustomize edit set image public.ecr.aws/f5j9d0q5/reviewapp-operator:${{ steps.variables.outputs.version }}
 
-      - name: create install.yaml
+      - name: Create install.yaml
         run: |
           kustomize build config/crd/ > install.yaml
           echo "---" >> install.yaml
           kustomize build config/default/ >> install.yaml
 
-      - name: build reviewappctl
+      - name: Build reviewappctl
         run: |
           GOOS=linux GOARCH=amd64 go build -o reviewappctl-linux-amd64 cmd/reviewappctl/main.go
           GOOS=darwin GOARCH=amd64 go build -o reviewappctl-darwin-amd64 cmd/reviewappctl/main.go
 
-      - uses: softprops/action-gh-release@v1
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.bump-semver.outputs.new_version }}
+          tag_name: ${{ steps.variables.outputs.version }}
           draft: false
           prerelease: false
           body: |
@@ -41,7 +45,7 @@ jobs:
 
             ```
             kubectl create namespace reviewapp-operator-system
-            kubectl apply -n reviewapp-operator-system -f https://github.com/cloudnativedaysjp/reviewapp-operator/releases/download/${{ steps.bump-semver.outputs.new_version }}/install.yaml
+            kubectl apply -n reviewapp-operator-system -f https://github.com/cloudnativedaysjp/reviewapp-operator/releases/download/${{ steps.variables.outputs.version }}/install.yaml
             ```
           files:
             - install.yaml
