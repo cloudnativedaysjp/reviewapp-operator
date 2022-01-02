@@ -7,7 +7,7 @@ spec:
     apiVersion: batch/v1
     kind: Job
     metadata:
-      generateName: jt-
+      name: jt-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
       namespace: argocd
     spec:
       template:
