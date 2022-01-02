@@ -204,6 +204,18 @@ spec:
                 - repository
                 - username
                 type: object
+              preStopJob:
+                description: PreStopJob is specified JobTemplate that executed at
+                  previous of stopped ReviewApp
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
               variables:
                 description: Variables is available to use input of Application &
                   Manifest Template
@@ -216,6 +228,7 @@ spec:
             - appRepoTarget
             - infraRepoConfig
             - infraRepoTarget
+            - preStopJob
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
@@ -241,6 +254,9 @@ spec:
               sync:
                 description: TODO
                 properties:
+                  appRepoBranch:
+                    description: TODO
+                    type: string
                   appRepoLatestCommitSha:
                     description: TODO
                     type: string

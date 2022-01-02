@@ -36,6 +36,9 @@ type ReviewAppManagerSpec struct {
 	// TODO
 	InfraConfig ReviewAppManagerSpecInfraConfig `json:"infraRepoConfig"`
 
+	// PreStopJob is specified JobTemplate that executed at previous of stopped ReviewApp
+	PreStopJob NamespacedName `json:"preStopJob,omitempty"`
+
 	// Variables is available to use input of Application & Manifest Template
 	Variables []string `json:"variables,omitempty"`
 }

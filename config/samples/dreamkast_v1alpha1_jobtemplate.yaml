@@ -1,0 +1,30 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
+kind: JobTemplate
+metadata:
+  name: jobtemplate-sample
+spec:
+  template: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      generateName: jt-
+      namespace: argocd
+    spec:
+      template:
+        spec:
+          containers:
+            - name: test-job
+              image: bash
+              command: ['bash', '-euxc']
+              args:
+                - |
+                  echo '.AppRepo.Organization: {{.AppRepo.Organization}}';
+                  echo '.AppRepo.Repository: {{.AppRepo.Repository}}';
+                  echo '.AppRepo.PrNumber: {{.AppRepo.PrNumber}}';
+                  echo '.AppRepo.LatestCommitSha: {{.AppRepo.LatestCommitSha}}';
+                  echo '.InfraRepo.Organization: {{.InfraRepo.Organization}}';
+                  echo '.InfraRepo.Repository: {{.InfraRepo.Repository}}';
+                  echo '.Variables.AppRepositoryAlias: {{.Variables.AppRepositoryAlias}}';
+                  echo '.Variables.dummy: {{.Variables.dummy}}';
+          restartPolicy: Never
+

@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
@@ -58,6 +59,7 @@ var (
 	k8sClient client.Client
 	testEnv   *envtest.Environment
 	scheme    = runtime.NewScheme()
+	recorder  = record.NewFakeRecorder(1000)
 	ctx       = context.Background()
 
 	gitCredential string

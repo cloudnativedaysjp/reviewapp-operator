@@ -71,6 +71,7 @@ var _ = Describe("ReviewApp controller", func() {
 			Client:                    k8sClient,
 			Scheme:                    scheme,
 			Log:                       logger,
+			Recorder:                  recorder,
 			GitRemoteRepoAppService:   gitRemoteRepoAppService,
 			GitRemoteRepoInfraService: gitRemoteRepoInfraService,
 		}
