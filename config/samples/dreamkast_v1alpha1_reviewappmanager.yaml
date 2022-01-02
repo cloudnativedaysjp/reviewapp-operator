@@ -46,6 +46,9 @@ spec:
         namespace: argocd
         name: applicationtemplate-sample
       filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml"
+  preStopJob:
+    namespace: argocd
+    name: jobtemplate-sample
   variables:
     - AppRepositoryAlias=sample
 

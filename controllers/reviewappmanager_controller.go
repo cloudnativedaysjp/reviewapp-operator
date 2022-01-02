@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
@@ -37,8 +38,9 @@ import (
 // ReviewAppManagerReconciler reconciles a ReviewAppManager object
 type ReviewAppManagerReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 
 	GitRemoteRepoAppService *services.GitRemoteRepoAppService
 }
@@ -102,6 +104,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram *dreamka
 		ra.Spec.AppTarget = ram.Spec.AppTarget
 		ra.Spec.InfraTarget = ram.Spec.InfraTarget
 		ra.Spec.Variables = ram.Spec.Variables
+		ra.Spec.PreStopJob = ram.Spec.PreStopJob
 
 		// Templating
 		v := template.NewTemplateValue(

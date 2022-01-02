@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
@@ -12,6 +13,7 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
 	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
@@ -90,6 +92,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1
 
 func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
 	var updated bool
+	ra.Status.Sync.AppRepoBranch = ra.Tmp.PullRequest.Branch
 	if ra.Tmp.PullRequest.HeadCommitSha != ra.Status.Sync.AppRepoLatestCommitSha {
 		updated = true
 		ra.Status.Sync.AppRepoLatestCommitSha = ra.Tmp.PullRequest.HeadCommitSha
@@ -248,6 +251,89 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, r
 		// update ReviewApp.Status
 		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
 		ra.Status.AlreadySentMessage = true
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+	// run preStop Job
+	if ra.Spec.PreStopJob.Namespace != "" && ra.Spec.PreStopJob.Name != "" {
+		// get JobTemplate for preStopJob
+
+		jt, err := kubernetes.GetJobTemplate(ctx, r.Client, ra.Spec.PreStopJob.Namespace, ra.Spec.PreStopJob.Name)
+		if err != nil {
+			if myerrors.IsNotFound(err) {
+				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(jt), jt.Namespace, jt.Name))
+			}
+			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
+			goto finalize
+		}
+
+		// template from JobTemplate to Job
+		v := template.NewTemplateValue(
+			ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Status.Sync.AppRepoBranch, ra.Spec.AppPrNum,
+			ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
+			kubernetes.PickVariablesFromReviewApp(ctx, ra),
+		)
+		v = v.WithAppRepoLatestCommitSha(ra.Status.Sync.AppRepoLatestCommitSha)
+		templatedJob, err := v.Templating(jt.Spec.Template)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// create job
+		preStopJob, err := kubernetes.PickJobObjectFromObjectStr(ctx, templatedJob)
+		if err != nil {
+			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot unmarshal .spec.template of JobTemplate %s: %s", jt.Name, err)
+			goto finalize
+		}
+		r.Recorder.Eventf(ra, corev1.EventTypeNormal, "running preStopJob", "running preStopJob %s", preStopJob.Name)
+		if err := kubernetes.CreateJob(ctx, r.Client, preStopJob); err != nil {
+			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job %s: %s", preStopJob.Name, err)
+			goto finalize
+		}
+
+		// TODO: wait until Job completed
+	}
+
+finalize:
+	// remove metrics
+	metrics.RemoveMetrics(*ra)
+
+	// get gitRemoteRepo credential from Secret
+	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
+		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
+	)
+	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	// delete some manifests
+	deleteManifestsParam := services.DeleteManifestsParam{
+		Org:    ra.Spec.InfraTarget.Organization,
+		Repo:   ra.Spec.InfraTarget.Repository,
+		Branch: ra.Spec.InfraTarget.Branch,
+		CommitMsg: fmt.Sprintf(
+			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
+			ra.Spec.AppTarget.Organization,
+			ra.Spec.AppTarget.Repository,
+			ra.Status.Sync.AppRepoLatestCommitSha,
+		),
+		Username: ra.Spec.InfraTarget.Username,
+		Token:    gitRemoteRepoCred,
+	}
+	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx, deleteManifestsParam, ra); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Remove Finalizers
+	if err := kubernetes.RemoveFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil

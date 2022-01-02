@@ -95,6 +95,7 @@ func main() {
 			Client:                  mgr.GetClient(),
 			Log:                     ramLogger,
 			Scheme:                  mgr.GetScheme(),
+			Recorder:                mgr.GetEventRecorderFor("reviewappmanager-controler"),
 			GitRemoteRepoAppService: gitRemoteRepoAppService,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
@@ -117,6 +118,7 @@ func main() {
 			Client:                    mgr.GetClient(),
 			Log:                       raLogger,
 			Scheme:                    mgr.GetScheme(),
+			Recorder:                  mgr.GetEventRecorderFor("reviewapp-controler"),
 			GitRemoteRepoAppService:   gitRemoteRepoAppService,
 			GitRemoteRepoInfraService: gitRemoteRepoInfraService,
 		}).SetupWithManager(mgr); err != nil {

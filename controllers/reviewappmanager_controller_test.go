@@ -78,6 +78,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 			Client:                  k8sClient,
 			Scheme:                  scheme,
 			Log:                     logger,
+			Recorder:                recorder,
 			GitRemoteRepoAppService: gitRemoteRepoAppService,
 		}
 		err = reconciler.SetupWithManager(mgr)

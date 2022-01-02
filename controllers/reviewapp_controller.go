@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,8 +38,9 @@ import (
 // ReviewAppReconciler reconciles a ReviewApp object
 type ReviewAppReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 
 	GitRemoteRepoAppService   *services.GitRemoteRepoAppService
 	GitRemoteRepoInfraService *services.GitRemoteRepoInfraService
@@ -121,47 +123,6 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alph
 	}
 
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
-}
-
-func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
-	metrics.RemoveMetrics(*ra)
-
-	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
-		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
-	)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
-	}
-
-	// delete some manifests
-	deleteManifestsParam := services.DeleteManifestsParam{
-		Org:    ra.Spec.InfraTarget.Organization,
-		Repo:   ra.Spec.InfraTarget.Repository,
-		Branch: ra.Spec.InfraTarget.Branch,
-		CommitMsg: fmt.Sprintf(
-			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
-			ra.Spec.AppTarget.Organization,
-			ra.Spec.AppTarget.Repository,
-			ra.Status.Sync.AppRepoLatestCommitSha,
-		),
-		Username: ra.Spec.InfraTarget.Username,
-		Token:    gitRemoteRepoCred,
-	}
-	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx, deleteManifestsParam, ra); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Remove Finalizers
-	if err := kubernetes.RemoveFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

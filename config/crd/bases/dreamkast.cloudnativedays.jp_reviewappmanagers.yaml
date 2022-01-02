@@ -197,6 +197,18 @@ spec:
                 - repository
                 - username
                 type: object
+              preStopJob:
+                description: PreStopJob is specified JobTemplate that executed at
+                  previous of stopped ReviewApp
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
               variables:
                 description: Variables is available to use input of Application &
                   Manifest Template

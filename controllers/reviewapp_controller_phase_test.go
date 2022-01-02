@@ -596,3 +596,46 @@ func TestReviewAppReconciler_commentToAppRepoPullRequest(t *testing.T) {
 		})
 	}
 }
+
+// TODO
+func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
+	type fields struct {
+		Client                    client.Client
+		Log                       logr.Logger
+		Scheme                    *runtime.Scheme
+		GitRemoteRepoAppService   func() *services.GitRemoteRepoAppService
+		GitRemoteRepoInfraService func() *services.GitRemoteRepoInfraService
+	}
+	type args struct {
+		ctx context.Context
+		ra  *dreamkastv1alpha1.ReviewApp
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    ctrl.Result
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &ReviewAppReconciler{
+				Client:                    tt.fields.Client,
+				Log:                       tt.fields.Log,
+				Scheme:                    tt.fields.Scheme,
+				GitRemoteRepoAppService:   tt.fields.GitRemoteRepoAppService(),
+				GitRemoteRepoInfraService: tt.fields.GitRemoteRepoInfraService(),
+			}
+			got, err := r.commentToAppRepoPullRequest(tt.args.ctx, tt.args.ra)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReviewAppReconciler.commentToAppRepoPullRequest() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ReviewAppReconciler.commentToAppRepoPullRequest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
