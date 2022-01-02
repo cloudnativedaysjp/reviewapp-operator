@@ -16,6 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/spf13/cobra v1.1.3
 	golang.org/x/oauth2 v0.0.0-20210628180205-a41e5a781914
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
