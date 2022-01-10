@@ -2,27 +2,33 @@ package kubernetes
 
 import (
 	"context"
-	"reflect"
+	"sort"
 
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"golang.org/x/xerrors"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
 
-func GetJob(ctx context.Context, c client.Client, namespace, name string) (*batchv1.Job, error) {
-	var j batchv1.Job
-	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &j); err != nil {
-		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(j), err)
+func GetLatestJobFromLabel(ctx context.Context, c client.Client, namespace, labelKey, labelValue string) (*batchv1.Job, error) {
+	var jList batchv1.JobList
+	if err := c.List(ctx, &jList, &client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{labelKey: labelValue}),
+	}); err != nil {
+		wrapedErr := xerrors.Errorf("Error to get Job: %w", err)
 		if apierrors.IsNotFound(err) {
 			return nil, myerrors.K8sResourceNotFound{Err: wrapedErr}
 		}
 		return nil, wrapedErr
 	}
-	return &j, nil
+	sort.Slice(jList.Items, func(i, j int) bool {
+		return jList.Items[i].CreationTimestamp.Before(&jList.Items[j].CreationTimestamp)
+	})
+	return &jList.Items[0], nil
 }
 
 func CreateJob(ctx context.Context, c client.Client, job *batchv1.Job) error {

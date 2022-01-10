@@ -6,6 +6,7 @@ import (
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
 
@@ -16,6 +17,16 @@ func PickNamespacedNameFromObjectStr(ctx context.Context, objectStr string) (typ
 		return types.NamespacedName{}, xerrors.Errorf("%w", err)
 	}
 	return types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, nil
+}
+
+func SetLabel(ctx context.Context, obj client.Object, labelKey, labelValue string) error {
+	m := obj.GetAnnotations()
+	if m == nil {
+		m = make(map[string]string)
+	}
+	m[labelKey] = labelValue
+	obj.SetLabels(m)
+	return nil
 }
 
 func SetAnnotationToObjectStr(ctx context.Context, objectStr string, annotationKey, annotationValue string) (string, error) {

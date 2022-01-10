@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/sync/singleflight"
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
@@ -56,34 +57,41 @@ const (
 	finalizer = "reviewapp.finalizers.cloudnativedays.jp"
 )
 
+var (
+	singleflightGroupForReviewApp singleflight.Group
+)
+
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
-	ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
-	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
-			return ctrl.Result{}, nil
+	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
+		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
+		ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
+		if err != nil {
+			if myerrors.IsNotFound(err) {
+				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
 
-	if result, err := r.prepare(ctx, ra); err != nil {
-		if myerrors.IsNotFound(err) {
-			return result, nil
+		if result, err := r.prepare(ctx, ra); err != nil {
+			if myerrors.IsNotFound(err) {
+				return result, nil
+			}
+			return result, err
 		}
-		return result, err
-	}
 
-	// Add Finalizers
-	if err := kubernetes.AddFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
-		return ctrl.Result{}, err
-	}
+		// Add Finalizers
+		if err := kubernetes.AddFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
+			return ctrl.Result{}, err
+		}
 
-	// Handle deletion reconciliation loop.
-	if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, ra)
-	}
-	return r.reconcile(ctx, ra)
+		// Handle deletion reconciliation loop.
+		if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
+			return r.reconcileDelete(ctx, ra)
+		}
+		return r.reconcile(ctx, ra)
+	})
+	return result.(ctrl.Result), err
 }
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {

@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"golang.org/x/sync/singleflight"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -19,11 +18,9 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
-var (
-	singleflightGroup singleflight.Group
-)
-
 const (
+	labelReviewAppNameForJob = "dreamkast.cloudnativedays.jp/parent-reviewapp"
+
 	annotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
 	annotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
 	annotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
@@ -297,35 +294,32 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 			goto finalize
 		}
 
-		// create job & wait until Job completed on singleflight
-		isWarned, err, _ := singleflightGroup.Do(fmt.Sprintf("%s/%s", preStopJob.Namespace, preStopJob.Name), func() (interface{}, error) {
-			r.Recorder.Eventf(ra, corev1.EventTypeNormal, "running preStopJob", "running preStopJob %s", preStopJob.Name)
-			if err := kubernetes.CreateJob(ctx, r.Client, preStopJob); err != nil {
-				r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job %s: %s", preStopJob.Name, err)
-				return true, nil
-			}
-			timeout := time.Now().Add(preStopJobTimeoutSecond * time.Second)
-			for {
-				if time.Since(timeout) >= 0 {
-					r.Recorder.Eventf(ra, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob %s is timeout (%ds)", preStopJob.Name, preStopJobTimeoutSecond)
-					return true, nil
-				}
-				appliedPreStopJob, err := kubernetes.GetJob(ctx, r.Client, preStopJob.Namespace, preStopJob.Name)
-				if err != nil {
-					return true, err
-				}
-				if appliedPreStopJob.Status.Succeeded != 0 {
-					r.Recorder.Eventf(ra, corev1.EventTypeNormal, "finish preStopJob", "preStopJob %s is succeeded", preStopJob.Name)
-					break
-				}
-				time.Sleep(10 * time.Second)
-			}
-			return false, nil
-		})
-		if err != nil {
+		// set specifiable label to Job
+		if err := kubernetes.SetLabel(ctx, preStopJob, labelReviewAppNameForJob, ra.Name); err != nil {
 			return ctrl.Result{}, err
-		} else if isWarned.(bool) {
+		}
+
+		// create job & wait until Job completed on singleflight
+		r.Recorder.Eventf(ra, corev1.EventTypeNormal, "running preStopJob", "running preStopJob (%s: %s)", labelReviewAppNameForJob, ra.Name)
+		if err := kubernetes.CreateJob(ctx, r.Client, preStopJob); err != nil {
+			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job (%s: %s): %s", labelReviewAppNameForJob, ra.Name, err)
 			goto finalize
+		}
+		timeout := time.Now().Add(preStopJobTimeoutSecond * time.Second)
+		for {
+			if time.Since(timeout) >= 0 {
+				r.Recorder.Eventf(ra, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob (%s: %s) is timeout (%ds)", labelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
+				goto finalize
+			}
+			appliedPreStopJob, err := kubernetes.GetLatestJobFromLabel(ctx, r.Client, preStopJob.Namespace, labelReviewAppNameForJob, ra.Name)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if appliedPreStopJob.Status.Succeeded != 0 {
+				r.Recorder.Eventf(ra, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", labelReviewAppNameForJob, ra.Name)
+				break
+			}
+			time.Sleep(10 * time.Second)
 		}
 	}
 
