@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"golang.org/x/sync/singleflight"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -17,10 +16,6 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
-)
-
-var (
-	singleflightGroup singleflight.Group
 )
 
 const (

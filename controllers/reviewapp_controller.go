@@ -62,7 +62,7 @@ var (
 )
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	result, err, _ := singleflightGroup.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
+	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
 		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 		ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
 		if err != nil {
