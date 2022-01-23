@@ -228,7 +228,6 @@ spec:
             - appRepoTarget
             - infraRepoConfig
             - infraRepoTarget
-            - preStopJob
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
