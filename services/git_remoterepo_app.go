@@ -37,21 +37,25 @@ func (s *GitRemoteRepoAppService) ListOpenPullRequestWithSpecificConditions(
 	}
 
 	// exclude PRs with specific labels
+	removedCount := 0
 	for idx, pr := range prs {
 		for _, actualLabel := range pr.Labels {
 			for _, ignoreLabel := range ignoreLabels {
 				if actualLabel == ignoreLabel {
-					prs = remove(prs, idx)
+					prs = remove(prs, idx-removedCount)
+					removedCount += 1
 				}
 			}
 		}
 	}
 	// exclude PRs with specific titles
+	removedCount = 0
 	if ignoreTitleExp != "" {
 		r := regexp.MustCompile(ignoreTitleExp)
 		for idx, pr := range prs {
 			if r.Match([]byte(pr.Title)) {
-				prs = remove(prs, idx)
+				prs = remove(prs, idx-removedCount)
+				removedCount += 1
 			}
 		}
 	}
