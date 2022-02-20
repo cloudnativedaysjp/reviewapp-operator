@@ -162,6 +162,47 @@ func TestGitRemoteRepoAppService_ListOpenPullRequestWithSpecificConditions(t *te
 			wantErr: false,
 		},
 		{
+			name: "normal(ignoreLabels)_03_multi-ignored-pr",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
+				ignoreTitleExp: "",
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
 			name: "normal(ignoreTitleExp)_01",
 			fields: fields{func() gateways.GitHubIFace {
 				c := mock.NewMockGitHubIFace(ctrl)
@@ -231,6 +272,165 @@ func TestGitRemoteRepoAppService_ListOpenPullRequestWithSpecificConditions(t *te
 				username:       testUsername,
 				token:          testToken,
 				ignoreLabels:   []string{},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreTitleExp)_03_multi-ignored-pr",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreLabel&ignoreTitleExp)_01",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreLabel&ignoreTitleExp)_01",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
+				ignoreTitleExp: testPrTitleIgnored,
+			},
+			want:    []*gateways.PullRequest{},
+			wantErr: false,
+		},
+		{
+			name: "normal(ignoreLabel&ignoreTitleExp)_02",
+			fields: fields{func() gateways.GitHubIFace {
+				c := mock.NewMockGitHubIFace(ctrl)
+				c.EXPECT().WithCredential(testUsername, testToken).Return(nil)
+				c.EXPECT().ListOpenPullRequests(context.Background(), testOrg, testRepo).Return(
+					[]*gateways.PullRequest{
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitleIgnored,
+						},
+						{
+							Organization:  testOrg,
+							Repository:    testRepo,
+							Number:        testPrNum,
+							Branch:        testBranchName,
+							HeadCommitSha: testHeadCommitSha,
+							Title:         testPrTitle,
+							Labels:        []string{testPrLabelIgnored},
+						},
+					}, nil,
+				)
+				return c
+			}},
+			args: args{
+				ctx:            context.Background(),
+				org:            testOrg,
+				repo:           testRepo,
+				username:       testUsername,
+				token:          testToken,
+				ignoreLabels:   []string{testPrLabelIgnored},
 				ignoreTitleExp: testPrTitleIgnored,
 			},
 			want:    []*gateways.PullRequest{},
