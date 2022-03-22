@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,10 +125,11 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 		if err != nil {
 			return err
 		}
+		filename := filepath.Base(file)
 		if mto.isStable {
-			mt.Spec.StableData[file] = string(b)
+			mt.Spec.StableData[filename] = string(b)
 		} else if mto.isCandidate {
-			mt.Spec.CandidateData[file] = string(b)
+			mt.Spec.CandidateData[filename] = string(b)
 		}
 	}
 
