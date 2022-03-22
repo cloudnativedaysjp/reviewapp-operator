@@ -61,7 +61,6 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 	// declear ManifestsTemplate
 	var mt dreamkastv1alpha1.ManifestsTemplate
 	if err := utils.ValidateFile(mto.basefile); err == nil {
-		// initialize
 		fmt.Println("load basefile...")
 		b, err := ioutil.ReadFile(mto.basefile)
 		if err != nil {
@@ -71,11 +70,6 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 			return err
 		}
 	} else {
-		// validate
-		if mto.name == "" {
-			return fmt.Errorf("required --name option")
-		}
-		// initialize
 		fmt.Println("new struct of ManifestsTemplate...")
 		mt = dreamkastv1alpha1.ManifestsTemplate{
 			TypeMeta: metav1.TypeMeta{
@@ -87,6 +81,12 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 				Namespace: mto.namespace,
 			},
 		}
+	}
+	if mt.Name == "" {
+		if mto.name == "" {
+			return fmt.Errorf("required --name option")
+		}
+		mt.Name = mto.name
 	}
 	if mt.Spec.StableData == nil {
 		mt.Spec.StableData = make(map[string]string)
