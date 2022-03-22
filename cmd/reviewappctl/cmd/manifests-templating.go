@@ -69,7 +69,11 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 		if err := yaml.Unmarshal(b, &mt); err != nil {
 			return err
 		}
-	} else {
+	}
+	if mt.Name == "" {
+		if mto.name == "" {
+			return fmt.Errorf("required --name option")
+		}
 		fmt.Println("new struct of ManifestsTemplate...")
 		mt = dreamkastv1alpha1.ManifestsTemplate{
 			TypeMeta: metav1.TypeMeta{
@@ -82,12 +86,6 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 			},
 		}
 	}
-	if mt.Name == "" {
-		if mto.name == "" {
-			return fmt.Errorf("required --name option")
-		}
-		mt.Name = mto.name
-	}
 	if mt.Spec.StableData == nil {
 		mt.Spec.StableData = make(map[string]string)
 	}
@@ -98,9 +96,9 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 	// load manifests & construct ManifestsTemplate
 	for _, file := range files {
 		switch err := utils.ValidateFile(file).(type) {
-		case errors.ErrorFileNotFound:
+		case *errors.ErrorFileNotFound:
 			return fmt.Errorf("%w\n", err)
-		case errors.ErrorIsDirectory:
+		case *errors.ErrorIsDirectory:
 			fmt.Printf("%s: skip\n", err)
 		case nil:
 			// pass
