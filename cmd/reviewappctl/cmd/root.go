@@ -35,6 +35,7 @@ func Execute() {
 func init() {
 	var err error
 
+	//config := config.GetConfigOrDie()
 	configFlags := genericclioptions.NewConfigFlags(true)
 	matchVersionKubeConfigFlags := cmdutil.NewMatchVersionFlags(configFlags)
 	factory := cmdutil.NewFactory(matchVersionKubeConfigFlags)

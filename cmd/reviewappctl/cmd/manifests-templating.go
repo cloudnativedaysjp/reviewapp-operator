@@ -18,7 +18,6 @@ type manifestsTemplatingOptions struct {
 	name        string
 	namespace   string
 	basefile    string
-	output      string
 	validate    bool
 	isStable    bool
 	isCandidate bool
@@ -29,9 +28,6 @@ var mto = &manifestsTemplatingOptions{}
 var manifestsTemplatingCmd = &cobra.Command{
 	Use: "manifests-templating",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if !(len(args) > 0) {
-			return fmt.Errorf("invalid arguments")
-		}
 		return runManifestsTemplating(cmd, args)
 	},
 }
@@ -41,10 +37,8 @@ func init() {
 		"name of ManifestsTemplate")
 	manifestsTemplatingCmd.Flags().StringVarP(&mto.namespace, "namespace", "", "default",
 		"namespace of ManifestsTemplate")
-	manifestsTemplatingCmd.Flags().StringVarP(&mto.basefile, "load", "f", "",
+	manifestsTemplatingCmd.Flags().StringVarP(&mto.basefile, "load", "f", "manifests_template.yaml",
 		"filename of manifests based on ManifestsTemplate")
-	manifestsTemplatingCmd.Flags().StringVarP(&mto.output, "output", "o", "manifests_template.yaml",
-		"output filename of manifest that ManifestsTemplate is written")
 	manifestsTemplatingCmd.Flags().BoolVarP(&mto.validate, "validate", "", true,
 		"TODO: description")
 	manifestsTemplatingCmd.Flags().BoolVarP(&mto.isStable, "is-stable", "", false,
@@ -56,20 +50,18 @@ func init() {
 }
 
 func runManifestsTemplating(cmd *cobra.Command, files []string) error {
-	// validation
-	if mto.name == "" && mto.basefile == "" {
-		return fmt.Errorf("required either --name or --load option")
+	// validate
+	if len(files) < 1 {
+		return fmt.Errorf("required one or more filenames")
 	}
 	if !mto.isStable && !mto.isCandidate {
 		return fmt.Errorf("required either --is-stable or --is-candidate options")
-	}
-	if len(files) < 1 {
-		return fmt.Errorf("required one or more filenames")
 	}
 
 	// declear ManifestsTemplate
 	var mt dreamkastv1alpha1.ManifestsTemplate
 	if err := utils.ValidateFile(mto.basefile); err == nil {
+		// initialize
 		fmt.Println("load basefile...")
 		b, err := ioutil.ReadFile(mto.basefile)
 		if err != nil {
@@ -79,6 +71,11 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 			return err
 		}
 	} else {
+		// validate
+		if mto.name == "" {
+			return fmt.Errorf("required --name option")
+		}
+		// initialize
 		fmt.Println("new struct of ManifestsTemplate...")
 		mt = dreamkastv1alpha1.ManifestsTemplate{
 			TypeMeta: metav1.TypeMeta{
@@ -112,14 +109,16 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 		}
 
 		// validate schema of manifest
-		if _, err := builder.
-			Unstructured().
-			Schema(validator).
-			ContinueOnError().
-			FilenameParam(mto.validate, &resource.FilenameOptions{Filenames: []string{file}}).
-			Flatten().
-			Do().Infos(); err != nil {
-			return err
+		if mto.validate {
+			if _, err := builder.
+				Unstructured().
+				Schema(validator).
+				ContinueOnError().
+				FilenameParam(false, &resource.FilenameOptions{Filenames: []string{file}}).
+				Flatten().
+				Do().Infos(); err != nil {
+				return err
+			}
 		}
 
 		// load manifest
@@ -139,9 +138,9 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(mto.output, data, 0644); err != nil {
+	if err := ioutil.WriteFile(mto.basefile, data, 0644); err != nil {
 		return err
 	}
-	fmt.Printf("output to %s\n", mto.output)
+	fmt.Printf("output to %s\n", mto.basefile)
 	return nil
 }
