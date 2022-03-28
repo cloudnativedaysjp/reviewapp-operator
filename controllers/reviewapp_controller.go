@@ -106,18 +106,21 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 		if err != nil {
 			errs = append(errs, err)
 		}
+		dto.ReviewApp = ra
 	}
 	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo {
 		ra, result, err = r.deployReviewAppManifestsToInfraRepo(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)
 		}
+		dto.ReviewApp = ra
 	}
 	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo {
 		ra, result, err = r.commentToAppRepoPullRequest(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)
 		}
+		dto.ReviewApp = ra
 	}
 
 	// update status

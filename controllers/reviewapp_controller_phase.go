@@ -105,7 +105,7 @@ func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppP
 	// Is ApplicationTemplate updated?
 	ra, updatedAt, err := ra.UpdateStatusOfApplication(application)
 	if err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 	// Is ManifestsTemplate updated?
 	updatedMt := ra.StatusOfManifestsWasUpdated(manifests)
@@ -129,15 +129,15 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	appWithAnnotations := application
 	appWithAnnotations, err := appWithAnnotations.SetAnnotation(annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
 	if err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
 	if err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
 	if err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 
 	// get gitRemoteRepo credential from Secret
@@ -147,10 +147,10 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 			// TODO
 			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
 		}
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
@@ -175,7 +175,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 			}
 			return nil
 		}, backoffRetryCount); err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 
 	// update ReviewApp.Status
@@ -197,18 +197,18 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
-			return models.ReviewApp{}, ctrl.Result{}, nil
+			return ra, ctrl.Result{}, nil
 		}
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 	hashInArgoCDApplication, err := application.GetAnnotation(annotationAppCommitHashForArgoCDApplication)
 	if err != nil {
-		return models.ReviewApp{}, ctrl.Result{}, err
+		return ra, ctrl.Result{}, err
 	}
 
 	// if ArgoCD Application has not been updated, early return.
 	if !ra.HasApplicationBeenUpdated(hashInArgoCDApplication) {
-		return models.ReviewApp{}, ctrl.Result{}, nil
+		return ra, ctrl.Result{}, nil
 	}
 
 	// send message to PR of AppRepo
@@ -220,14 +220,14 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 				// TODO
 				r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
 			}
-			return models.ReviewApp{}, ctrl.Result{}, err
+			return ra, ctrl.Result{}, err
 		}
 		if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
-			return models.ReviewApp{}, ctrl.Result{}, err
+			return ra, ctrl.Result{}, err
 		}
 		// Send Message to AppRepo's PR
 		if err := r.GitApiRepository.CommentToPullRequest(ctx, pr, ra.Spec.AppConfig.Message); err != nil {
-			return models.ReviewApp{}, ctrl.Result{}, err
+			return ra, ctrl.Result{}, err
 		}
 	}
 
