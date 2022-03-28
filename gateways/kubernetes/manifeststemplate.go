@@ -22,10 +22,11 @@ func (c Client) GetManifestsTemplate(ctx context.Context, m models.ReviewAppOrRe
 		if err := c.Get(ctx, nn, &mtOne); err != nil {
 			wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(mtOne), err)
 			if apierrors.IsNotFound(err) {
-				return nil, myerrors.NewK8sObjectNotFound(wrapedErr, &mtOne, nn)
+				return nil, myerrors.NewK8sObjectNotFound(wrapedErr, mtOne.GVK(), nn)
 			}
 			return nil, wrapedErr
 		}
+		mtOne.SetGroupVersionKind(mtOne.GVK())
 		mts = append(mts, models.ManifestsTemplate(mtOne))
 	}
 	return mts, nil

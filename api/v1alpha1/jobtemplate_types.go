@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 //+kubebuilder:object:root=true
@@ -29,6 +30,14 @@ type JobTemplate struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec JobTemplateSpec `json:"spec,omitempty"`
+}
+
+func (JobTemplate) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "JobTemplate",
+	}
 }
 
 // JobTemplateSpec defines the desired state of JobTemplate

@@ -19,10 +19,11 @@ func (c Client) GetReviewAppManager(ctx context.Context, namespace, name string)
 	if err := c.Get(ctx, nn, &ram); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ram), err)
 		if apierrors.IsNotFound(err) {
-			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, &ram, nn)
+			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, ram.GVK(), nn)
 		}
 		return nil, wrapedErr
 	}
+	ram.SetGroupVersionKind(ram.GVK())
 	return &ram, nil
 }
 
@@ -32,7 +33,7 @@ func (c Client) UpdateReviewAppManagerStatus(ctx context.Context, ram models.Rev
 	if err := c.Get(ctx, nn, &ramCurrent); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ramCurrent), err)
 		if apierrors.IsNotFound(err) {
-			return myerrors.NewK8sObjectNotFound(wrapedErr, &ramCurrent, nn)
+			return myerrors.NewK8sObjectNotFound(wrapedErr, ramCurrent.GVK(), nn)
 		}
 		return wrapedErr
 	}

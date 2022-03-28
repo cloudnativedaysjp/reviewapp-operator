@@ -7,6 +7,7 @@ import (
 	"golang.org/x/xerrors"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -22,7 +23,13 @@ func (c Client) GetLatestJobFromLabel(ctx context.Context, namespace, labelKey, 
 	sort.Slice(jList.Items, func(i, j int) bool {
 		return jList.Items[i].CreationTimestamp.Before(&jList.Items[j].CreationTimestamp)
 	})
-	return &jList.Items[0], nil
+	j := &jList.Items[0]
+	j.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "batch",
+		Version: "v1",
+		Kind:    "Job",
+	})
+	return j, nil
 }
 
 func (c Client) CreateJob(ctx context.Context, job *batchv1.Job) error {

@@ -3,7 +3,6 @@ package errors
 import (
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -16,10 +15,10 @@ type K8sObjectNotFound struct {
 }
 
 // obj はオブジェクトの取得に失敗しているので、client.Object ではなく runtime.Object を利用する
-func NewK8sObjectNotFound(err error, obj runtime.Object, nn types.NamespacedName) K8sObjectNotFound {
+func NewK8sObjectNotFound(err error, gvk schema.GroupVersionKind, nn types.NamespacedName) K8sObjectNotFound {
 	return K8sObjectNotFound{
 		Err:             err,
-		ObjectGVK:       obj.GetObjectKind().GroupVersionKind(),
+		ObjectGVK:       gvk,
 		ObjectName:      nn.Name,
 		ObjectNamespace: nn.Namespace,
 	}

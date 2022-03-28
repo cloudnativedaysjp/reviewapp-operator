@@ -23,9 +23,10 @@ func (c Client) getJobTemplate(ctx context.Context, namespace, name string) (mod
 	if err := c.Get(ctx, nn, &jt); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(jt), err)
 		if apierrors.IsNotFound(err) {
-			return models.JobTemplate{}, myerrors.NewK8sObjectNotFound(wrapedErr, &jt, nn)
+			return models.JobTemplate{}, myerrors.NewK8sObjectNotFound(wrapedErr, jt.GVK(), nn)
 		}
 		return models.JobTemplate{}, wrapedErr
 	}
+	jt.SetGroupVersionKind(jt.GVK())
 	return models.JobTemplate(jt), nil
 }

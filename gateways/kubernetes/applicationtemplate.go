@@ -20,9 +20,10 @@ func (c Client) GetApplicationTemplate(ctx context.Context, m models.ReviewAppOr
 	if err := c.Get(ctx, nn, &at); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(at), err)
 		if apierrors.IsNotFound(err) {
-			return models.ApplicationTemplate{}, myerrors.NewK8sObjectNotFound(wrapedErr, &at, nn)
+			return models.ApplicationTemplate{}, myerrors.NewK8sObjectNotFound(wrapedErr, at.GVK(), nn)
 		}
 		return models.ApplicationTemplate{}, wrapedErr
 	}
+	at.SetGroupVersionKind(at.GVK())
 	return models.ApplicationTemplate(at), nil
 }

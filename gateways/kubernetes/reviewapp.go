@@ -26,10 +26,11 @@ func (c Client) GetReviewApp(ctx context.Context, namespace, name string) (*drea
 	if err := c.Get(ctx, nn, &ra); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ra), err)
 		if apierrors.IsNotFound(err) {
-			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, &ra, nn)
+			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, ra.GVK(), nn)
 		}
 		return nil, wrapedErr
 	}
+	ra.SetGroupVersionKind(ra.GVK())
 	return &ra, nil
 }
 
@@ -58,7 +59,7 @@ func (c Client) UpdateReviewAppStatus(ctx context.Context, ra *dreamkastv1alpha1
 	if err := c.Get(ctx, nn, &raCurrent); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(raCurrent), err)
 		if apierrors.IsNotFound(err) {
-			return myerrors.NewK8sObjectNotFound(wrapedErr, &raCurrent, nn)
+			return myerrors.NewK8sObjectNotFound(wrapedErr, raCurrent.GVK(), nn)
 		}
 		return wrapedErr
 	}

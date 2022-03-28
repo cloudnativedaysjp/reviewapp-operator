@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ReviewAppSpec defines the desired state of ReviewApp
@@ -43,6 +44,14 @@ type ReviewAppSpec struct {
 
 	// AppPrNum is watched PR's number by this RA
 	AppPrNum int `json:"appRepoPrNum"`
+}
+
+func (ReviewApp) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ReviewApp",
+	}
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
