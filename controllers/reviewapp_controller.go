@@ -121,7 +121,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	}
 
 	// update status
-	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, &dto.ReviewAppSource); err != nil {
+	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, ra.ToReviewAppCR()); err != nil {
 		return ctrl.Result{}, err
 	}
 
