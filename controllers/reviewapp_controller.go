@@ -30,21 +30,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
 type ReviewAppReconciler struct {
-	client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
-	GitRemoteRepoAppService   *services.GitRemoteRepoAppService
-	GitRemoteRepoInfraService *services.GitRemoteRepoInfraService
+	K8sRepository        repositories.KubernetesRepository
+	GitApiRepository     repositories.GitAPI
+	GitCommandRepository repositories.GitCommand
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
@@ -64,7 +63,7 @@ var (
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
 		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
-		ra, err := kubernetes.GetReviewApp(ctx, r.Client, req.Namespace, req.Name)
+		ra, err := r.K8sRepository.GetReviewApp(ctx, req.Namespace, req.Name)
 		if err != nil {
 			if myerrors.IsNotFound(err) {
 				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
@@ -73,7 +72,8 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 
-		if result, err := r.prepare(ctx, ra); err != nil {
+		dto, result, err := r.prepare(ctx, ra)
+		if err != nil {
 			if myerrors.IsNotFound(err) {
 				return result, nil
 			}
@@ -81,52 +81,47 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Add Finalizers
-		if err := kubernetes.AddFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
+		if err := r.K8sRepository.AddFinalizersToReviewApp(ctx, ra, finalizer); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Handle deletion reconciliation loop.
 		if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
-			return r.reconcileDelete(ctx, ra)
+			return r.reconcileDelete(ctx, *dto)
 		}
-		return r.reconcile(ctx, ra)
+		return r.reconcile(ctx, *dto)
 	})
 	return result.(ctrl.Result), err
 }
 
-func (r *ReviewAppReconciler) reconcile(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
-	metrics.SetMetrics(*ra)
+func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
+	ra := dto.ReviewApp
+	metrics.SetMetricsUp(dto.ReviewAppSource)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) ||
 		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo {
-		result, err = r.confirmAppRepoIsUpdated(ctx, ra)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingTemplates {
-		result, err = r.confirmTemplatesAreUpdated(ctx, ra)
+		ra, result, err = r.confirmUpdated(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo {
-		result, err = r.deployReviewAppManifestsToInfraRepo(ctx, ra)
+		ra, result, err = r.deployReviewAppManifestsToInfraRepo(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo {
-		result, err = r.commentToAppRepoPullRequest(ctx, ra)
+		ra, result, err = r.commentToAppRepoPullRequest(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)
 		}
 	}
 
 	// update status
-	if err := kubernetes.UpdateReviewAppStatus(ctx, r.Client, ra); err != nil {
+	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, &dto.ReviewAppSource); err != nil {
 		return ctrl.Result{}, err
 	}
 

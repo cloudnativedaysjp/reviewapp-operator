@@ -104,23 +104,6 @@ const (
 	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
 )
 
-type ReviewAppTmp struct {
-	PullRequest                ReviewAppTmpPr
-	Application                string
-	ApplicationWithAnnotations string
-	Manifests                  map[string]string
-}
-
-type ReviewAppTmpPr struct {
-	Organization  string
-	Repository    string
-	Branch        string
-	Number        int
-	HeadCommitSha string
-	Title         string
-	Labels        []string
-}
-
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ra
 //+kubebuilder:subresource:status
@@ -137,8 +120,6 @@ type ReviewApp struct {
 
 	Spec   ReviewAppSpec   `json:"spec,omitempty"`
 	Status ReviewAppStatus `json:"status,omitempty"`
-
-	Tmp ReviewAppTmp `json:"-"`
 }
 
 //+kubebuilder:object:root=true

@@ -6,25 +6,30 @@
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/exec"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Injectors from wire.go:
 
-func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
-	gitApiDriver := gateways.NewGitHub(l)
-	gitRemoteRepoAppService := services.NewGitRemoteRepoAppService(gitApiDriver)
-	return gitRemoteRepoAppService, nil
+func NewGitHubAPIRepository(l logr.Logger) (*githubapi.GitHub, error) {
+	gitHub := githubapi.NewGitHub(l)
+	return gitHub, nil
 }
 
-func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.GitRemoteRepoInfraService, error) {
-	gitCommandDriver, err := gateways.NewGit(l, e)
+func NewGitCommandRepository(l logr.Logger, e exec.Interface) (*gitcommand.Git, error) {
+	git, err := gitcommand.NewGit(l, e)
 	if err != nil {
 		return nil, err
 	}
-	gitRemoteRepoInfraService := services.NewGitRemoteRepoInfraService(gitCommandDriver)
-	return gitRemoteRepoInfraService, nil
+	return git, nil
+}
+
+func NewKubernetesRepository(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
+	kubernetesClient := kubernetes.NewClient(l, e)
+	return kubernetesClient, nil
 }

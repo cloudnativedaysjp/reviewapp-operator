@@ -1,4 +1,4 @@
-package gateways
+package githubapi
 
 import (
 	"context"
@@ -7,39 +7,11 @@ import (
 	"github.com/google/go-github/v39/github"
 	"golang.org/x/oauth2"
 	"golang.org/x/xerrors"
+
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 )
 
 const CandidateLabelName = "candidate-template"
-
-type PullRequest struct {
-	Organization  string
-	Repository    string
-	Branch        string
-	Number        int
-	HeadCommitSha string
-	Title         string
-	Labels        []string
-}
-
-func NewPullRequest(organization, repository, branch string, number int, headCommitSha string, title string, labels []string) *PullRequest {
-	return &PullRequest{
-		Organization:  organization,
-		Repository:    repository,
-		Branch:        branch,
-		Number:        number,
-		HeadCommitSha: headCommitSha,
-		Title:         title,
-		Labels:        labels,
-	}
-}
-
-type GitHubIFace interface {
-	WithCredential(username, token string) error
-	ListOpenPullRequests(ctx context.Context, org, repo string) ([]*PullRequest, error)
-	GetPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error)
-	CommentToPullRequest(ctx context.Context, pr PullRequest, comment string) error
-	GetCommitHashes(ctx context.Context, pr PullRequest) ([]string, error)
-}
 
 type GitHub struct {
 	logger logr.Logger
@@ -52,61 +24,60 @@ func NewGitHub(l logr.Logger) *GitHub {
 	return &GitHub{logger: l}
 }
 
-func (g *GitHub) WithCredential(username, token string) error {
+func (g *GitHub) WithCredential(credential models.GitCredential) error {
 	ctx := context.Background()
 	// 既に client を持っているなら早期リターン
 	if g.haveClient(ctx) {
 		return nil
 	}
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
+		&oauth2.Token{AccessToken: credential.GetToken()},
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
-	g.username = username
+	g.username = credential.GetUsername()
 	g.client = client
 	return nil
 }
 
-// TODO: 検索条件を指定可能にする (例. label xxx が付与されている PR は対象外)
-func (g *GitHub) ListOpenPullRequests(ctx context.Context, org, repo string) ([]*PullRequest, error) {
+func (g *GitHub) ListOpenPullRequests(ctx context.Context, appRepoTarget models.AppRepoTarget) ([]models.PullRequest, error) {
 	if !g.haveClient(ctx) {
 		return nil, xerrors.Errorf("GitHub have no client")
 	}
-	prs, _, err := g.client.PullRequests.List(ctx, org, repo, &github.PullRequestListOptions{State: "open"})
+	prs, _, err := g.client.PullRequests.List(ctx, appRepoTarget.Organization, appRepoTarget.Repository, &github.PullRequestListOptions{State: "open"})
 	if err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
 
-	var result []*PullRequest
+	var result []models.PullRequest
 	for _, pr := range prs {
 		var labels []string
 		for _, l := range pr.Labels {
 			labels = append(labels, *l.Name)
 		}
-		result = append(result, NewPullRequest(org, repo, pr.Head.GetRef(), pr.GetNumber(), pr.Head.GetSHA(), pr.GetTitle(), labels))
+		result = append(result, models.NewPullRequest(appRepoTarget.Organization, appRepoTarget.Repository, pr.Head.GetRef(), pr.GetNumber(), pr.Head.GetSHA(), pr.GetTitle(), labels))
 	}
 	return result, nil
 }
 
-func (g *GitHub) GetPullRequest(ctx context.Context, org, repo string, prNum int) (*PullRequest, error) {
+func (g *GitHub) GetPullRequest(ctx context.Context, appRepoTarget models.AppRepoTarget, prNum int) (models.PullRequest, error) {
 	if !g.haveClient(ctx) {
-		return nil, xerrors.Errorf("GitHub have no client")
+		return models.PullRequest{}, xerrors.Errorf("GitHub have no client")
 	}
-	pr, _, err := g.client.PullRequests.Get(ctx, org, repo, prNum)
+	pr, _, err := g.client.PullRequests.Get(ctx, appRepoTarget.Organization, appRepoTarget.Repository, prNum)
 	if err != nil {
-		return nil, xerrors.Errorf("%w", err)
+		return models.PullRequest{}, xerrors.Errorf("%w", err)
 	}
 	var labels []string
 	for _, l := range pr.Labels {
 		labels = append(labels, *l.Name)
 	}
-	return NewPullRequest(org, repo, pr.Head.GetRef(), prNum, pr.Head.GetSHA(), pr.GetTitle(), labels), nil
+	return models.NewPullRequest(appRepoTarget.Organization, appRepoTarget.Repository, pr.Head.GetRef(), prNum, pr.Head.GetSHA(), pr.GetTitle(), labels), nil
 }
 
-func (g *GitHub) CommentToPullRequest(ctx context.Context, pr PullRequest, comment string) error {
+func (g *GitHub) CommentToPullRequest(ctx context.Context, pr models.PullRequest, comment string) error {
 	if !g.haveClient(ctx) {
 		return xerrors.Errorf("GitHub have no client")
 	}
@@ -125,7 +96,7 @@ func (g *GitHub) CommentToPullRequest(ctx context.Context, pr PullRequest, comme
 	return nil
 }
 
-func (g *GitHub) GetCommitHashes(ctx context.Context, prModel PullRequest) ([]string, error) {
+func (g *GitHub) GetCommitHashes(ctx context.Context, prModel models.PullRequest) ([]string, error) {
 	if !g.haveClient(ctx) {
 		return nil, xerrors.Errorf("GitHub have no client")
 	}

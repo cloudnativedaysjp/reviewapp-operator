@@ -86,17 +86,22 @@ func main() {
 
 	{ // initialize controller: ReviewAppManager
 		ramLogger := ctrl.Log.WithName("controllers").WithName("ReviewAppManager")
-		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(ramLogger)
+		k8sRepository, err := wire.NewKubernetesRepository(ramLogger, mgr.GetClient())
 		if err != nil {
-			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoApp")
+			setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
+			os.Exit(1)
+		}
+		gitApiRepository, err := wire.NewGitHubAPIRepository(ramLogger)
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
 			os.Exit(1)
 		}
 		if err = (&controllers.ReviewAppManagerReconciler{
-			Client:                  mgr.GetClient(),
-			Log:                     ramLogger,
-			Scheme:                  mgr.GetScheme(),
-			Recorder:                mgr.GetEventRecorderFor("reviewappmanager-controler"),
-			GitRemoteRepoAppService: gitRemoteRepoAppService,
+			Log:              ramLogger,
+			Scheme:           mgr.GetScheme(),
+			Recorder:         mgr.GetEventRecorderFor("reviewappmanager-controler"),
+			K8sRepository:    k8sRepository,
+			GitApiRepository: gitApiRepository,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
 			os.Exit(1)
@@ -104,23 +109,28 @@ func main() {
 	}
 	{ // initialize controller: ReviewApp
 		raLogger := ctrl.Log.WithName("controllers").WithName("ReviewApp")
-		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(raLogger)
+		k8sRepository, err := wire.NewKubernetesRepository(raLogger, mgr.GetClient())
 		if err != nil {
-			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoApp")
+			setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
 			os.Exit(1)
 		}
-		gitRemoteRepoInfraService, err := wire.NewGitRemoteRepoInfraService(raLogger, exec.New())
+		gitApiRepository, err := wire.NewGitHubAPIRepository(raLogger)
 		if err != nil {
-			setupLog.Error(err, "unable to initialize", "service", "GitRemoteRepoInfra")
+			setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
+			os.Exit(1)
+		}
+		gitCommandRepository, err := wire.NewGitCommandRepository(raLogger, exec.New())
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
 			os.Exit(1)
 		}
 		if err = (&controllers.ReviewAppReconciler{
-			Client:                    mgr.GetClient(),
-			Log:                       raLogger,
-			Scheme:                    mgr.GetScheme(),
-			Recorder:                  mgr.GetEventRecorderFor("reviewapp-controler"),
-			GitRemoteRepoAppService:   gitRemoteRepoAppService,
-			GitRemoteRepoInfraService: gitRemoteRepoInfraService,
+			Log:                  raLogger,
+			Scheme:               mgr.GetScheme(),
+			Recorder:             mgr.GetEventRecorderFor("reviewapp-controler"),
+			K8sRepository:        k8sRepository,
+			GitApiRepository:     gitApiRepository,
+			GitCommandRepository: gitCommandRepository,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
 			os.Exit(1)

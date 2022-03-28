@@ -2,9 +2,7 @@ package kubernetes
 
 import (
 	"context"
-	"fmt"
 	"reflect"
-	"strings"
 
 	"golang.org/x/xerrors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,47 +16,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-type PullRequest struct {
-	Organization string
-	Repository   string
-	Number       int
-}
-
-func NewReviewAppFromReviewAppManager(ram *dreamkastv1alpha1.ReviewAppManager, pr *PullRequest) *dreamkastv1alpha1.ReviewApp {
-	return &dreamkastv1alpha1.ReviewApp{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: fmt.Sprintf("%s-%s-%s-%d",
-				ram.Name,
-				strings.ToLower(pr.Organization),
-				strings.ToLower(pr.Repository),
-				pr.Number,
-			),
-			Namespace: ram.Namespace,
-		},
-		Spec: dreamkastv1alpha1.ReviewAppSpec{
-			AppTarget:   ram.Spec.AppTarget,
-			InfraTarget: ram.Spec.InfraTarget,
-			AppPrNum:    pr.Number,
-		},
-	}
-}
-
-func GetReviewApp(ctx context.Context, c client.Client, namespace, name string) (*dreamkastv1alpha1.ReviewApp, error) {
+func (c Client) GetReviewApp(ctx context.Context, namespace, name string) (*dreamkastv1alpha1.ReviewApp, error) {
 	var ra dreamkastv1alpha1.ReviewApp
-	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, &ra); err != nil {
+	nn := types.NamespacedName{Name: name, Namespace: namespace}
+	if err := c.Get(ctx, nn, &ra); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ra), err)
 		if apierrors.IsNotFound(err) {
-			return nil, myerrors.K8sResourceNotFound{Err: wrapedErr}
+			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, &ra, nn)
 		}
 		return nil, wrapedErr
 	}
 	return &ra, nil
 }
 
-func ApplyReviewAppWithOwnerRef(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, owner metav1.Object) error {
+func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.ReviewApp, owner metav1.Object) error {
 	raApplied := &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ra.Name,
@@ -77,12 +52,13 @@ func ApplyReviewAppWithOwnerRef(ctx context.Context, c client.Client, ra *dreamk
 	return nil
 }
 
-func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp) error {
+func (c Client) UpdateReviewAppStatus(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) error {
 	var raCurrent dreamkastv1alpha1.ReviewApp
-	if err := c.Get(ctx, types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}, &raCurrent); err != nil {
+	nn := types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}
+	if err := c.Get(ctx, nn, &raCurrent); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(raCurrent), err)
 		if apierrors.IsNotFound(err) {
-			return myerrors.K8sResourceNotFound{Err: wrapedErr}
+			return myerrors.NewK8sObjectNotFound(wrapedErr, &raCurrent, nn)
 		}
 		return wrapedErr
 	}
@@ -94,7 +70,7 @@ func UpdateReviewAppStatus(ctx context.Context, c client.Client, ra *dreamkastv1
 	return nil
 }
 
-func DeleteReviewApp(ctx context.Context, c client.Client, namespace, name string) error {
+func (c Client) DeleteReviewApp(ctx context.Context, namespace, name string) error {
 	ra := dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -107,7 +83,7 @@ func DeleteReviewApp(ctx context.Context, c client.Client, namespace, name strin
 	return nil
 }
 
-func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
+func (c Client) AddFinalizersToReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "dreamkast.cloudnativedays.jp",
@@ -130,7 +106,7 @@ func AddFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkas
 	return nil
 }
 
-func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
+func (c Client) RemoveFinalizersFromReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "dreamkast.cloudnativedays.jp",
@@ -152,18 +128,4 @@ func RemoveFinalizersToReviewApp(ctx context.Context, c client.Client, ra *dream
 		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(ra), err)
 	}
 	return nil
-}
-
-func PickVariablesFromReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) map[string]string {
-	vars := make(map[string]string)
-	for _, line := range ra.Spec.Variables {
-		idx := strings.Index(line, "=")
-		if idx == -1 {
-			// TODO
-			// r.Log.Info(fmt.Sprintf("RA %s: .Spec.Variables[%d] is invalid", ram.Name, i))
-			continue
-		}
-		vars[line[:idx]] = line[idx+1:]
-	}
-	return vars
 }
