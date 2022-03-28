@@ -15,8 +15,14 @@ func (m ManifestsTemplate) GetCandidateMap() map[string]string {
 }
 
 func (m ManifestsTemplate) AppendOrUpdate(mt ManifestsTemplate) ManifestsTemplate {
+	if m.Spec.StableData == nil {
+		m.Spec.StableData = make(map[string]string)
+	}
 	for k, v := range mt.GetStableMap() {
 		m.Spec.StableData[k] = v
+	}
+	if m.Spec.CandidateData == nil {
+		m.Spec.CandidateData = make(map[string]string)
 	}
 	for k, v := range mt.GetCandidateMap() {
 		m.Spec.CandidateData[k] = v
