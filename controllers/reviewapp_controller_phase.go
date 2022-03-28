@@ -170,7 +170,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 				return err
 			}
 			// commmit & push
-			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsg(ra)); err != nil {
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsgUpdate(ra)); err != nil {
 				return err
 			}
 			return nil
@@ -320,7 +320,7 @@ finalize:
 				return err
 			}
 			// commmit & push
-			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsg(ra)); err != nil {
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsgDeletion(ra)); err != nil {
 				return err
 			}
 			return nil

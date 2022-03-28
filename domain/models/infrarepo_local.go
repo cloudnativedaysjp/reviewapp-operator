@@ -24,9 +24,18 @@ func (m InfraRepoLocalDir) GetLatestCommitSha() string {
 	return m.latestCommitSha
 }
 
-func (m InfraRepoLocalDir) GetCommitMsg(ra ReviewApp) string {
+func (m InfraRepoLocalDir) GetCommitMsgUpdate(ra ReviewApp) string {
 	return fmt.Sprintf(
 		"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
+		ra.Status.Sync.AppRepoLatestCommitSha,
+	)
+}
+
+func (m InfraRepoLocalDir) GetCommitMsgDeletion(ra ReviewApp) string {
+	return fmt.Sprintf(
+		"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 		ra.Spec.AppTarget.Organization,
 		ra.Spec.AppTarget.Repository,
 		ra.Status.Sync.AppRepoLatestCommitSha,
