@@ -4,7 +4,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
-	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 )
 
 const (
@@ -28,7 +28,7 @@ func init() {
 	metrics.Registry.MustRegister(UpVec)
 }
 
-func SetMetricsUp(ra dreamkastv1alpha1.ReviewApp) {
+func SetMetricsUp(ra models.ReviewApp) {
 	UpVec.WithLabelValues(
 		ra.Name,
 		ra.Namespace,
@@ -39,7 +39,7 @@ func SetMetricsUp(ra dreamkastv1alpha1.ReviewApp) {
 	).Set(1)
 }
 
-func SetMetricsUnknown(ra dreamkastv1alpha1.ReviewApp) {
+func SetMetricsUnknown(ra models.ReviewApp) {
 	UnknownVec.WithLabelValues(
 		ra.Name,
 		ra.Namespace,
@@ -50,7 +50,7 @@ func SetMetricsUnknown(ra dreamkastv1alpha1.ReviewApp) {
 	).Set(1)
 }
 
-func RemoveMetrics(ra dreamkastv1alpha1.ReviewApp) {
+func RemoveMetrics(ra models.ReviewApp) {
 	UpVec.DeleteLabelValues(
 		ra.Name,
 		ra.Namespace,

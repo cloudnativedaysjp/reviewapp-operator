@@ -20,21 +20,21 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-func (c Client) GetReviewApp(ctx context.Context, namespace, name string) (*dreamkastv1alpha1.ReviewApp, error) {
+func (c Client) GetReviewApp(ctx context.Context, namespace, name string) (models.ReviewApp, error) {
 	var ra dreamkastv1alpha1.ReviewApp
 	nn := types.NamespacedName{Name: name, Namespace: namespace}
 	if err := c.Get(ctx, nn, &ra); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(ra), err)
 		if apierrors.IsNotFound(err) {
-			return nil, myerrors.NewK8sObjectNotFound(wrapedErr, ra.GVK(), nn)
+			return models.ReviewApp{}, myerrors.NewK8sObjectNotFound(wrapedErr, ra.GVK(), nn)
 		}
-		return nil, wrapedErr
+		return models.ReviewApp{}, wrapedErr
 	}
 	ra.SetGroupVersionKind(ra.GVK())
-	return &ra, nil
+	return models.NewReviewApp(&ra), nil
 }
 
-func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.ReviewApp, owner metav1.Object) error {
+func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.ReviewApp, owner models.ReviewAppManager) error {
 	raApplied := &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ra.Name,
@@ -43,7 +43,7 @@ func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.Review
 	}
 	if _, err := ctrl.CreateOrUpdate(ctx, c, raApplied, func() (err error) {
 		raApplied.Spec = ra.Spec
-		if err := ctrl.SetControllerReference(owner, raApplied, c.Scheme()); err != nil {
+		if err := ctrl.SetControllerReference(owner.ToReviewAppCR(), raApplied, c.Scheme()); err != nil {
 			return err
 		}
 		return nil
@@ -53,7 +53,7 @@ func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.Review
 	return nil
 }
 
-func (c Client) UpdateReviewAppStatus(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) error {
+func (c Client) UpdateReviewAppStatus(ctx context.Context, ra models.ReviewApp) error {
 	var raCurrent dreamkastv1alpha1.ReviewApp
 	nn := types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}
 	if err := c.Get(ctx, nn, &raCurrent); err != nil {
@@ -84,7 +84,7 @@ func (c Client) DeleteReviewApp(ctx context.Context, namespace, name string) err
 	return nil
 }
 
-func (c Client) AddFinalizersToReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
+func (c Client) AddFinalizersToReviewApp(ctx context.Context, ra models.ReviewApp, finalizers ...string) error {
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "dreamkast.cloudnativedays.jp",
@@ -107,7 +107,7 @@ func (c Client) AddFinalizersToReviewApp(ctx context.Context, ra *dreamkastv1alp
 	return nil
 }
 
-func (c Client) RemoveFinalizersFromReviewApp(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp, finalizers ...string) error {
+func (c Client) RemoveFinalizersFromReviewApp(ctx context.Context, ra models.ReviewApp, finalizers ...string) error {
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "dreamkast.cloudnativedays.jp",

@@ -66,9 +66,8 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return r.reconcile(ctx, ram)
 }
 
-func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ramSource *dreamkastv1alpha1.ReviewAppManager) (ctrl.Result, error) {
+func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.ReviewAppManager) (ctrl.Result, error) {
 	// init model
-	ram := models.NewReviewAppManager(*ramSource)
 	appRepoTarget := ram.GetAppRepoTarget()
 
 	// get gitRemoteRepo credential from Secret
@@ -101,7 +100,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ramSource *d
 			return ctrl.Result{}, err
 		}
 		// apply RA
-		if err := r.K8sRepository.ApplyReviewAppWithOwnerRef(ctx, ra, ramSource); err != nil {
+		if err := r.K8sRepository.ApplyReviewAppWithOwnerRef(ctx, ra, ram); err != nil {
 			return ctrl.Result{}, err
 		}
 		// update values for updating RAM.status

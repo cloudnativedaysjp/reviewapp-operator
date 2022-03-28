@@ -96,7 +96,7 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
 	ra := dto.ReviewApp
-	metrics.SetMetricsUp(dto.ReviewAppSource)
+	metrics.SetMetricsUp(dto.ReviewApp)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
@@ -124,7 +124,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	}
 
 	// update status
-	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, ra.ToReviewAppCR()); err != nil {
+	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, ra); err != nil {
 		return ctrl.Result{}, err
 	}
 

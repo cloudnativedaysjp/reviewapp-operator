@@ -135,6 +135,11 @@ func (m ReviewAppManager) GetVariables() []string {
 	return m.Spec.Variables
 }
 
+func (m ReviewAppManager) ToReviewAppCR() *dreamkastv1alpha1.ReviewAppManager {
+	ram := dreamkastv1alpha1.ReviewAppManager(m)
+	return &ram
+}
+
 func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator) (ReviewApp, error) {
 	ra := ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{

@@ -28,15 +28,13 @@ var (
 )
 
 type ReviewAppPhaseDTO struct {
-	ReviewApp       models.ReviewApp
-	ReviewAppSource dreamkastv1alpha1.ReviewApp
-	PullRequest     models.PullRequest
-	Application     models.Application
-	Manifests       models.Manifests
+	ReviewApp   models.ReviewApp
+	PullRequest models.PullRequest
+	Application models.Application
+	Manifests   models.Manifests
 }
 
-func (r *ReviewAppReconciler) prepare(ctx context.Context, raSource *dreamkastv1alpha1.ReviewApp) (*ReviewAppPhaseDTO, ctrl.Result, error) {
-	ra := models.NewReviewApp(raSource)
+func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) (*ReviewAppPhaseDTO, ctrl.Result, error) {
 	appRepoTarget := ra.GetAppRepoTarget()
 
 	// get gitRemoteRepo credential from Secret
@@ -91,7 +89,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, raSource *dreamkastv1
 		return nil, ctrl.Result{}, err
 	}
 
-	return &ReviewAppPhaseDTO{ra, *raSource, pr, application, manifests}, ctrl.Result{}, nil
+	return &ReviewAppPhaseDTO{ra, pr, application, manifests}, ctrl.Result{}, nil
 }
 
 func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
@@ -240,7 +238,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
 	ra := dto.ReviewApp
-	raSource := dto.ReviewAppSource
+	raSource := ra.ToReviewAppCR()
 	appRepoTarget := ra.GetAppRepoTarget()
 	infraRepoTarget := ra.GetInfraRepoTarget()
 	pr := dto.PullRequest
@@ -256,27 +254,27 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewApp
 			if myerrors.IsNotFound(err) {
 				r.Log.Info(err.Error())
 			}
-			r.Recorder.Eventf(&raSource, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
+			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
 			goto finalize
 		}
 
 		// get Job Object
 		preStopJob, err := jt.GenerateJob(ra, pr, v)
 		if err != nil {
-			r.Recorder.Eventf(&raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot unmarshal .spec.template of JobTemplate %s: %s", jt.Name, err)
+			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot unmarshal .spec.template of JobTemplate %s: %s", jt.Name, err)
 			goto finalize
 		}
 
 		// create job & wait until Job completed on singleflight
-		r.Recorder.Eventf(&raSource, corev1.EventTypeNormal, "running preStopJob", "running preStopJob (%s: %s)", models.LabelReviewAppNameForJob, ra.Name)
+		r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "running preStopJob", "running preStopJob (%s: %s)", models.LabelReviewAppNameForJob, ra.Name)
 		if err := r.K8sRepository.CreateJob(ctx, preStopJob); err != nil {
-			r.Recorder.Eventf(&raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job (%s: %s): %s", models.LabelReviewAppNameForJob, ra.Name, err)
+			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job (%s: %s): %s", models.LabelReviewAppNameForJob, ra.Name, err)
 			goto finalize
 		}
 		timeout := time.Now().Add(preStopJobTimeoutSecond * time.Second)
 		for {
 			if time.Since(timeout) >= 0 {
-				r.Recorder.Eventf(&raSource, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob (%s: %s) is timeout (%ds)", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
+				r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob (%s: %s) is timeout (%ds)", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
 				goto finalize
 			}
 			appliedPreStopJob, err := r.K8sRepository.GetLatestJobFromLabel(ctx, preStopJob.Namespace, models.LabelReviewAppNameForJob, ra.Name)
@@ -284,7 +282,7 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewApp
 				return ctrl.Result{}, err
 			}
 			if appliedPreStopJob.Status.Succeeded != 0 {
-				r.Recorder.Eventf(&raSource, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
+				r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
 				break
 			}
 			time.Sleep(10 * time.Second)
@@ -329,12 +327,12 @@ finalize:
 	}
 
 	// Remove Finalizers
-	if err := r.K8sRepository.RemoveFinalizersFromReviewApp(ctx, &raSource, finalizer); err != nil {
+	if err := r.K8sRepository.RemoveFinalizersFromReviewApp(ctx, ra, finalizer); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// remove metrics
-	metrics.RemoveMetrics(raSource)
+	metrics.RemoveMetrics(ra)
 
 	return ctrl.Result{}, nil
 }
