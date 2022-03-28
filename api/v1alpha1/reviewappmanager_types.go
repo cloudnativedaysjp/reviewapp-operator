@@ -44,14 +44,6 @@ type ReviewAppManagerSpec struct {
 	Variables []string `json:"variables,omitempty"`
 }
 
-func (ReviewAppManager) GVK() schema.GroupVersionKind {
-	return schema.GroupVersionKind{
-		Group:   GroupVersion.Group,
-		Version: GroupVersion.Version,
-		Kind:    "ReviewAppManager",
-	}
-}
-
 type ReviewAppManagerSpecAppTarget struct {
 
 	// TODO
@@ -168,6 +160,14 @@ type ReviewAppManager struct {
 
 	Spec   ReviewAppManagerSpec   `json:"spec,omitempty"`
 	Status ReviewAppManagerStatus `json:"status,omitempty"`
+}
+
+func (ReviewAppManager) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ReviewAppManager",
+	}
 }
 
 //+kubebuilder:object:root=true

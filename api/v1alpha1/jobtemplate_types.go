@@ -21,6 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// JobTemplateSpec defines the desired state of JobTemplate
+type JobTemplateSpec struct {
+
+	// Template is included Job manifest. (apiVersion, kind, metadata, spec, ...)
+	Template string `json:"template,omitempty"`
+}
+
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=jt
 
@@ -38,13 +45,6 @@ func (JobTemplate) GVK() schema.GroupVersionKind {
 		Version: GroupVersion.Version,
 		Kind:    "JobTemplate",
 	}
-}
-
-// JobTemplateSpec defines the desired state of JobTemplate
-type JobTemplateSpec struct {
-
-	// Template is included Job manifest. (apiVersion, kind, metadata, spec, ...)
-	Template string `json:"template,omitempty"`
 }
 
 //+kubebuilder:object:root=true

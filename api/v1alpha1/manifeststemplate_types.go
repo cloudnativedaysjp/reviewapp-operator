@@ -21,6 +21,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+type ManifestsTemplateSpec struct {
+	// CandidateData is field that be given various resources' manifest.
+	CandidateData map[string]string `json:"candidate,omitempty"`
+
+	// StableData is field that be given various resources' manifest.
+	StableData map[string]string `json:"stable,omitempty"`
+}
+
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=mt
 
@@ -38,14 +46,6 @@ func (ManifestsTemplate) GVK() schema.GroupVersionKind {
 		Version: GroupVersion.Version,
 		Kind:    "ManifestsTemplate",
 	}
-}
-
-type ManifestsTemplateSpec struct {
-	// CandidateData is field that be given various resources' manifest.
-	CandidateData map[string]string `json:"candidate,omitempty"`
-
-	// StableData is field that be given various resources' manifest.
-	StableData map[string]string `json:"stable,omitempty"`
 }
 
 //+kubebuilder:object:root=true

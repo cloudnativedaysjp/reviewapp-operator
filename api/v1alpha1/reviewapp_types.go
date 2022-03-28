@@ -46,14 +46,6 @@ type ReviewAppSpec struct {
 	AppPrNum int `json:"appRepoPrNum"`
 }
 
-func (ReviewApp) GVK() schema.GroupVersionKind {
-	return schema.GroupVersionKind{
-		Group:   GroupVersion.Group,
-		Version: GroupVersion.Version,
-		Kind:    "ReviewApp",
-	}
-}
-
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
 	// TODO
@@ -129,6 +121,14 @@ type ReviewApp struct {
 
 	Spec   ReviewAppSpec   `json:"spec,omitempty"`
 	Status ReviewAppStatus `json:"status,omitempty"`
+}
+
+func (ReviewApp) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ReviewApp",
+	}
 }
 
 //+kubebuilder:object:root=true
