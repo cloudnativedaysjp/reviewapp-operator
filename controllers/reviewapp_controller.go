@@ -101,7 +101,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	// run/skip processes by ReviewApp state
 	errs := []error{}
 	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) ||
-		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo {
+		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates {
 		ra, result, err = r.confirmUpdated(ctx, dto)
 		if err != nil {
 			errs = append(errs, err)

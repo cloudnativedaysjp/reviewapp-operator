@@ -100,7 +100,7 @@ func (m ReviewApp) StatusOfManifestsWasUpdated(manifests Manifests) bool {
 }
 
 func (m ReviewApp) HasApplicationBeenUpdated(hash string) bool {
-	return m.Status.Sync.AppRepoLatestCommitSha != hash
+	return m.Status.Sync.AppRepoLatestCommitSha == hash
 }
 
 func (m ReviewApp) HasMessageAlreadyBeenSent() bool {

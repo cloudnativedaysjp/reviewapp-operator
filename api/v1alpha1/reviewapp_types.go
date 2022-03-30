@@ -95,13 +95,11 @@ type SyncStatusCode string
 const (
 	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
 	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
-	// SyncStatusCodeWatchingAppRepo indicates that TODO
-	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
-	// SyncStatusCodeWatchingTemplates indicates that TODO
-	SyncStatusCodeWatchingTemplates SyncStatusCode = "WatchingTemplates"
-	// SyncStatusCodeNeedToUpdateInfraRepo indicates that watched updated app repo & will update manifests to infra repo
+	// SyncStatusCodeWatchingAppRepo indicates that ReviewApp Object is no changing.
+	SyncStatusCodeWatchingAppRepoAndTemplates SyncStatusCode = "WatchingAppRepoAndTemplates"
+	// SyncStatusCodeNeedToUpdateInfraRepo indicates that ReviewApp Object was updated. Operator will update manifests to infra repo.
 	SyncStatusCodeNeedToUpdateInfraRepo SyncStatusCode = "NeedToUpdateInfraRepo"
-	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
+	// SyncStatusCodeUpdatedInfraRepo indicates that ReviewApp manifests was deployed to infra repo. Operator is waiting ArgoCD Application updated
 	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
 )
 

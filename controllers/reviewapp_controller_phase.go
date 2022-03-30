@@ -230,7 +230,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
+	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates
 	ra.Status.AlreadySentMessage = true
 
 	return ra, ctrl.Result{}, nil
@@ -282,7 +282,7 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewApp
 				return ctrl.Result{}, err
 			}
 			if appliedPreStopJob.Status.Succeeded != 0 {
-				r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
+				r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", models.LabelReviewAppNameForJob, ra.Name)
 				break
 			}
 			time.Sleep(10 * time.Second)

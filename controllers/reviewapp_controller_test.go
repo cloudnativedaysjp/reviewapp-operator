@@ -128,7 +128,7 @@ var _ = Describe("ReviewApp controller", func() {
 				ra := &dreamkastv1alpha1.ReviewApp{}
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
+				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
@@ -173,7 +173,7 @@ var _ = Describe("ReviewApp controller", func() {
 			ra := &dreamkastv1alpha1.ReviewApp{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo))
+			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 			Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
