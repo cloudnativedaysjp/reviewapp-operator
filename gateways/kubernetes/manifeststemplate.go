@@ -14,7 +14,7 @@ import (
 )
 
 func (c Client) GetManifestsTemplate(ctx context.Context, m models.ReviewAppOrReviewAppManager) ([]models.ManifestsTemplate, error) {
-	conf := m.GetInfraRepoConfig()
+	conf := m.InfraRepoConfig()
 	var mts []models.ManifestsTemplate
 	for _, tmp := range conf.Manifests.Templates {
 		nn := types.NamespacedName(tmp)

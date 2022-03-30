@@ -7,6 +7,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+/* K8sObjectNotFound */
+
 type K8sObjectNotFound struct {
 	Err             error
 	ObjectGVK       schema.GroupVersionKind
@@ -28,7 +30,22 @@ func (e K8sObjectNotFound) Error() string {
 	return fmt.Sprintf("%s %s/%s not found", e.ObjectGVK.Kind, e.ObjectNamespace, e.ObjectName)
 }
 
-// utility functions
+/* K8sObjectNotFound */
+
+type KeyIsMissing struct {
+	kind string
+	key  string
+}
+
+func NewKeyIsMissing(kind, key string) KeyIsMissing {
+	return KeyIsMissing{kind, key}
+}
+
+func (e KeyIsMissing) Error() string {
+	return fmt.Sprintf("in %s: key %s is missing", e.kind, e.key)
+}
+
+/* utility functions */
 
 func IsNotFound(err error) bool {
 	switch err.(type) {

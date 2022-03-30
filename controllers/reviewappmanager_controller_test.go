@@ -1,4 +1,5 @@
-//+build integration_test
+//go:build integration_test
+// +build integration_test
 
 /*
 Copyright 2021.
@@ -72,14 +73,16 @@ var _ = Describe("ReviewAppManager controller", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 		logger := glogr.NewWithOptions(glogr.Options{LogCaller: glogr.None})
-		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(logger)
+		k8sRepository, err := wire.NewKubernetesRepository(logger, k8sClient)
+		Expect(err).ToNot(HaveOccurred())
+		gitApiRepository, err := wire.NewGitHubAPIRepository(logger)
 		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppManagerReconciler{
-			Client:                  k8sClient,
-			Scheme:                  scheme,
-			Log:                     logger,
-			Recorder:                recorder,
-			GitRemoteRepoAppService: gitRemoteRepoAppService,
+			Scheme:           scheme,
+			Log:              logger,
+			Recorder:         recorder,
+			K8sRepository:    k8sRepository,
+			GitApiRepository: gitApiRepository,
 		}
 		err = reconciler.SetupWithManager(mgr)
 		Expect(err).NotTo(HaveOccurred())

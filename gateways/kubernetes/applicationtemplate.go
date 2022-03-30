@@ -15,7 +15,7 @@ import (
 
 func (c Client) GetApplicationTemplate(ctx context.Context, m models.ReviewAppOrReviewAppManager) (models.ApplicationTemplate, error) {
 	var at dreamkastv1alpha1.ApplicationTemplate
-	conf := m.GetInfraRepoConfig()
+	conf := m.InfraRepoConfig()
 	nn := types.NamespacedName{Name: conf.ArgoCDApp.Template.Name, Namespace: conf.ArgoCDApp.Template.Namespace}
 	if err := c.Get(ctx, nn, &at); err != nil {
 		wrapedErr := xerrors.Errorf("Error to get %s: %w", reflect.TypeOf(at), err)

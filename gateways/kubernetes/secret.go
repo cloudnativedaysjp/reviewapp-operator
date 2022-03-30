@@ -22,7 +22,7 @@ func (c Client) GetSecretValue(ctx context.Context, namespace string, m models.A
 		Version: "v1",
 		Kind:    "Secret",
 	}
-	secretRef, err := m.GetGitSecretRef()
+	secretRef, err := m.GitSecretSelector()
 	if err != nil {
 		// Secret is not set
 		return "", nil

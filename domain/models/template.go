@@ -35,7 +35,7 @@ func NewTemplator(
 	pr PullRequest,
 ) Templator {
 	vars := make(map[string]string)
-	for _, line := range m.GetVariables() {
+	for _, line := range m.Variables() {
 		idx := strings.Index(line, "=")
 		if idx == -1 {
 			// TODO
@@ -44,8 +44,8 @@ func NewTemplator(
 		}
 		vars[line[:idx]] = line[idx+1:]
 	}
-	appTarget := m.GetAppRepoTarget()
-	infraTarget := m.GetInfraRepoTarget()
+	appTarget := m.AppRepoTarget()
+	infraTarget := m.InfraRepoTarget()
 	return Templator{
 		templateValueAppRepoInfo{
 			Organization:    appTarget.Organization,

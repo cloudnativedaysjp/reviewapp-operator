@@ -68,7 +68,7 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.ReviewAppManager) (ctrl.Result, error) {
 	// init model
-	appRepoTarget := ram.GetAppRepoTarget()
+	appRepoTarget := ram.AppRepoTarget()
 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ram.Namespace, &appRepoTarget)
@@ -114,7 +114,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 	// delete RA that only exists ResourceStatus
 	outOfSyncedPRs := ram.ListOutOfSyncPullRequests(prs)
 	for _, pr := range outOfSyncedPRs {
-		if err := r.K8sRepository.DeleteReviewApp(ctx, ram.Namespace, ram.GetReviewAppName(pr)); err != nil {
+		if err := r.K8sRepository.DeleteReviewApp(ctx, ram.Namespace, ram.ReviewAppName(pr)); err != nil {
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}

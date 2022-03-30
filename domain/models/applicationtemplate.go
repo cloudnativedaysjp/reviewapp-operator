@@ -1,25 +1,24 @@
 package models
 
 import (
-	"fmt"
-
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
 /* ApplicationTemplate */
 
 type ApplicationTemplate dreamkastv1alpha1.ApplicationTemplate
 
-func (m ApplicationTemplate) GetStableStr() string {
+func (m ApplicationTemplate) StableStr() string {
 	return m.Spec.StableTemplate
 }
 
-func (m ApplicationTemplate) GetCandidateStr() string {
+func (m ApplicationTemplate) CandidateStr() string {
 	return m.Spec.CandidateTemplate
 }
 
@@ -27,9 +26,9 @@ func (m ApplicationTemplate) GenerateApplication(pr PullRequest, v Templator) (A
 	var template string
 	var err error
 	if pr.IsCandidate() {
-		template = m.GetCandidateStr()
+		template = m.CandidateStr()
 	} else {
-		template = m.GetStableStr()
+		template = m.StableStr()
 	}
 	application, err := v.Templating(template)
 	if err != nil {
@@ -42,7 +41,7 @@ func (m ApplicationTemplate) GenerateApplication(pr PullRequest, v Templator) (A
 
 type Application string
 
-func (m Application) GetNamespacedName() (types.NamespacedName, error) {
+func (m Application) NamespacedName() (types.NamespacedName, error) {
 	var obj unstructured.Unstructured
 	err := yaml.Unmarshal([]byte(m), &obj)
 	if err != nil {
@@ -71,7 +70,7 @@ func (m Application) SetAnnotation(annotationKey, annotationValue string) (Appli
 	return Application(b), nil
 }
 
-func (m Application) GetAnnotation(annotationKey string) (string, error) {
+func (m Application) Annotation(annotationKey string) (string, error) {
 	var obj unstructured.Unstructured
 	err := yaml.Unmarshal([]byte(m), &obj)
 	if err != nil {
@@ -79,7 +78,7 @@ func (m Application) GetAnnotation(annotationKey string) (string, error) {
 	}
 	val, ok := obj.GetAnnotations()[annotationKey]
 	if !ok {
-		return "", fmt.Errorf("TODO")
+		return "", myerrors.NewKeyIsMissing("Application.metadata.annotations", annotationKey)
 	}
 	return val, nil
 }

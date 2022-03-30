@@ -31,13 +31,13 @@ func (g *GitHub) WithCredential(credential models.GitCredential) error {
 		return nil
 	}
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: credential.GetToken()},
+		&oauth2.Token{AccessToken: credential.Token()},
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
-	g.username = credential.GetUsername()
+	g.username = credential.Username()
 	g.client = client
 	return nil
 }

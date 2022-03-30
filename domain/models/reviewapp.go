@@ -16,11 +16,11 @@ import (
 /* ReviewApp or ReviewAppManager */
 
 type ReviewAppOrReviewAppManager interface {
-	GatNamespaceName() types.NamespacedName
-	GetAppRepoTarget() AppRepoTarget
-	GetInfraRepoTarget() InfraRepoTarget
-	GetInfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig
-	GetVariables() []string
+	NamespaceName() types.NamespacedName
+	AppRepoTarget() AppRepoTarget
+	InfraRepoTarget() InfraRepoTarget
+	InfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig
+	Variables() []string
 }
 
 /* ReviewApp */
@@ -31,19 +31,19 @@ func NewReviewApp(ra *dreamkastv1alpha1.ReviewApp) ReviewApp {
 	return ReviewApp(*ra)
 }
 
-func (m ReviewApp) GatNamespaceName() types.NamespacedName {
+func (m ReviewApp) NamespaceName() types.NamespacedName {
 	return types.NamespacedName{Namespace: m.Namespace, Name: m.Name}
 }
-func (m ReviewApp) GetAppRepoTarget() AppRepoTarget {
+func (m ReviewApp) AppRepoTarget() AppRepoTarget {
 	return AppRepoTarget(m.Spec.AppTarget)
 }
-func (m ReviewApp) GetInfraRepoTarget() InfraRepoTarget {
+func (m ReviewApp) InfraRepoTarget() InfraRepoTarget {
 	return InfraRepoTarget(m.Spec.InfraTarget)
 }
-func (m ReviewApp) GetInfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig {
+func (m ReviewApp) InfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig {
 	return m.Spec.InfraConfig
 }
-func (m ReviewApp) GetVariables() []string {
+func (m ReviewApp) Variables() []string {
 	return m.Spec.Variables
 }
 
@@ -52,15 +52,15 @@ func (m ReviewApp) ToReviewAppCR() *dreamkastv1alpha1.ReviewApp {
 	return &ra
 }
 
-func (m ReviewApp) GetAtFilepath() string {
+func (m ReviewApp) AtFilepath() string {
 	return m.Spec.InfraConfig.ArgoCDApp.Filepath
 }
 
-func (m ReviewApp) GetMtDirpath() string {
+func (m ReviewApp) MtDirpath() string {
 	return m.Spec.InfraConfig.Manifests.Dirpath
 }
 
-func (m ReviewApp) GetPrNum() int {
+func (m ReviewApp) PrNum() int {
 	return m.Spec.AppPrNum
 }
 
@@ -76,7 +76,7 @@ func (m ReviewApp) UpdateStatusOfAppRepo(pr PullRequest) (ReviewApp, bool) {
 
 func (m ReviewApp) UpdateStatusOfApplication(application Application) (ReviewApp, bool, error) {
 	updated := false
-	argocdAppNamespacedName, err := application.GetNamespacedName()
+	argocdAppNamespacedName, err := application.NamespacedName()
 	if err != nil {
 		return ReviewApp{}, false, err
 	}
@@ -119,19 +119,19 @@ func NewReviewAppManager(ram dreamkastv1alpha1.ReviewAppManager) ReviewAppManage
 	return ReviewAppManager(ram)
 }
 
-func (m ReviewAppManager) GatNamespaceName() types.NamespacedName {
+func (m ReviewAppManager) NamespaceName() types.NamespacedName {
 	return types.NamespacedName{Namespace: m.Namespace, Name: m.Name}
 }
-func (m ReviewAppManager) GetAppRepoTarget() AppRepoTarget {
+func (m ReviewAppManager) AppRepoTarget() AppRepoTarget {
 	return AppRepoTarget(m.Spec.AppTarget)
 }
-func (m ReviewAppManager) GetInfraRepoTarget() InfraRepoTarget {
+func (m ReviewAppManager) InfraRepoTarget() InfraRepoTarget {
 	return InfraRepoTarget(m.Spec.InfraTarget)
 }
-func (m ReviewAppManager) GetInfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig {
+func (m ReviewAppManager) InfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig {
 	return m.Spec.InfraConfig
 }
-func (m ReviewAppManager) GetVariables() []string {
+func (m ReviewAppManager) Variables() []string {
 	return m.Spec.Variables
 }
 
@@ -143,7 +143,7 @@ func (m ReviewAppManager) ToReviewAppCR() *dreamkastv1alpha1.ReviewAppManager {
 func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator) (ReviewApp, error) {
 	ra := ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      m.GetReviewAppName(pr),
+			Name:      m.ReviewAppName(pr),
 			Namespace: m.Namespace,
 		},
 		Spec: dreamkastv1alpha1.ReviewAppSpec{
@@ -183,7 +183,7 @@ func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator) (Review
 	return ra, nil
 }
 
-func (m ReviewAppManager) GetReviewAppName(pr PullRequest) string {
+func (m ReviewAppManager) ReviewAppName(pr PullRequest) string {
 	return fmt.Sprintf("%s-%s-%s-%d",
 		m.Name,
 		strings.ToLower(pr.Organization),
@@ -207,14 +207,14 @@ func (m ReviewAppManager) ListOutOfSyncPullRequests(prs []PullRequest) []PullReq
 /* AppRepoTarget Or InfraRepoTarget */
 
 type AppOrInfraRepoTarget interface {
-	GetGitSecretRef() (*corev1.SecretKeySelector, error)
+	GitSecretSelector() (*corev1.SecretKeySelector, error)
 }
 
 /* AppRepoTarget  */
 
 type AppRepoTarget dreamkastv1alpha1.ReviewAppManagerSpecAppTarget
 
-func (m AppRepoTarget) GetGitSecretRef() (*corev1.SecretKeySelector, error) {
+func (m AppRepoTarget) GitSecretSelector() (*corev1.SecretKeySelector, error) {
 	if m.GitSecretRef == nil || reflect.ValueOf(m.GitSecretRef).IsNil() {
 		return nil, fmt.Errorf("TODO")
 	}
@@ -225,7 +225,7 @@ func (m AppRepoTarget) GetGitSecretRef() (*corev1.SecretKeySelector, error) {
 
 type InfraRepoTarget dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget
 
-func (m InfraRepoTarget) GetGitSecretRef() (*corev1.SecretKeySelector, error) {
+func (m InfraRepoTarget) GitSecretSelector() (*corev1.SecretKeySelector, error) {
 	if m.GitSecretRef == nil || reflect.ValueOf(m.GitSecretRef).IsNil() {
 		return nil, fmt.Errorf("TODO")
 	}

@@ -46,14 +46,14 @@ func NewGit(l logr.Logger, e exec.Interface) (*Git, error) {
 func (g *Git) WithCredential(credential models.GitCredential) error {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: credential.GetToken()},
+		&oauth2.Token{AccessToken: credential.Token()},
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
 	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
-	g.username = credential.GetUsername()
-	g.token = credential.GetToken()
+	g.username = credential.Username()
+	g.token = credential.Token()
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (g *Git) ForceClone(ctx context.Context, infraTarget models.InfraRepoTarget
 
 func (g *Git) CreateFiles(ctx context.Context, gp models.InfraRepoLocalDir, files ...models.File) error {
 	for _, f := range files {
-		fpath := filepath.Join(gp.GetBaseDir(), f.Filepath)
+		fpath := filepath.Join(gp.BaseDir(), f.Filepath)
 		if err := os.MkdirAll(filepath.Dir(fpath), 0755); err != nil {
 			return xerrors.Errorf("%w", err)
 		}
@@ -101,7 +101,7 @@ func (g *Git) CreateFiles(ctx context.Context, gp models.InfraRepoLocalDir, file
 
 func (g *Git) DeleteFiles(ctx context.Context, gp models.InfraRepoLocalDir, files ...models.File) error {
 	for _, f := range files {
-		fpath := filepath.Join(gp.GetBaseDir(), f.Filepath)
+		fpath := filepath.Join(gp.BaseDir(), f.Filepath)
 		err := os.RemoveAll(fpath)
 		if err != nil {
 			return xerrors.Errorf("%w", err)
@@ -112,7 +112,7 @@ func (g *Git) DeleteFiles(ctx context.Context, gp models.InfraRepoLocalDir, file
 
 func (g *Git) CommitAndPush(ctx context.Context, gp models.InfraRepoLocalDir, message string) (*models.InfraRepoLocalDir, error) {
 	// stage に更新ファイルがない場合早期リターン
-	stdout, stderr, err := g.runCommand(ctx, gp.GetBaseDir(), "git", "status", "-s")
+	stdout, stderr, err := g.runCommand(ctx, gp.BaseDir(), "git", "status", "-s")
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	} else if stdout.String() == "" {
@@ -124,23 +124,23 @@ func (g *Git) CommitAndPush(ctx context.Context, gp models.InfraRepoLocalDir, me
 	}
 
 	// add, commit, push
-	stdout, stderr, err = g.runCommand(ctx, gp.GetBaseDir(), "git", "config", "user.name", g.username)
+	stdout, stderr, err = g.runCommand(ctx, gp.BaseDir(), "git", "config", "user.name", g.username)
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	stdout, stderr, err = g.runCommand(ctx, gp.GetBaseDir(), "git", "config", "user.email", fmt.Sprintf(noreplyEmail, g.username))
+	stdout, stderr, err = g.runCommand(ctx, gp.BaseDir(), "git", "config", "user.email", fmt.Sprintf(noreplyEmail, g.username))
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	stdout, stderr, err = g.runCommand(ctx, gp.GetBaseDir(), "git", "add", "-A")
+	stdout, stderr, err = g.runCommand(ctx, gp.BaseDir(), "git", "add", "-A")
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	stdout, stderr, err = g.runCommand(ctx, gp.GetBaseDir(), "git", "commit", "-m", message)
+	stdout, stderr, err = g.runCommand(ctx, gp.BaseDir(), "git", "commit", "-m", message)
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	stdout, stderr, err = g.runCommand(ctx, gp.GetBaseDir(), "git", "push", "origin", "HEAD")
+	stdout, stderr, err = g.runCommand(ctx, gp.BaseDir(), "git", "push", "origin", "HEAD")
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
@@ -152,7 +152,7 @@ func (g *Git) CommitAndPush(ctx context.Context, gp models.InfraRepoLocalDir, me
 }
 
 func (g *Git) updateHeadCommitSha(ctx context.Context, gp models.InfraRepoLocalDir) (models.InfraRepoLocalDir, error) {
-	stdout, stderr, err := g.runCommand(ctx, gp.GetBaseDir(), "git", "rev-parse", "HEAD")
+	stdout, stderr, err := g.runCommand(ctx, gp.BaseDir(), "git", "rev-parse", "HEAD")
 	if err != nil {
 		return models.InfraRepoLocalDir{}, xerrors.Errorf(`Error: %v`, stderr.String())
 	}

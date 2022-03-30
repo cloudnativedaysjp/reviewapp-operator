@@ -35,7 +35,7 @@ type ReviewAppPhaseDTO struct {
 }
 
 func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) (*ReviewAppPhaseDTO, ctrl.Result, error) {
-	appRepoTarget := ra.GetAppRepoTarget()
+	appRepoTarget := ra.AppRepoTarget()
 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appRepoTarget)
@@ -50,7 +50,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	}
 
 	// check PRs specified by spec.appRepo.repository
-	pr, err := r.GitApiRepository.GetPullRequest(ctx, appRepoTarget, ra.GetPrNum())
+	pr, err := r.GitApiRepository.GetPullRequest(ctx, appRepoTarget, ra.PrNum())
 	if err != nil {
 		return nil, ctrl.Result{}, err
 	}
@@ -117,7 +117,7 @@ func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppP
 
 func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
 	ra := dto.ReviewApp
-	infraRepoTarget := ra.GetInfraRepoTarget()
+	infraRepoTarget := ra.InfraRepoTarget()
 	pr := dto.PullRequest
 	application := dto.Application
 	manifests := dto.Manifests
@@ -162,13 +162,13 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 				return err
 			}
 			// create files
-			files := append([]models.File{}, models.NewFileFromApplication(ra, application, pr, localDir))
+			files := append([]models.File{}, models.NewFileFromApplication(ra, appWithAnnotations, pr, localDir))
 			files = append(files, models.NewFilesFromManifests(ra, manifests, pr, localDir)...)
 			if err := r.GitCommandRepository.CreateFiles(ctx, localDir, files...); err != nil {
 				return err
 			}
 			// commmit & push
-			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsgUpdate(ra)); err != nil {
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgUpdate(ra)); err != nil {
 				return err
 			}
 			return nil
@@ -178,7 +178,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 
 	// update ReviewApp.Status
 	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
-	ra.Status.Sync.InfraRepoLatestCommitSha = localDir.GetLatestCommitSha()
+	ra.Status.Sync.InfraRepoLatestCommitSha = localDir.LatestCommitSha()
 	ra.Status.ManifestsCache.Application = string(application)
 	ra.Status.ManifestsCache.Manifests = manifests
 
@@ -187,7 +187,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 
 func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
 	ra := dto.ReviewApp
-	appTarget := ra.GetAppRepoTarget()
+	appTarget := ra.AppRepoTarget()
 	pr := dto.PullRequest
 
 	// check appRepoSha from annotations in ArgoCD Application
@@ -199,7 +199,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 		}
 		return ra, ctrl.Result{}, err
 	}
-	hashInArgoCDApplication, err := application.GetAnnotation(annotationAppCommitHashForArgoCDApplication)
+	hashInArgoCDApplication, err := application.Annotation(annotationAppCommitHashForArgoCDApplication)
 	if err != nil {
 		return ra, ctrl.Result{}, err
 	}
@@ -239,8 +239,8 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
 	ra := dto.ReviewApp
 	raSource := ra.ToReviewAppCR()
-	appRepoTarget := ra.GetAppRepoTarget()
-	infraRepoTarget := ra.GetInfraRepoTarget()
+	appRepoTarget := ra.AppRepoTarget()
+	infraRepoTarget := ra.InfraRepoTarget()
 	pr := dto.PullRequest
 	application := dto.Application
 	manifests := dto.Manifests
@@ -318,7 +318,7 @@ finalize:
 				return err
 			}
 			// commmit & push
-			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.GetCommitMsgDeletion(ra)); err != nil {
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgDeletion(ra)); err != nil {
 				return err
 			}
 			return nil
