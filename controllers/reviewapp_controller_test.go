@@ -127,7 +127,7 @@ var _ = Describe("ReviewApp controller", func() {
 				// get latest message from PR
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(msg).To(Equal("step 1"))
+				g.Expect(msg).To(Equal("message"))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("should update status", func() {
@@ -190,7 +190,7 @@ var _ = Describe("ReviewApp controller", func() {
 				// get latest message from PR
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(msg).To(Equal("step 2"))
+				g.Expect(msg).To(Equal("updated"))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("should update status", func() {

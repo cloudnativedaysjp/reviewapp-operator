@@ -105,15 +105,15 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	f := func(cond bool, phase func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error)) {
 		if cond {
 			raStatus, result, err = phase(ctx, dto)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			ra.Status = dreamkastv1alpha1.ReviewAppStatus(raStatus)
+			dto.ReviewApp = ra
 		}
-		if err != nil {
-			errs = append(errs, err)
-		}
-		ra.Status = dreamkastv1alpha1.ReviewAppStatus(raStatus)
-		dto.ReviewApp = ra
 	}
 
-	f(reflect.DeepEqual(raStatus, dreamkastv1alpha1.ReviewAppStatus{}) || raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
+	f(reflect.DeepEqual(raStatus, models.ReviewAppStatus{}) || raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
 		r.confirmUpdated)
 	f(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
 		r.deployReviewAppManifestsToInfraRepo)

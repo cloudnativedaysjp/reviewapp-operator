@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -134,10 +135,15 @@ var _ = Describe("ReviewAppManager controller", func() {
 		ram, err := createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
+		// wait to run reconcile loop
 		ra := dreamkastv1alpha1.ReviewApp{}
 		Eventually(func() error {
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
-		}).Should(Succeed())
+		},
+			60*time.Second, // timeout
+			10*time.Second, // interval
+		).Should(Succeed())
+
 		Expect(ra.Spec.AppTarget).To(Equal(ram.Spec.AppTarget))
 		Expect(ra.Spec.InfraTarget).To(Equal(ram.Spec.InfraTarget))
 		Expect(ra.Spec.AppConfig.Message).To(Equal(`
@@ -207,18 +213,81 @@ func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err
 	}
-	mt := newManifestsTemplateForRAM("manifeststemplate-test-ram")
+	mt := newManifestsTemplate_RAM("manifeststemplate-test-ram")
 	if err := k8sClient.Create(ctx, mt); err != nil {
 		return nil, err
 	}
-	ram := newReviewAppManager()
+	ram := newReviewAppManager_RAM()
 	if err := k8sClient.Create(ctx, ram); err != nil {
 		return nil, err
 	}
 	return ram, nil
 }
 
-func newManifestsTemplateForRAM(name string) *dreamkastv1alpha1.ManifestsTemplate {
+func newReviewAppManager_RAM() *dreamkastv1alpha1.ReviewAppManager {
+	return &dreamkastv1alpha1.ReviewAppManager{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ram",
+			Namespace: testNamespace,
+		},
+		Spec: dreamkastv1alpha1.ReviewAppManagerSpec{
+			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
+				Username:     testGitUsername,
+				Organization: testGitAppOrganization,
+				Repository:   testGitAppRepository,
+				GitSecretRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "git-creds",
+					},
+					Key: "token",
+				},
+			},
+			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
+				Message: `
+* {{.AppRepo.Organization}}
+* {{.AppRepo.Repository}}
+* {{.AppRepo.PrNumber}}
+* {{.InfraRepo.Organization}}
+* {{.InfraRepo.Repository}}
+* {{.Variables.AppRepositoryAlias}}
+* {{.Variables.dummy}}`,
+			},
+			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
+				Username:     testGitUsername,
+				Organization: testGitInfraOrganization,
+				Repository:   testGitInfraRepository,
+				Branch:       testGitInfraBranch,
+				GitSecretRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "git-creds",
+					},
+					Key: "token",
+				},
+			},
+			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
+				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
+					Templates: []dreamkastv1alpha1.NamespacedName{{
+						Namespace: testNamespace,
+						Name:      "manifeststemplate-test-ram",
+					}},
+					Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
+				},
+				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
+					Template: dreamkastv1alpha1.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "applicationtemplate-test-ram",
+					},
+					Filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml",
+				},
+			},
+			Variables: []string{
+				"AppRepositoryAlias=test-ram",
+			},
+		},
+	}
+}
+
+func newManifestsTemplate_RAM(name string) *dreamkastv1alpha1.ManifestsTemplate {
 	kustomizationYaml := `
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
