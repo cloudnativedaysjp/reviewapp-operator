@@ -106,7 +106,7 @@ func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppP
 		return ra, ctrl.Result{}, err
 	}
 	// Is ManifestsTemplate updated?
-	updatedMt := ra.StatusOfManifestsWasUpdated(manifests)
+	updatedMt := ra.WasManifestsUpdated(manifests)
 
 	// update ReviewApp.Status
 	if updatedAppRepo || updatedAt || updatedMt {
@@ -239,7 +239,6 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
 	ra := dto.ReviewApp
 	raSource := ra.ToReviewAppCR()
-	appRepoTarget := ra.AppRepoTarget()
 	infraRepoTarget := ra.InfraRepoTarget()
 	pr := dto.PullRequest
 	application := dto.Application
@@ -291,14 +290,14 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewApp
 
 finalize:
 	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appRepoTarget)
+	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, infraRepoTarget)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
 		}
 		return ctrl.Result{}, err
 	}
-	if err := r.GitApiRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.InfraTarget.Username, gitRemoteRepoToken)); err != nil {
 		return ctrl.Result{}, err
 	}
 

@@ -89,6 +89,8 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	// exclude PRs with specific labels
+	prs = prs.ExcludeSpecificPR(ram)
 	// apply ReviewApp
 	var syncedPullRequests []dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests
 	for _, pr := range prs {
@@ -112,9 +114,8 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 		})
 	}
 	// delete RA that only exists ResourceStatus
-	outOfSyncedPRs := ram.ListOutOfSyncPullRequests(prs)
-	for _, pr := range outOfSyncedPRs {
-		if err := r.K8sRepository.DeleteReviewApp(ctx, ram.Namespace, ram.ReviewAppName(pr)); err != nil {
+	for _, name := range ram.ListOutOfSyncReviewAppName(prs) {
+		if err := r.K8sRepository.DeleteReviewApp(ctx, ram.Namespace, name); err != nil {
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}

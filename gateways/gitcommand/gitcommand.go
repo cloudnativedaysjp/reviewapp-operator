@@ -49,7 +49,7 @@ func (g *Git) WithCredential(credential models.GitCredential) error {
 		&oauth2.Token{AccessToken: credential.Token()},
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
-	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
+	if _, _, err := client.Users.Get(ctx, credential.Username()); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
 	g.username = credential.Username()

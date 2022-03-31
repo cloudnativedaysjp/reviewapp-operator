@@ -201,7 +201,8 @@ func newSecret() *corev1.Secret {
 }
 
 func newApplicationTemplate(name string) *dreamkastv1alpha1.ApplicationTemplate {
-	app := `apiVersion: argoproj.io/v1alpha1
+	app := `
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: "{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"
@@ -217,8 +218,10 @@ spec:
     targetRevision: master
   syncPolicy:
     automated:
-      prune: true`
-
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+`
 	return &dreamkastv1alpha1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -232,17 +235,16 @@ spec:
 }
 
 func newManifestsTemplate(name string) *dreamkastv1alpha1.ManifestsTemplate {
-	kustomizationYaml := `apiVersion: kustomize.config.k8s.io/v1beta1
+	kustomizationYaml := `
+apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+namespace: {{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
 bases:
 - ../../../base
-- ./manifests.yaml`
-	manifestsYaml := `apiVersion: v1
-kind: Namespace
-metadata:
-  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
----
+patchesStrategicMerge:
+- ./manifests.yaml
+`
+	manifestsYaml := `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -256,10 +258,13 @@ spec:
     metadata:
       labels:
         app: nginx
+      annotations:
+        commit: {{.AppRepo.LatestCommitSha}}
     spec:
       containers:
-        - name: nginx
-          image: nginx:{{.AppRepo.LatestCommitSha}}`
+        - name: demo
+          image: nginx
+`
 	m := make(map[string]string)
 	m["kustomization.yaml"] = kustomizationYaml
 	m["manifests.yaml"] = manifestsYaml
@@ -339,10 +344,10 @@ func newReviewAppManager() *dreamkastv1alpha1.ReviewAppManager {
 	}
 }
 
-func newReviewApp() *dreamkastv1alpha1.ReviewApp {
+func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
 	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ra-shotakitazawa-reviewapp-operator-demo-app-2",
+			Name:      objectName,
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1alpha1.ReviewAppSpec{

@@ -1,4 +1,5 @@
-//+build unit_test
+//go:build unit_test
+// +build unit_test
 
 package controllers
 

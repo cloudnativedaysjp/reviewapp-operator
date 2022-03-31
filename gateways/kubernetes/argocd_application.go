@@ -30,6 +30,7 @@ func (c Client) GetArgoCDAppFromReviewAppStatus(ctx context.Context, ra models.R
 		}
 		return "", wrapedErr
 	}
+	a.SetGroupVersionKind(gvk)
 	b, err := yaml.Marshal(&a)
 	if err != nil {
 		return "", xerrors.Errorf("%w", err)

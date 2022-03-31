@@ -153,7 +153,7 @@ var _ = Describe("ReviewApp controller", func() {
 		Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
 		Expect(argocdApp.Annotations[annotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 	})
-	Context("step2. apply ReviewApp", func() {
+	Context("step2. update ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
 			_, err := updateSomeResourceForReviewAppTest(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -248,7 +248,7 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 	if err := k8sClient.Create(ctx, mt); err != nil {
 		return nil, err
 	}
-	ra := newReviewApp()
+	ra := newReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
 	if err := k8sClient.Create(ctx, ra); err != nil {
 		return nil, err
 	}
@@ -257,17 +257,13 @@ func createSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1
 
 func updateSomeResourceForReviewAppTest(ctx context.Context) (*dreamkastv1alpha1.ReviewApp, error) {
 	{ // patch to ManifestsTemplate
-		manifestsYaml := `apiVersion: v1
-kind: Namespace
-metadata:
-  name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
-  annotations:
-    modified: "true"
----
+		manifestsYaml := `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo
+  annotations:
+    modified: "true"
 spec:
   replicas: 1
   selector:
@@ -277,14 +273,17 @@ spec:
     metadata:
       labels:
         app: nginx
+      annotations:
+        commit: {{.AppRepo.LatestCommitSha}}
     spec:
       containers:
-        - name: nginx
-          image: nginx:{{.AppRepo.LatestCommitSha}}`
+        - name: demo
+          image: nginx
+`
 		patch := &unstructured.Unstructured{}
 		patch.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "dreamkast.cloudnativedays.jp",
-			Version: "v1alpha1",
+			Group:   dreamkastv1alpha1.GroupVersion.Group,
+			Version: dreamkastv1alpha1.GroupVersion.Version,
 			Kind:    "ManifestsTemplate",
 		})
 		patch.SetNamespace(testNamespace)

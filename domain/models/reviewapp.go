@@ -18,6 +18,7 @@ import (
 type ReviewAppOrReviewAppManager interface {
 	NamespaceName() types.NamespacedName
 	AppRepoTarget() AppRepoTarget
+	AppRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecAppConfig
 	InfraRepoTarget() InfraRepoTarget
 	InfraRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig
 	Variables() []string
@@ -36,6 +37,9 @@ func (m ReviewApp) NamespaceName() types.NamespacedName {
 }
 func (m ReviewApp) AppRepoTarget() AppRepoTarget {
 	return AppRepoTarget(m.Spec.AppTarget)
+}
+func (m ReviewApp) AppRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecAppConfig {
+	return m.Spec.AppConfig
 }
 func (m ReviewApp) InfraRepoTarget() InfraRepoTarget {
 	return InfraRepoTarget(m.Spec.InfraTarget)
@@ -83,7 +87,7 @@ func (m ReviewApp) UpdateStatusOfApplication(application Application) (ReviewApp
 	if m.Status.Sync.ApplicationName != argocdAppNamespacedName.Name || m.Status.Sync.ApplicationNamespace != argocdAppNamespacedName.Namespace {
 		updated = true
 	}
-	if !reflect.DeepEqual(application, m.Status.ManifestsCache.Application) {
+	if !reflect.DeepEqual(string(application), m.Status.ManifestsCache.Application) {
 		updated = true
 	}
 	m.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
@@ -91,9 +95,9 @@ func (m ReviewApp) UpdateStatusOfApplication(application Application) (ReviewApp
 	return m, updated, nil
 }
 
-func (m ReviewApp) StatusOfManifestsWasUpdated(manifests Manifests) bool {
+func (m ReviewApp) WasManifestsUpdated(manifests Manifests) bool {
 	updated := false
-	if !reflect.DeepEqual(manifests, m.Status.ManifestsCache.Manifests) {
+	if !reflect.DeepEqual(map[string]string(manifests), m.Status.ManifestsCache.Manifests) {
 		updated = true
 	}
 	return updated
@@ -124,6 +128,9 @@ func (m ReviewAppManager) NamespaceName() types.NamespacedName {
 }
 func (m ReviewAppManager) AppRepoTarget() AppRepoTarget {
 	return AppRepoTarget(m.Spec.AppTarget)
+}
+func (m ReviewAppManager) AppRepoConfig() dreamkastv1alpha1.ReviewAppManagerSpecAppConfig {
+	return m.Spec.AppConfig
 }
 func (m ReviewAppManager) InfraRepoTarget() InfraRepoTarget {
 	return InfraRepoTarget(m.Spec.InfraTarget)
@@ -192,14 +199,20 @@ func (m ReviewAppManager) ReviewAppName(pr PullRequest) string {
 	)
 }
 
-func (m ReviewAppManager) ListOutOfSyncPullRequests(prs []PullRequest) []PullRequest {
-	var result []PullRequest
+func (m ReviewAppManager) ListOutOfSyncReviewAppName(prs []PullRequest) []string {
+	var result []string
+loop:
 	for _, a := range m.Status.SyncedPullRequests {
 		for _, b := range prs {
-			if !(a.Organization == b.Organization && a.Repository == b.Repository && a.Number == b.Number) {
-				result = append(result, b)
+			if a.Organization == b.Organization && a.Repository == b.Repository && a.Number == b.Number {
+				continue loop
 			}
 		}
+		result = append(result, m.ReviewAppName(PullRequest{
+			Organization: a.Organization,
+			Repository:   a.Repository,
+			Number:       a.Number,
+		}))
 	}
 	return result
 }

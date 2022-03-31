@@ -56,7 +56,7 @@ func NewTemplator(
 		},
 		templateValueInfraRepoInfo{
 			Organization: infraTarget.Organization,
-			Repository:   infraTarget.Organization,
+			Repository:   infraTarget.Repository,
 			Branch:       infraTarget.Branch,
 		},
 		vars,

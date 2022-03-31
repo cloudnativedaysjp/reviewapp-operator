@@ -34,7 +34,7 @@ func (g *GitHub) WithCredential(credential models.GitCredential) error {
 		&oauth2.Token{AccessToken: credential.Token()},
 	)
 	client := github.NewClient(oauth2.NewClient(ctx, ts))
-	if _, _, err := client.Users.Get(ctx, g.username); err != nil {
+	if _, _, err := client.Users.Get(ctx, credential.Username()); err != nil {
 		return xerrors.Errorf("%w", err)
 	}
 	g.username = credential.Username()
@@ -42,7 +42,7 @@ func (g *GitHub) WithCredential(credential models.GitCredential) error {
 	return nil
 }
 
-func (g *GitHub) ListOpenPullRequests(ctx context.Context, appRepoTarget models.AppRepoTarget) ([]models.PullRequest, error) {
+func (g *GitHub) ListOpenPullRequests(ctx context.Context, appRepoTarget models.AppRepoTarget) (models.PullRequests, error) {
 	if !g.haveClient(ctx) {
 		return nil, xerrors.Errorf("GitHub have no client")
 	}
