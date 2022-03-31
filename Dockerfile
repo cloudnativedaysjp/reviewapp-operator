@@ -5,14 +5,7 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 RUN go mod download
 
-COPY main.go main.go
-COPY api/ api/
-COPY controllers/ controllers/
-COPY errors/ errors/
-COPY gateways/ gateways/
-COPY services/ services/
-COPY utils/ utils/
-COPY wire/ wire/
+COPY . .
 
 #RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags osusergo,netgo -a -o manager main.go

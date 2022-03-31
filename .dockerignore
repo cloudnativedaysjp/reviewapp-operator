@@ -3,3 +3,9 @@
 !**/*.go
 !**/*.mod
 !**/*.sum
+
+.git/
+.github/
+.vscode/
+bin/
+testbin/
