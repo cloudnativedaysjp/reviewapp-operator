@@ -68,51 +68,60 @@ func (m ReviewApp) PrNum() int {
 	return m.Spec.AppPrNum
 }
 
-func (m ReviewApp) UpdateStatusOfAppRepo(pr PullRequest) (ReviewApp, bool) {
+func (m ReviewApp) HavingPreStopJob() bool {
+	return m.Spec.PreStopJob.Namespace != "" && m.Spec.PreStopJob.Name != ""
+}
+
+func (m ReviewApp) HasMessageAlreadyBeenSent() bool {
+	status := m.GetStatus()
+	return m.Spec.AppConfig.Message == "" || (!m.Spec.AppConfig.SendMessageEveryTime && status.AlreadySentMessage)
+}
+
+func (m ReviewApp) GetStatus() ReviewAppStatus {
+	return ReviewAppStatus(m.Status)
+}
+
+/* ReviewAppStatus */
+
+type ReviewAppStatus dreamkastv1alpha1.ReviewAppStatus
+
+func (m ReviewAppStatus) UpdateStatusOfAppRepo(pr PullRequest) (ReviewAppStatus, bool) {
 	updated := false
-	m.Status.Sync.AppRepoBranch = pr.Branch
-	if m.Status.Sync.AppRepoLatestCommitSha != pr.HeadCommitSha {
+	m.Sync.AppRepoBranch = pr.Branch
+	if m.Sync.AppRepoLatestCommitSha != pr.HeadCommitSha {
 		updated = true
 	}
-	m.Status.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
+	m.Sync.AppRepoLatestCommitSha = pr.HeadCommitSha
 	return m, updated
 }
 
-func (m ReviewApp) UpdateStatusOfApplication(application Application) (ReviewApp, bool, error) {
+func (m ReviewAppStatus) UpdateStatusOfApplication(application Application) (ReviewAppStatus, bool, error) {
 	updated := false
 	argocdAppNamespacedName, err := application.NamespacedName()
 	if err != nil {
-		return ReviewApp{}, false, err
+		return ReviewAppStatus{}, false, err
 	}
-	if m.Status.Sync.ApplicationName != argocdAppNamespacedName.Name || m.Status.Sync.ApplicationNamespace != argocdAppNamespacedName.Namespace {
+	if m.Sync.ApplicationName != argocdAppNamespacedName.Name || m.Sync.ApplicationNamespace != argocdAppNamespacedName.Namespace {
 		updated = true
 	}
-	if !reflect.DeepEqual(string(application), m.Status.ManifestsCache.Application) {
+	if !reflect.DeepEqual(string(application), m.ManifestsCache.Application) {
 		updated = true
 	}
-	m.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
-	m.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
+	m.Sync.ApplicationName = argocdAppNamespacedName.Name
+	m.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
 	return m, updated, nil
 }
 
-func (m ReviewApp) WasManifestsUpdated(manifests Manifests) bool {
+func (m ReviewAppStatus) WasManifestsUpdated(manifests Manifests) bool {
 	updated := false
-	if !reflect.DeepEqual(map[string]string(manifests), m.Status.ManifestsCache.Manifests) {
+	if !reflect.DeepEqual(map[string]string(manifests), m.ManifestsCache.Manifests) {
 		updated = true
 	}
 	return updated
 }
 
-func (m ReviewApp) HasApplicationBeenUpdated(hash string) bool {
-	return m.Status.Sync.AppRepoLatestCommitSha == hash
-}
-
-func (m ReviewApp) HasMessageAlreadyBeenSent() bool {
-	return m.Spec.AppConfig.Message == "" || (!m.Spec.AppConfig.SendMessageEveryTime && m.Status.AlreadySentMessage)
-}
-
-func (m ReviewApp) HavingPreStopJob() bool {
-	return m.Spec.PreStopJob.Namespace != "" && m.Spec.PreStopJob.Name != ""
+func (m ReviewAppStatus) HasApplicationBeenUpdated(hash string) bool {
+	return m.Sync.AppRepoLatestCommitSha == hash
 }
 
 /* ReviewAppManager */

@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
@@ -96,32 +97,28 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
 	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
 	metrics.SetMetricsUp(dto.ReviewApp)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
-	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) ||
-		ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates {
-		ra, result, err = r.confirmUpdated(ctx, dto)
+	f := func(cond bool, phase func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error)) {
+		if cond {
+			raStatus, result, err = phase(ctx, dto)
+		}
 		if err != nil {
 			errs = append(errs, err)
 		}
+		ra.Status = dreamkastv1alpha1.ReviewAppStatus(raStatus)
 		dto.ReviewApp = ra
 	}
-	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo {
-		ra, result, err = r.deployReviewAppManifestsToInfraRepo(ctx, dto)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		dto.ReviewApp = ra
-	}
-	if ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo {
-		ra, result, err = r.commentToAppRepoPullRequest(ctx, dto)
-		if err != nil {
-			errs = append(errs, err)
-		}
-		dto.ReviewApp = ra
-	}
+
+	f(reflect.DeepEqual(raStatus, dreamkastv1alpha1.ReviewAppStatus{}) || raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
+		r.confirmUpdated)
+	f(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+		r.deployReviewAppManifestsToInfraRepo)
+	f(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo,
+		r.commentToAppRepoPullRequest)
 
 	// update status
 	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, ra); err != nil {

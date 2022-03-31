@@ -92,31 +92,33 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	return &ReviewAppPhaseDTO{ra, pr, application, manifests}, ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
+func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
 	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
 	pr := dto.PullRequest
 	application := dto.Application
 	manifests := dto.Manifests
 
 	// Is App Repo updated?
-	ra, updatedAppRepo := ra.UpdateStatusOfAppRepo(pr)
+	raStatus, updatedAppRepo := raStatus.UpdateStatusOfAppRepo(pr)
 	// Is ApplicationTemplate updated?
-	ra, updatedAt, err := ra.UpdateStatusOfApplication(application)
+	raStatus, updatedAt, err := raStatus.UpdateStatusOfApplication(application)
 	if err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 	// Is ManifestsTemplate updated?
-	updatedMt := ra.WasManifestsUpdated(manifests)
+	updatedMt := raStatus.WasManifestsUpdated(manifests)
 
 	// update ReviewApp.Status
 	if updatedAppRepo || updatedAt || updatedMt {
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
+		raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
 	}
-	return ra, ctrl.Result{}, nil
+	return raStatus, ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
+func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
 	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
 	infraRepoTarget := ra.InfraRepoTarget()
 	pr := dto.PullRequest
 	application := dto.Application
@@ -127,15 +129,15 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	appWithAnnotations := application
 	appWithAnnotations, err := appWithAnnotations.SetAnnotation(annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
 	if err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
 	if err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
 	if err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// get gitRemoteRepo credential from Secret
@@ -145,10 +147,10 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 			// TODO
 			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
 		}
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
@@ -173,20 +175,21 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 			}
 			return nil
 		}, backoffRetryCount); err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
-	ra.Status.Sync.InfraRepoLatestCommitSha = localDir.LatestCommitSha()
-	ra.Status.ManifestsCache.Application = string(application)
-	ra.Status.ManifestsCache.Manifests = manifests
+	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
+	raStatus.Sync.InfraRepoLatestCommitSha = localDir.LatestCommitSha()
+	raStatus.ManifestsCache.Application = string(application)
+	raStatus.ManifestsCache.Manifests = manifests
 
-	return ra, ctrl.Result{}, nil
+	return raStatus, ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewApp, ctrl.Result, error) {
+func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
 	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
 	appTarget := ra.AppRepoTarget()
 	pr := dto.PullRequest
 
@@ -195,18 +198,18 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
-			return ra, ctrl.Result{}, nil
+			return raStatus, ctrl.Result{}, nil
 		}
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 	hashInArgoCDApplication, err := application.Annotation(annotationAppCommitHashForArgoCDApplication)
 	if err != nil {
-		return ra, ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// if ArgoCD Application has not been updated, early return.
-	if !ra.HasApplicationBeenUpdated(hashInArgoCDApplication) {
-		return ra, ctrl.Result{}, nil
+	if !raStatus.HasApplicationBeenUpdated(hashInArgoCDApplication) {
+		return raStatus, ctrl.Result{}, nil
 	}
 
 	// send message to PR of AppRepo
@@ -218,22 +221,22 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 				// TODO
 				r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
 			}
-			return ra, ctrl.Result{}, err
+			return raStatus, ctrl.Result{}, err
 		}
 		if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
-			return ra, ctrl.Result{}, err
+			return raStatus, ctrl.Result{}, err
 		}
 		// Send Message to AppRepo's PR
 		if err := r.GitApiRepository.CommentToPullRequest(ctx, pr, ra.Spec.AppConfig.Message); err != nil {
-			return ra, ctrl.Result{}, err
+			return raStatus, ctrl.Result{}, err
 		}
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates
-	ra.Status.AlreadySentMessage = true
+	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates
+	raStatus.AlreadySentMessage = true
 
-	return ra, ctrl.Result{}, nil
+	return raStatus, ctrl.Result{}, nil
 }
 
 func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
