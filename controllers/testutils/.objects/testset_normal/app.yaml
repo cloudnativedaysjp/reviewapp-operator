@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: "sample-1"
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io # cascade deletion on this App deletion
+spec:
+  destination:
+    namespace: "sample-1"
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
+    path: "overlays/dev/sample-1"
+    targetRevision: master
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true

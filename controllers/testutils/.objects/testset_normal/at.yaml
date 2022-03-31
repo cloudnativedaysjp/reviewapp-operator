@@ -1,0 +1,29 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
+kind: ApplicationTemplate
+metadata:
+  name: applicationtemplate-sample
+  namespace: test-ns
+spec:
+  stable: &application |
+    apiVersion: argoproj.io/v1alpha1
+    kind: Application
+    metadata:
+      name: "{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"
+      namespace: argocd
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io # cascade deletion on this App deletion
+    spec:
+      destination:
+        namespace: "{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"
+        server: https://kubernetes.default.svc
+      project: default
+      source:
+        repoURL: https://github.com/ShotaKitazawa/reviewapp-operator-demo-infra
+        path: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"
+        targetRevision: master
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+        - CreateNamespace=true
+  candidate: *application
