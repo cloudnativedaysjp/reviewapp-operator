@@ -1,5 +1,5 @@
-//go:build unit_test
-// +build unit_test
+//go:build !integration_test
+// +build !integration_test
 
 package controllers
 

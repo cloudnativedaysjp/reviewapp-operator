@@ -30,6 +30,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -206,7 +207,7 @@ func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err
 	}
-	mt := newManifestsTemplate("manifeststemplate-test-ram")
+	mt := newManifestsTemplateForRAM("manifeststemplate-test-ram")
 	if err := k8sClient.Create(ctx, mt); err != nil {
 		return nil, err
 	}
@@ -215,4 +216,51 @@ func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv
 		return nil, err
 	}
 	return ram, nil
+}
+
+func newManifestsTemplateForRAM(name string) *dreamkastv1alpha1.ManifestsTemplate {
+	kustomizationYaml := `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: {{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+bases:
+- ../../../base
+patchesStrategicMerge:
+- ./manifests.yaml
+`
+	manifestsYaml := ` 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+      annotations:
+        commit: {{.AppRepo.LatestCommitSha}}
+    spec:
+      containers:
+        - name: demo
+          image: nginx
+`
+	m := make(map[string]string)
+	m["kustomization.yaml"] = kustomizationYaml
+	m["manifests.yaml"] = manifestsYaml
+
+	return &dreamkastv1alpha1.ManifestsTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
+		Spec: dreamkastv1alpha1.ManifestsTemplateSpec{
+			StableData:    m,
+			CandidateData: m,
+		},
+	}
 }

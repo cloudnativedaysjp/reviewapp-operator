@@ -54,7 +54,7 @@ vet: ## Run go vet against code.
 GO_TEST := go test
 
 unit-test: fmt vet ## Run unit tests.
-	$(GO_TEST) -tags=unit_test ./...
+	$(GO_TEST) ./...
 
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
 USE_EXISTING_CLUSTER ?= "false" # this value must be true because this integration-test required full k8s.
