@@ -31,6 +31,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
 
@@ -110,10 +112,10 @@ var _ = Describe("ReviewApp controller", func() {
 			at := newApplicationTemplate("applicationtemplate-test-ra")
 			err = k8sClient.Create(ctx, at)
 			Expect(err).NotTo(HaveOccurred())
-			mt := newManifestsTemplate("manifeststemplate-test-ra", 1)
+			mt := newManifestsTemplate("manifeststemplate-test-ra")
 			err = k8sClient.Create(ctx, mt)
 			Expect(err).NotTo(HaveOccurred())
-			ra := newReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2", 1)
+			ra := newReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
 			err = k8sClient.Create(ctx, ra)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -125,7 +127,7 @@ var _ = Describe("ReviewApp controller", func() {
 				// get latest message from PR
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(msg).To(Equal("message"))
+				g.Expect(msg).To(Equal("step 1"))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("should update status", func() {
@@ -164,19 +166,19 @@ var _ = Describe("ReviewApp controller", func() {
 	})
 	Context("step2. update ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
-			mt := newManifestsTemplate("manifeststemplate-test-ra", 2)
-			err := k8sClient.Patch(ctx, mt, client.Apply, &client.PatchOptions{
+			patch := newPatchOfManifestsTemplate("manifeststemplate-test-ra")
+			err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
 				FieldManager: testReviewappControllerName,
 				Force:        pointer.Bool(true),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			ra := newReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2", 2)
-			err = k8sClient.Patch(ctx, ra, client.Apply, &client.PatchOptions{
+			patch = newPatchOfReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
+			err = k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
 				FieldManager: testReviewappControllerName,
 				Force:        pointer.Bool(true),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			ra = &dreamkastv1alpha1.ReviewApp{}
+			ra := &dreamkastv1alpha1.ReviewApp{}
 			err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -188,7 +190,7 @@ var _ = Describe("ReviewApp controller", func() {
 				// get latest message from PR
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(msg).To(Equal("modified"))
+				g.Expect(msg).To(Equal("step 2"))
 			}, timeout, interval).Should(Succeed())
 		})
 		It("should update status", func() {
@@ -321,7 +323,7 @@ spec:
 	}
 }
 
-func newManifestsTemplate(name string, step int) *dreamkastv1alpha1.ManifestsTemplate {
+func newManifestsTemplate(name string) *dreamkastv1alpha1.ManifestsTemplate {
 	kustomizationYaml := `
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -331,13 +333,11 @@ bases:
 patchesStrategicMerge:
 - ./manifests.yaml
 `
-	manifestsYaml := fmt.Sprintf(`
+	manifestsYaml := `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo
-  annotations:
-    step: "%d"
 spec:
   replicas: 1
   selector:
@@ -353,7 +353,7 @@ spec:
       containers:
         - name: demo
           image: nginx
-`, step)
+`
 	m := make(map[string]string)
 	m["kustomization.yaml"] = kustomizationYaml
 	m["manifests.yaml"] = manifestsYaml
@@ -370,7 +370,7 @@ spec:
 	}
 }
 
-func newReviewApp(objectName string, step int) *dreamkastv1alpha1.ReviewApp {
+func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
 	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      objectName,
@@ -389,7 +389,7 @@ func newReviewApp(objectName string, step int) *dreamkastv1alpha1.ReviewApp {
 				},
 			},
 			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
-				Message:              fmt.Sprintf("step %d", step),
+				Message:              "message",
 				SendMessageEveryTime: true,
 			},
 			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
@@ -426,6 +426,59 @@ func newReviewApp(objectName string, step int) *dreamkastv1alpha1.ReviewApp {
 			AppPrNum: testGitAppPrNumForRA,
 		},
 	}
+}
+
+func newPatchOfManifestsTemplate(name string) *unstructured.Unstructured {
+	manifestsYaml := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:{{.AppRepo.LatestCommitSha}}
+`
+	patch := &unstructured.Unstructured{}
+	patch.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   dreamkastv1alpha1.GroupVersion.Group,
+		Version: dreamkastv1alpha1.GroupVersion.Version,
+		Kind:    "ManifestsTemplate",
+	})
+	patch.SetNamespace(testNamespace)
+	patch.SetName("manifeststemplate-test-ra")
+	patch.UnstructuredContent()["spec"] = map[string]interface{}{
+		"stable": map[string]interface{}{
+			"manifests.yaml": manifestsYaml,
+		},
+	}
+	return patch
+}
+
+func newPatchOfReviewApp(objectName string) *unstructured.Unstructured {
+	patch := &unstructured.Unstructured{}
+	patch.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   dreamkastv1alpha1.GroupVersion.Group,
+		Version: dreamkastv1alpha1.GroupVersion.Version,
+		Kind:    "ReviewApp",
+	})
+	patch.SetNamespace(testNamespace)
+	patch.SetName(objectName)
+	patch.UnstructuredContent()["spec"] = map[string]interface{}{
+		"appRepoConfig": map[string]interface{}{
+			"message": "updated",
+		},
+	}
+	return patch
 }
 
 //! [constructors for test]
