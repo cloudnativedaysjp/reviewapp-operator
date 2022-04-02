@@ -15,14 +15,14 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 )
 
-func (c Client) GetArgoCDAppFromReviewAppStatus(ctx context.Context, ra models.ReviewApp) (models.Application, error) {
+func (c Client) GetArgoCDAppFromReviewAppStatus(ctx context.Context, raStatus models.ReviewAppStatus) (models.Application, error) {
 	var a argocd_application_v1alpha1.Application
 	gvk := schema.GroupVersionKind{
 		Group:   argocd_application_v1alpha1.SchemeGroupVersion.Group,
 		Version: argocd_application_v1alpha1.SchemeGroupVersion.Version,
 		Kind:    "Application",
 	}
-	nn := types.NamespacedName{Namespace: ra.Status.Sync.ApplicationNamespace, Name: ra.Status.Sync.ApplicationName}
+	nn := types.NamespacedName{Namespace: raStatus.Sync.ApplicationNamespace, Name: raStatus.Sync.ApplicationName}
 	if err := c.Get(ctx, nn, &a); err != nil {
 		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(a), err)
 		if apierrors.IsNotFound(err) {

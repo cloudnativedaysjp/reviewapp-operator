@@ -3,6 +3,8 @@ kind: ManifestsTemplate
 metadata:
   name: manifeststemplate-sample
   namespace: test-ns
+  annotations:
+    testcase: testset-normal
 spec:
   stable: &manifests
     kustomization.yaml: |
@@ -17,4 +19,6 @@ spec:
       kind: Namespace
       metadata:
         name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+        annotations:
+          testcase: testset-normal
   candidate: *manifests

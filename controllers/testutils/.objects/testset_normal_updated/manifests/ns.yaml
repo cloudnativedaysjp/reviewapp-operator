@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: demo-dev-sample-1
   annotations:
-    testcase: testset-normal
+    testcase: testset-normal-2

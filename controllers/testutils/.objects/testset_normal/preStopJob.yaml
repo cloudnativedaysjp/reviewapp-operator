@@ -1,31 +1,27 @@
-apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
-kind: JobTemplate
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: jobtemplate-sample
-  namespace: test-ns
+  generateName: jt-sample-1-
+  namespace: argocd
+  labels:
+    dreamkast.cloudnativedays.jp/parent-reviewapp: reviewapp-sample-shotakitazawa-reviewapp-operator-demo-app-1
+  annotations:
+    testcase: testset-normal
 spec:
-  template: |
-    apiVersion: batch/v1
-    kind: Job
-    metadata:
-      generateName: jt-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}-
-      namespace: argocd
+  template:
     spec:
-      template:
-        spec:
-          containers:
-            - name: test-job
-              image: bash
-              command: ['bash', '-euxc']
-              args:
-                - |
-                  echo '.AppRepo.Organization: {{.AppRepo.Organization}}';
-                  echo '.AppRepo.Repository: {{.AppRepo.Repository}}';
-                  echo '.AppRepo.PrNumber: {{.AppRepo.PrNumber}}';
-                  echo '.AppRepo.LatestCommitSha: {{.AppRepo.LatestCommitSha}}';
-                  echo '.InfraRepo.Organization: {{.InfraRepo.Organization}}';
-                  echo '.InfraRepo.Repository: {{.InfraRepo.Repository}}';
-                  echo '.Variables.AppRepositoryAlias: {{.Variables.AppRepositoryAlias}}';
-                  echo '.Variables.dummy: {{.Variables.dummy}}';
-          restartPolicy: Never
+      containers:
+        - name: test-job
+          image: bash
+          command: ['bash', '-euxc']
+          args:
+            - |
+              echo '.AppRepo.Organization: ShotaKitazawa';
+              echo '.AppRepo.Repository: reviewapp-operator-demo-app';
+              echo '.AppRepo.PrNumber: 1';
+              echo '.InfraRepo.Organization: ShotaKitazawa';
+              echo '.InfraRepo.Repository: reviewapp-operator-demo-infra';
+              echo '.Variables.AppRepositoryAlias: sample';
+              echo '.Variables.dummy: <no value>';
+      restartPolicy: Never
 

@@ -16,7 +16,6 @@ type K8sObjectNotFound struct {
 	ObjectNamespace string
 }
 
-// obj はオブジェクトの取得に失敗しているので、client.Object ではなく runtime.Object を利用する
 func NewK8sObjectNotFound(err error, gvk schema.GroupVersionKind, nn types.NamespacedName) K8sObjectNotFound {
 	return K8sObjectNotFound{
 		Err:             err,
@@ -30,7 +29,16 @@ func (e K8sObjectNotFound) Error() string {
 	return fmt.Sprintf("%s %s/%s not found", e.ObjectGVK.Kind, e.ObjectNamespace, e.ObjectName)
 }
 
-/* K8sObjectNotFound */
+func IsNotFound(err error) bool {
+	switch err.(type) {
+	case K8sObjectNotFound:
+		return true
+	default:
+		return false
+	}
+}
+
+/* KeyIsMissing */
 
 type KeyIsMissing struct {
 	kind string
@@ -45,11 +53,9 @@ func (e KeyIsMissing) Error() string {
 	return fmt.Sprintf("in %s: key %s is missing", e.kind, e.key)
 }
 
-/* utility functions */
-
-func IsNotFound(err error) bool {
+func IsKeyMissing(err error) bool {
 	switch err.(type) {
-	case K8sObjectNotFound:
+	case KeyIsMissing:
 		return true
 	default:
 		return false

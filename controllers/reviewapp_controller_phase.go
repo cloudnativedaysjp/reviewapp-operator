@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -16,10 +15,6 @@ import (
 )
 
 const (
-	annotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
-	annotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
-	annotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
-
 	preStopJobTimeoutSecond = 300
 )
 
@@ -42,6 +37,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
 		return nil, ctrl.Result{}, err
 	}
@@ -63,6 +59,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
 		return nil, ctrl.Result{}, err
 	}
@@ -77,6 +74,7 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
 		return nil, ctrl.Result{}, err
 	}
@@ -125,17 +123,7 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	manifests := dto.Manifests
 
 	// set annotations to Argo CD Application
-	// TODO: model 化
-	appWithAnnotations := application
-	appWithAnnotations, err := appWithAnnotations.SetAnnotation(annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
-	if err != nil {
-		return raStatus, ctrl.Result{}, err
-	}
-	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
-	if err != nil {
-		return raStatus, ctrl.Result{}, err
-	}
-	appWithAnnotations, err = appWithAnnotations.SetAnnotation(annotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
+	appWithAnnotations, err := application.SetSomeAnnotations(ra)
 	if err != nil {
 		return raStatus, ctrl.Result{}, err
 	}
@@ -143,9 +131,9 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, infraRepoTarget)
 	if err != nil {
-		if myerrors.IsNotFound(err) {
-			// TODO
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+		if myerrors.IsNotFound(err) || myerrors.IsKeyMissing(err) {
+			r.Log.Info(err.Error())
+			return raStatus, ctrl.Result{}, nil
 		}
 		return raStatus, ctrl.Result{}, err
 	}
@@ -180,7 +168,6 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 
 	// update ReviewApp.Status
 	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
-	raStatus.Sync.InfraRepoLatestCommitSha = localDir.LatestCommitSha()
 	raStatus.ManifestsCache.Application = string(application)
 	raStatus.ManifestsCache.Manifests = manifests
 
@@ -194,7 +181,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 	pr := dto.PullRequest
 
 	// check appRepoSha from annotations in ArgoCD Application
-	application, err := r.K8sRepository.GetArgoCDAppFromReviewAppStatus(ctx, ra)
+	application, err := r.K8sRepository.GetArgoCDAppFromReviewAppStatus(ctx, ra.GetStatus())
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
@@ -202,7 +189,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 		}
 		return raStatus, ctrl.Result{}, err
 	}
-	hashInArgoCDApplication, err := application.Annotation(annotationAppCommitHashForArgoCDApplication)
+	hashInArgoCDApplication, err := application.Annotation(models.AnnotationAppCommitHashForArgoCDApplication)
 	if err != nil {
 		return raStatus, ctrl.Result{}, err
 	}
@@ -217,9 +204,9 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 		// get gitRemoteRepo credential from Secret
 		gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appTarget)
 		if err != nil {
-			if myerrors.IsNotFound(err) {
-				// TODO
-				r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			if myerrors.IsNotFound(err) || myerrors.IsKeyMissing(err) {
+				r.Log.Info(err.Error())
+				return raStatus, ctrl.Result{}, nil
 			}
 			return raStatus, ctrl.Result{}, err
 		}
@@ -255,8 +242,8 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewApp
 		if err != nil {
 			if myerrors.IsNotFound(err) {
 				r.Log.Info(err.Error())
+				r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
 			}
-			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
 			goto finalize
 		}
 
@@ -297,6 +284,7 @@ finalize:
 	if err != nil {
 		if myerrors.IsNotFound(err) {
 			r.Log.Info(err.Error())
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}

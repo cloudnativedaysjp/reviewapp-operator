@@ -3,6 +3,8 @@ kind: ApplicationTemplate
 metadata:
   name: applicationtemplate-sample
   namespace: test-ns
+  annotations:
+    testcase: testset-normal
 spec:
   stable: &application |
     apiVersion: argoproj.io/v1alpha1
@@ -12,6 +14,8 @@ spec:
       namespace: argocd
       finalizers:
         - resources-finalizer.argocd.argoproj.io # cascade deletion on this App deletion
+      annotations:
+        testcase: testset-normal
     spec:
       destination:
         namespace: "{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}"

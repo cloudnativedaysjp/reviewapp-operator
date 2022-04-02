@@ -50,7 +50,29 @@ func (m Application) NamespacedName() (types.NamespacedName, error) {
 	return types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, nil
 }
 
-func (m Application) SetAnnotation(annotationKey, annotationValue string) (Application, error) {
+const (
+	AnnotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
+	AnnotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
+	AnnotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
+)
+
+func (m Application) SetSomeAnnotations(ra ReviewApp) (Application, error) {
+	appWithAnnotations, err := m.setAnnotation(AnnotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
+	if err != nil {
+		return "", err
+	}
+	appWithAnnotations, err = m.setAnnotation(AnnotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
+	if err != nil {
+		return "", err
+	}
+	appWithAnnotations, err = m.setAnnotation(AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
+	if err != nil {
+		return "", err
+	}
+	return appWithAnnotations, nil
+}
+
+func (m Application) setAnnotation(annotationKey, annotationValue string) (Application, error) {
 	var obj unstructured.Unstructured
 	err := yaml.Unmarshal([]byte(m), &obj)
 	if err != nil {

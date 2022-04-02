@@ -74,9 +74,6 @@ type SyncStatus struct {
 
 	// TODO
 	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
-
-	// TODO
-	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
 }
 
 type ManifestsCache struct {

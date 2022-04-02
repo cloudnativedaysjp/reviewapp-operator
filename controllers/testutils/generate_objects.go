@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
+	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/yaml"
 
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
@@ -17,7 +18,8 @@ func GenerateObjects(dirname string) (
 	mt models.ManifestsTemplate,
 	app models.Application,
 	manifests models.Manifests,
-	preStopJob models.JobTemplate,
+	preStopJt models.JobTemplate,
+	preStopJob batchv1.Job,
 ) {
 	{ // ReviewApp
 		raFilePath := filepath.Join(generateObjectsBasePath, dirname, "ra.yaml")
@@ -59,6 +61,13 @@ func GenerateObjects(dirname string) (
 		}
 	}
 	{ // JobTemplate (preStopJob)
+		preStopJtFilePath := filepath.Join(generateObjectsBasePath, dirname, "preStopJt.yaml")
+		preStopJtBytes, err := os.ReadFile(preStopJtFilePath)
+		if err == nil {
+			_ = yaml.Unmarshal(preStopJtBytes, &preStopJt)
+		}
+	}
+	{ // Job (preStopJob)
 		preStopJobFilePath := filepath.Join(generateObjectsBasePath, dirname, "preStopJob.yaml")
 		preStopJobBytes, err := os.ReadFile(preStopJobFilePath)
 		if err == nil {

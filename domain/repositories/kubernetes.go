@@ -10,7 +10,7 @@ import (
 
 type KubernetesRepository interface {
 	GetApplicationTemplate(ctx context.Context, m models.ReviewAppOrReviewAppManager) (models.ApplicationTemplate, error)
-	GetArgoCDAppFromReviewAppStatus(ctx context.Context, ra models.ReviewApp) (models.Application, error)
+	GetArgoCDAppFromReviewAppStatus(ctx context.Context, raStatus models.ReviewAppStatus) (models.Application, error)
 	GetLatestJobFromLabel(ctx context.Context, namespace, labelKey, labelValue string) (*batchv1.Job, error)
 	CreateJob(ctx context.Context, job *batchv1.Job) error
 	GetPreStopJobTemplate(ctx context.Context, ra models.ReviewApp) (models.JobTemplate, error)

@@ -6,7 +6,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io # cascade deletion on this App deletion
   annotations:
-    testcase: testset-normal
+    testcase: testset-normal-2
 spec:
   destination:
     namespace: "sample-1"

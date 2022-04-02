@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"golang.org/x/xerrors"
@@ -37,7 +38,7 @@ func (c Client) GetSecretValue(ctx context.Context, namespace string, m models.A
 	}
 	d, ok := secret.Data[secretRef.Key]
 	if !ok {
-		return "", xerrors.Errorf("Secret %s does not have key %s", secretRef.Name, secretRef.Key)
+		return "", myerrors.NewKeyIsMissing(fmt.Sprintf("Secret %s", secretRef.Name), secretRef.Key)
 	}
 	return string(d), nil
 }
