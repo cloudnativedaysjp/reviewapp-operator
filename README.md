@@ -2,8 +2,6 @@ reviewapp-operator
 ===
 
 ![License](https://img.shields.io/github/license/cloudnativedaysjp/reviewapp-operator)
-![unit-test](https://github.com/cloudnativedaysjp/reviewapp-operator/workflows/unit-test/badge.svg)
-![integration-test](https://github.com/cloudnativedaysjp/reviewapp-operator/workflows/integration-test/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/cloudnativedaysjp/reviewapp-operator)
 
 [reviewapp-operator](https://github.com/cloudnativedaysjp/reviewapp-operator) works in concert with the [Argo CD](https://github.com/argoproj/argo-cd) to realize "launching a new environment for development (as Review Apps environment) when any PullRequest is opened in the application-repository".
