@@ -238,7 +238,7 @@ type AppRepoTarget dreamkastv1alpha1.ReviewAppManagerSpecAppTarget
 
 func (m AppRepoTarget) GitSecretSelector() (*corev1.SecretKeySelector, error) {
 	if m.GitSecretRef == nil || reflect.ValueOf(m.GitSecretRef).IsNil() {
-		return nil, fmt.Errorf("TODO")
+		return nil, fmt.Errorf("gitSecretRef is not set")
 	}
 	return m.GitSecretRef, nil
 }
@@ -249,7 +249,7 @@ type InfraRepoTarget dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget
 
 func (m InfraRepoTarget) GitSecretSelector() (*corev1.SecretKeySelector, error) {
 	if m.GitSecretRef == nil || reflect.ValueOf(m.GitSecretRef).IsNil() {
-		return nil, fmt.Errorf("TODO")
+		return nil, fmt.Errorf("gitSecretRef is not set")
 	}
 	return m.GitSecretRef, nil
 }

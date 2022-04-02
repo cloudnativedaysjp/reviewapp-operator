@@ -38,8 +38,6 @@ func NewTemplator(
 	for _, line := range m.Variables() {
 		idx := strings.Index(line, "=")
 		if idx == -1 {
-			// TODO
-			// r.Log.Info(fmt.Sprintf("RA %s: .Spec.Variables[%d] is invalid", ram.Name, i))
 			continue
 		}
 		vars[line[:idx]] = line[idx+1:]
