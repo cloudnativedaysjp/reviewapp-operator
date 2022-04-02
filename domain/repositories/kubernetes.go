@@ -17,7 +17,7 @@ type KubernetesRepository interface {
 	GetManifestsTemplate(ctx context.Context, m models.ReviewAppOrReviewAppManager) ([]models.ManifestsTemplate, error)
 	GetReviewApp(ctx context.Context, namespace, name string) (models.ReviewApp, error)
 	ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.ReviewApp, owner models.ReviewAppManager) error
-	UpdateReviewAppStatus(ctx context.Context, ra models.ReviewApp) error
+	ApplyReviewAppStatus(ctx context.Context, ra models.ReviewApp) error
 	DeleteReviewApp(ctx context.Context, namespace, name string) error
 	AddFinalizersToReviewApp(ctx context.Context, ra models.ReviewApp, finalizers ...string) error
 	RemoveFinalizersFromReviewApp(ctx context.Context, ra models.ReviewApp, finalizers ...string) error

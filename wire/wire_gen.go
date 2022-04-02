@@ -7,6 +7,7 @@
 package wire
 
 import (
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
 	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
@@ -33,4 +34,10 @@ func NewGitCommandRepository(l logr.Logger, e exec.Interface) (*gitcommand.Git, 
 func NewKubernetesRepository(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
 	kubernetesClient := kubernetes.NewClient(l, e)
 	return kubernetesClient, nil
+}
+
+func NewPullRequestService(l logr.Logger) (*services.PullRequestService, error) {
+	gitHub := githubapi.NewGitHub(l)
+	pullRequestService := services.NewPullRequestService(gitHub)
+	return pullRequestService, nil
 }

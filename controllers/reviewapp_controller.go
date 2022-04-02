@@ -32,8 +32,19 @@ import (
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+)
+
+const (
+	finalizer = "reviewapp.finalizers.cloudnativedays.jp"
+)
+
+var (
+	singleflightGroupForReviewApp singleflight.Group
+	datetimeFactoryForRA          = utils.NewDatetimeFactory()
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -45,6 +56,7 @@ type ReviewAppReconciler struct {
 	K8sRepository        repositories.KubernetesRepository
 	GitApiRepository     repositories.GitAPI
 	GitCommandRepository repositories.GitCommand
+	PullRequestService   services.PullRequestServiceIface
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
@@ -52,14 +64,6 @@ type ReviewAppReconciler struct {
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=argoproj.io,resources=applications,verbs=get;list;watch
-
-const (
-	finalizer = "reviewapp.finalizers.cloudnativedays.jp"
-)
-
-var (
-	singleflightGroupForReviewApp singleflight.Group
-)
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
@@ -76,6 +80,7 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		dto, result, err := r.prepare(ctx, ra)
 		if err != nil {
 			if myerrors.IsNotFound(err) {
+				r.Log.Info(err.Error())
 				return result, nil
 			}
 			return result, err
@@ -102,7 +107,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
-	f := func(cond bool, phase func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error)) {
+	phase := func(cond bool, phase func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error)) {
 		if cond {
 			raStatus, result, err = phase(ctx, dto)
 			if err != nil {
@@ -112,16 +117,25 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 			dto.ReviewApp = ra
 		}
 	}
-
-	f(reflect.DeepEqual(raStatus, models.ReviewAppStatus{}) || raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
+	// if s.sync.status is empty, set SyncStatusCodeInitialize
+	phase(reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}),
+		func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
+			s := dto.ReviewApp.GetStatus()
+			s.Sync.Status = dreamkastv1alpha1.SyncStatusCodeInitialize
+			return s, ctrl.Result{}, nil
+		},
+	)
+	// each phase
+	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeInitialize ||
+		raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
 		r.confirmUpdated)
-	f(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
 		r.deployReviewAppManifestsToInfraRepo)
-	f(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo,
+	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo,
 		r.commentToAppRepoPullRequest)
 
 	// update status
-	if err := r.K8sRepository.UpdateReviewAppStatus(ctx, ra); err != nil {
+	if err := r.K8sRepository.ApplyReviewAppStatus(ctx, ra); err != nil {
 		return ctrl.Result{}, err
 	}
 

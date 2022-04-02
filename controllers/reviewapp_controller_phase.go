@@ -35,18 +35,11 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appRepoTarget)
 	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(err.Error())
-			return nil, ctrl.Result{}, nil
-		}
-		return nil, ctrl.Result{}, err
-	}
-	if err := r.GitApiRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
 		return nil, ctrl.Result{}, err
 	}
 
 	// check PRs specified by spec.appRepo.repository
-	pr, err := r.GitApiRepository.GetPullRequest(ctx, appRepoTarget, ra.PrNum())
+	pr, err := r.PullRequestService.Get(ctx, ra, models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken), datetimeFactoryForRA)
 	if err != nil {
 		return nil, ctrl.Result{}, err
 	}
@@ -57,10 +50,6 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	// get ApplicationTemplate & template to applicationStr
 	at, err := r.K8sRepository.GetApplicationTemplate(ctx, ra)
 	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(err.Error())
-			return nil, ctrl.Result{}, nil
-		}
 		return nil, ctrl.Result{}, err
 	}
 	application, err := at.GenerateApplication(pr, v)
@@ -72,10 +61,6 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	ra.GroupVersionKind()
 	mts, err := r.K8sRepository.GetManifestsTemplate(ctx, ra)
 	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(err.Error())
-			return nil, ctrl.Result{}, nil
-		}
 		return nil, ctrl.Result{}, err
 	}
 	var mt models.ManifestsTemplate
@@ -137,32 +122,31 @@ func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Co
 		}
 		return raStatus, ctrl.Result{}, err
 	}
-	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.InfraTarget.Username, gitRemoteRepoToken)); err != nil {
 		return raStatus, ctrl.Result{}, err
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
 	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
 	var localDir models.InfraRepoLocalDir
-	if err := backoff.Retry(
-		func() error {
-			// clone
-			localDir, err = r.GitCommandRepository.ForceClone(ctx, infraRepoTarget)
-			if err != nil {
-				return err
-			}
-			// create files
-			files := append([]models.File{}, models.NewFileFromApplication(ra, appWithAnnotations, pr, localDir))
-			files = append(files, models.NewFilesFromManifests(ra, manifests, pr, localDir)...)
-			if err := r.GitCommandRepository.CreateFiles(ctx, localDir, files...); err != nil {
-				return err
-			}
-			// commmit & push
-			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgUpdate(ra)); err != nil {
-				return err
-			}
-			return nil
-		}, backoffRetryCount); err != nil {
+	if err := backoff.Retry(func() error {
+		// clone
+		localDir, err = r.GitCommandRepository.ForceClone(ctx, infraRepoTarget)
+		if err != nil {
+			return err
+		}
+		// create files
+		files := append([]models.File{}, models.NewFileFromApplication(ra, appWithAnnotations, pr, localDir))
+		files = append(files, models.NewFilesFromManifests(ra, manifests, pr, localDir)...)
+		if err := r.GitCommandRepository.CreateFiles(ctx, localDir, files...); err != nil {
+			return err
+		}
+		// commmit & push
+		if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgUpdate(ra)); err != nil {
+			return err
+		}
+		return nil
+	}, backoffRetryCount); err != nil {
 		return raStatus, ctrl.Result{}, err
 	}
 
@@ -210,7 +194,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 			}
 			return raStatus, ctrl.Result{}, err
 		}
-		if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+		if err := r.GitApiRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
 			return raStatus, ctrl.Result{}, err
 		}
 		// Send Message to AppRepo's PR
@@ -221,7 +205,7 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 
 	// update ReviewApp.Status
 	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates
-	raStatus.AlreadySentMessage = true
+	raStatus.Sync.AlreadySentMessage = true
 
 	return raStatus, ctrl.Result{}, nil
 }

@@ -31,6 +31,11 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
+)
+
+var (
+	datetimeFactoryForRAM = utils.NewDatetimeFactory()
 )
 
 // ReviewAppManagerReconciler reconciles a ReviewAppManager object
@@ -73,8 +78,8 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 	// get gitRemoteRepo credential from Secret
 	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ram.Namespace, &appRepoTarget)
 	if err != nil {
-		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ram.Namespace, ram.Spec.AppTarget.GitSecretRef.Name, ram.Spec.AppTarget.GitSecretRef.Key))
+		if myerrors.IsNotFound(err) || myerrors.IsKeyMissing(err) {
+			r.Log.Info(err.Error())
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -97,13 +102,27 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 		// init templator
 		v := models.NewTemplator(ram, pr)
 		// generate RA
-		ra, err := ram.GenerateReviewApp(pr, v)
+		ra, err := ram.GenerateReviewApp(pr, v, datetimeFactoryForRAM)
 		if err != nil {
 			return ctrl.Result{}, err
+		}
+		// get RA
+		raAlreadyExists := true
+		if _, err := r.K8sRepository.GetReviewApp(ctx, ra.Namespace, ra.Name); err != nil {
+			if !myerrors.IsNotFound(err) {
+				return ctrl.Result{}, err
+			}
+			raAlreadyExists = false
 		}
 		// apply RA
 		if err := r.K8sRepository.ApplyReviewAppWithOwnerRef(ctx, ra, ram); err != nil {
 			return ctrl.Result{}, err
+		}
+		// update Status of RA if above is first apply
+		if !raAlreadyExists {
+			if err := r.K8sRepository.ApplyReviewAppStatus(ctx, ra); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 		// update values for updating RAM.status
 		syncedPullRequests = append(syncedPullRequests, dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests{

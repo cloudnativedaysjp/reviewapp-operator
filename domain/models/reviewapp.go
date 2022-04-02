@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 )
 
 /* ReviewApp or ReviewAppManager */
@@ -74,7 +75,7 @@ func (m ReviewApp) HavingPreStopJob() bool {
 
 func (m ReviewApp) HasMessageAlreadyBeenSent() bool {
 	status := m.GetStatus()
-	return m.Spec.AppConfig.Message == "" || (!m.Spec.AppConfig.SendMessageEveryTime && status.AlreadySentMessage)
+	return m.Spec.AppConfig.Message == "" || (!m.Spec.AppConfig.SendMessageEveryTime && status.Sync.AlreadySentMessage)
 }
 
 func (m ReviewApp) GetStatus() ReviewAppStatus {
@@ -87,11 +88,18 @@ type ReviewAppStatus dreamkastv1alpha1.ReviewAppStatus
 
 func (m ReviewAppStatus) UpdateStatusOfAppRepo(pr PullRequest) (ReviewAppStatus, bool) {
 	updated := false
-	m.Sync.AppRepoBranch = pr.Branch
-	if m.Sync.AppRepoLatestCommitHash != pr.LatestCommitHash {
-		updated = true
+	checkUpdated := func(cond bool) {
+		if cond {
+			updated = true
+		}
 	}
-	m.Sync.AppRepoLatestCommitHash = pr.LatestCommitHash
+	checkUpdated(m.Sync.SyncedPullRequest.Branch != pr.Branch)
+	m.Sync.SyncedPullRequest.Branch = pr.Branch
+	checkUpdated(m.Sync.SyncedPullRequest.LatestCommitHash != pr.LatestCommitHash)
+	m.Sync.SyncedPullRequest.LatestCommitHash = pr.LatestCommitHash
+	// PR の Title, Labels は更新されても skip
+	m.Sync.SyncedPullRequest.Title = pr.Title
+	m.Sync.SyncedPullRequest.Labels = pr.Labels
 	return m, updated
 }
 
@@ -121,7 +129,7 @@ func (m ReviewAppStatus) WasManifestsUpdated(manifests Manifests) bool {
 }
 
 func (m ReviewAppStatus) HasApplicationBeenUpdated(hash string) bool {
-	return m.Sync.AppRepoLatestCommitHash == hash
+	return m.Sync.SyncedPullRequest.LatestCommitHash == hash
 }
 
 /* ReviewAppManager */
@@ -156,7 +164,7 @@ func (m ReviewAppManager) ToReviewAppCR() *dreamkastv1alpha1.ReviewAppManager {
 	return &ram
 }
 
-func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator) (ReviewApp, error) {
+func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator, f *utils.DatetimeFactory) (ReviewApp, error) {
 	ra := ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.ReviewAppName(pr),
@@ -168,6 +176,18 @@ func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator) (Review
 			Variables:   m.Spec.Variables,
 			PreStopJob:  m.Spec.PreStopJob,
 			AppPrNum:    pr.Number,
+		},
+		Status: dreamkastv1alpha1.ReviewAppStatus{
+			Sync: dreamkastv1alpha1.SyncStatus{
+				Status: dreamkastv1alpha1.SyncStatusCodeInitialize,
+				SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+					Branch:           pr.Branch,
+					LatestCommitHash: pr.LatestCommitHash,
+					Title:            pr.Title,
+					Labels:           pr.Labels,
+					SyncTimestamp:    f.Now().ToString(),
+				},
+			},
 		},
 	}
 	{ // template from ram.Spec.AppConfig to ra.Spec.AppConfig
@@ -206,6 +226,15 @@ func (m ReviewAppManager) ReviewAppName(pr PullRequest) string {
 		strings.ToLower(pr.Repository),
 		pr.Number,
 	)
+}
+
+func (m ReviewAppManager) IsPullRequestAlreadySynced(pr PullRequest) bool {
+	for _, syncedPr := range m.Status.SyncedPullRequests {
+		if syncedPr.Organization == pr.Organization && syncedPr.Repository == pr.Repository && syncedPr.Number == pr.Number {
+			return true
+		}
+	}
+	return false
 }
 
 func (m ReviewAppManager) ListOutOfSyncReviewAppName(prs []PullRequest) []string {

@@ -72,6 +72,9 @@ var _ = Describe("ReviewApp controller", func() {
 		Expect(err).ToNot(HaveOccurred())
 		gitCommandRepository, err := wire.NewGitCommandRepository(logger, exec.New())
 		Expect(err).ToNot(HaveOccurred())
+		pullRequestService, err := wire.NewPullRequestService(logger)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppReconciler{
 			Scheme:               scheme,
 			Log:                  logger,
@@ -79,6 +82,7 @@ var _ = Describe("ReviewApp controller", func() {
 			K8sRepository:        k8sRepository,
 			GitApiRepository:     gitApiRepository,
 			GitCommandRepository: gitCommandRepository,
+			PullRequestService:   pullRequestService,
 		}
 		err = reconciler.SetupWithManager(mgr)
 		Expect(err).NotTo(HaveOccurred())
@@ -143,7 +147,7 @@ var _ = Describe("ReviewApp controller", func() {
 				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-				g.Expect(ra.Status.Sync.AppRepoLatestCommitHash).NotTo(BeEmpty())
+				g.Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeEmpty())
 			}, timeout, interval).Should(Succeed())
 		})
 	})
@@ -200,7 +204,7 @@ var _ = Describe("ReviewApp controller", func() {
 			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-			Expect(ra.Status.Sync.AppRepoLatestCommitHash).NotTo(BeEmpty())
+			Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeEmpty())
 		})
 		It("should commit to infra-repo", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)

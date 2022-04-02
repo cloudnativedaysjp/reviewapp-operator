@@ -15,10 +15,10 @@ type Templator struct {
 }
 
 type templateValueAppRepoInfo struct {
-	Organization    string
-	Repository      string
-	Branch          string
-	PrNumber        int
+	Organization     string
+	Repository       string
+	Branch           string
+	PrNumber         int
 	LatestCommitHash string
 }
 
@@ -46,10 +46,10 @@ func NewTemplator(
 	infraTarget := m.InfraRepoTarget()
 	return Templator{
 		templateValueAppRepoInfo{
-			Organization:    appTarget.Organization,
-			Repository:      appTarget.Repository,
-			Branch:          pr.Branch,
-			PrNumber:        pr.Number,
+			Organization:     appTarget.Organization,
+			Repository:       appTarget.Repository,
+			Branch:           pr.Branch,
+			PrNumber:         pr.Number,
 			LatestCommitHash: pr.LatestCommitHash,
 		},
 		templateValueInfraRepoInfo{

@@ -124,6 +124,11 @@ func main() {
 			setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
 			os.Exit(1)
 		}
+		pullRequestService, err := wire.NewPullRequestService(raLogger)
+		if err != nil {
+			setupLog.Error(err, "unable to initialize", "wire.NewPullRequestService")
+			os.Exit(1)
+		}
 		if err = (&controllers.ReviewAppReconciler{
 			Log:                  raLogger,
 			Scheme:               mgr.GetScheme(),
@@ -131,6 +136,7 @@ func main() {
 			K8sRepository:        k8sRepository,
 			GitApiRepository:     gitApiRepository,
 			GitCommandRepository: gitCommandRepository,
+			PullRequestService:   pullRequestService,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
 			os.Exit(1)
