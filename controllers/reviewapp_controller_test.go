@@ -41,6 +41,7 @@ import (
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
@@ -143,7 +144,6 @@ var _ = Describe("ReviewApp controller", func() {
 				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
-				g.Expect(ra.Status.Sync.InfraRepoLatestCommitSha).NotTo(BeEmpty())
 			}, timeout, interval).Should(Succeed())
 		})
 	})
@@ -160,9 +160,9 @@ var _ = Describe("ReviewApp controller", func() {
 		argocdApp := &argocd_application_v1alpha1.Application{}
 		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-		Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-		Expect(argocdApp.Annotations[annotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+		Expect(argocdApp.Annotations[models.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+		Expect(argocdApp.Annotations[models.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+		Expect(argocdApp.Annotations[models.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 	})
 	Context("step2. update ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
@@ -201,7 +201,6 @@ var _ = Describe("ReviewApp controller", func() {
 			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
 			Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
-			Expect(ra.Status.Sync.InfraRepoLatestCommitSha).NotTo(BeEmpty())
 		})
 		It("should commit to infra-repo", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
@@ -214,9 +213,9 @@ var _ = Describe("ReviewApp controller", func() {
 			argocdApp := &argocd_application_v1alpha1.Application{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(argocdApp.Annotations[annotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-			Expect(argocdApp.Annotations[annotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-			Expect(argocdApp.Annotations[annotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+			Expect(argocdApp.Annotations[models.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+			Expect(argocdApp.Annotations[models.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+			Expect(argocdApp.Annotations[models.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 		})
 	})
 	Context("step3. delete ReviewApp", func() {
