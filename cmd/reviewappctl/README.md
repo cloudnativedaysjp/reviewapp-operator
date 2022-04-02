@@ -24,4 +24,4 @@ Please find below examples.
 
 * called `reviewappctl manifests-templating` in Argo CD Plugin [in this file](https://github.com/cloudnativedaysjp/dreamkast-infra/blob/main/manifests/argocd/overlays/dev/argocd-cm.yaml).
 * deployed Argo CD Appliction with reviewappctl Plugin [in this file](https://github.com/cloudnativedaysjp/dreamkast-infra/blob/main/manifests/reviewapps/argocd-apps/dreamkast.yaml)
-* above Argo CD Application manage [this directory](https://github.com/cloudnativedaysjp/dreamkast-infra/tree/main/manifests/app/dreamkast/overlays/development/template-dk). Generate `ManifestsTemplate` manifest by run reviewappctl Plugin during Argo CD apply manifests to Kubernetes.
+* above Argo CD Application manage [this directory](https://github.com/cloudnativedaysjp/dreamkast-infra/tree/main/manifests/app/dreamkast/overlays/development/template-dk). Generate `ManifestsTemplate` manifest by run reviewappctl Plugin before Argo CD apply manifests to Kubernetes.
