@@ -57,15 +57,16 @@ const (
 )
 
 func (m Application) SetSomeAnnotations(ra ReviewApp) (Application, error) {
-	appWithAnnotations, err := m.setAnnotation(AnnotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
+	appWithAnnotations := m
+	appWithAnnotations, err := appWithAnnotations.setAnnotation(AnnotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization)
 	if err != nil {
 		return "", err
 	}
-	appWithAnnotations, err = m.setAnnotation(AnnotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
+	appWithAnnotations, err = appWithAnnotations.setAnnotation(AnnotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository)
 	if err != nil {
 		return "", err
 	}
-	appWithAnnotations, err = m.setAnnotation(AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
+	appWithAnnotations, err = appWithAnnotations.setAnnotation(AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha)
 	if err != nil {
 		return "", err
 	}
