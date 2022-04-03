@@ -17,11 +17,6 @@ var (
 		Name:      "up",
 		Help:      "Operator's status is healthy when this flag equals 1",
 	}, []string{"name", "namespace", "appOrganization", "appRepository", "infraOrganization", "infraRepository"})
-	UnknownVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: metricsRaNamespace,
-		Name:      "unknown",
-		Help:      "Operator's status is unknown when this flag equals 1",
-	}, []string{"name", "namespace", "appOrganization", "appRepository", "infraOrganization", "infraRepository"})
 )
 
 func init() {
@@ -39,27 +34,8 @@ func SetMetricsUp(ra models.ReviewApp) {
 	).Set(1)
 }
 
-func SetMetricsUnknown(ra models.ReviewApp) {
-	UnknownVec.WithLabelValues(
-		ra.Name,
-		ra.Namespace,
-		ra.Spec.AppTarget.Organization,
-		ra.Spec.AppTarget.Repository,
-		ra.Spec.InfraTarget.Organization,
-		ra.Spec.InfraTarget.Organization,
-	).Set(1)
-}
-
 func RemoveMetrics(ra models.ReviewApp) {
 	UpVec.DeleteLabelValues(
-		ra.Name,
-		ra.Namespace,
-		ra.Spec.AppTarget.Organization,
-		ra.Spec.AppTarget.Repository,
-		ra.Spec.InfraTarget.Organization,
-		ra.Spec.InfraTarget.Organization,
-	)
-	UnknownVec.DeleteLabelValues(
 		ra.Name,
 		ra.Namespace,
 		ra.Spec.AppTarget.Organization,
