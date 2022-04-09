@@ -88,10 +88,10 @@ type ReviewAppStatus dreamkastv1alpha1.ReviewAppStatus
 func (m ReviewAppStatus) UpdateStatusOfAppRepo(pr PullRequest) (ReviewAppStatus, bool) {
 	updated := false
 	m.Sync.AppRepoBranch = pr.Branch
-	if m.Sync.AppRepoLatestCommitHash != pr.HeadCommitHash {
+	if m.Sync.AppRepoLatestCommitHash != pr.LatestCommitHash {
 		updated = true
 	}
-	m.Sync.AppRepoLatestCommitHash = pr.HeadCommitHash
+	m.Sync.AppRepoLatestCommitHash = pr.LatestCommitHash
 	return m, updated
 }
 

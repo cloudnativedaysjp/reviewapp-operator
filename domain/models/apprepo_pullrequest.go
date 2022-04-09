@@ -11,7 +11,7 @@ type PullRequest struct {
 	Repository    string
 	Branch        string
 	Number        int
-	HeadCommitHash string
+	LatestCommitHash string
 	Title         string
 	Labels        []string
 }
@@ -22,7 +22,7 @@ func NewPullRequest(organization, repository, branch string, number int, headCom
 		Repository:    repository,
 		Branch:        branch,
 		Number:        number,
-		HeadCommitHash: headCommitHash,
+		LatestCommitHash: headCommitHash,
 		Title:         title,
 		Labels:        labels,
 	}

@@ -74,7 +74,7 @@ func (g *Git) ForceClone(ctx context.Context, infraTarget models.InfraRepoTarget
 		return models.InfraRepoLocalDir{}, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
 	gp := models.NewInfraRepoLocal(downloadDir)
-	gp, err = g.updateHeadCommitHash(ctx, gp)
+	gp, err = g.updateLatestCommitHash(ctx, gp)
 	if err != nil {
 		return models.InfraRepoLocalDir{}, xerrors.Errorf("%w", err)
 	}
@@ -116,7 +116,7 @@ func (g *Git) CommitAndPush(ctx context.Context, gp models.InfraRepoLocalDir, me
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	} else if stdout.String() == "" {
-		gp, err := g.updateHeadCommitHash(ctx, gp)
+		gp, err := g.updateLatestCommitHash(ctx, gp)
 		if err != nil {
 			return nil, xerrors.Errorf("%w", err)
 		}
@@ -144,14 +144,14 @@ func (g *Git) CommitAndPush(ctx context.Context, gp models.InfraRepoLocalDir, me
 	if err != nil {
 		return nil, xerrors.Errorf(`Error: %v`, stderr.String())
 	}
-	gp, err = g.updateHeadCommitHash(ctx, gp)
+	gp, err = g.updateLatestCommitHash(ctx, gp)
 	if err != nil {
 		return nil, xerrors.Errorf("%w", err)
 	}
 	return &gp, nil
 }
 
-func (g *Git) updateHeadCommitHash(ctx context.Context, gp models.InfraRepoLocalDir) (models.InfraRepoLocalDir, error) {
+func (g *Git) updateLatestCommitHash(ctx context.Context, gp models.InfraRepoLocalDir) (models.InfraRepoLocalDir, error) {
 	stdout, stderr, err := g.runCommand(ctx, gp.BaseDir(), "git", "rev-parse", "HEAD")
 	if err != nil {
 		return models.InfraRepoLocalDir{}, xerrors.Errorf(`Error: %v`, stderr.String())

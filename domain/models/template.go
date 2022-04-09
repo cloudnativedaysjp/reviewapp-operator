@@ -50,7 +50,7 @@ func NewTemplator(
 			Repository:      appTarget.Repository,
 			Branch:          pr.Branch,
 			PrNumber:        pr.Number,
-			LatestCommitHash: pr.HeadCommitHash,
+			LatestCommitHash: pr.LatestCommitHash,
 		},
 		templateValueInfraRepoInfo{
 			Organization: infraTarget.Organization,
