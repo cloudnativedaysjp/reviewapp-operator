@@ -11,18 +11,18 @@ type PullRequest struct {
 	Repository    string
 	Branch        string
 	Number        int
-	HeadCommitSha string
+	LatestCommitHash string
 	Title         string
 	Labels        []string
 }
 
-func NewPullRequest(organization, repository, branch string, number int, headCommitSha string, title string, labels []string) PullRequest {
+func NewPullRequest(organization, repository, branch string, number int, headCommitHash string, title string, labels []string) PullRequest {
 	return PullRequest{
 		Organization:  organization,
 		Repository:    repository,
 		Branch:        branch,
 		Number:        number,
-		HeadCommitSha: headCommitSha,
+		LatestCommitHash: headCommitHash,
 		Title:         title,
 		Labels:        labels,
 	}

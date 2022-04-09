@@ -19,7 +19,7 @@ type templateValueAppRepoInfo struct {
 	Repository      string
 	Branch          string
 	PrNumber        int
-	LatestCommitSha string
+	LatestCommitHash string
 }
 
 type templateValueInfraRepoInfo struct {
@@ -27,7 +27,7 @@ type templateValueInfraRepoInfo struct {
 	Repository   string
 	Branch       string
 	// TODO: #56
-	//LatestCommitSha string
+	//LatestCommitHash string
 }
 
 func NewTemplator(
@@ -50,7 +50,7 @@ func NewTemplator(
 			Repository:      appTarget.Repository,
 			Branch:          pr.Branch,
 			PrNumber:        pr.Number,
-			LatestCommitSha: pr.HeadCommitSha,
+			LatestCommitHash: pr.LatestCommitHash,
 		},
 		templateValueInfraRepoInfo{
 			Organization: infraTarget.Organization,
@@ -61,8 +61,8 @@ func NewTemplator(
 	}
 }
 
-func (v Templator) WithAppRepoLatestCommitSha(sha string) *Templator {
-	v.AppRepo.LatestCommitSha = sha
+func (v Templator) WithAppRepoLatestCommitHash(sha string) *Templator {
+	v.AppRepo.LatestCommitHash = sha
 	return &v
 }
 

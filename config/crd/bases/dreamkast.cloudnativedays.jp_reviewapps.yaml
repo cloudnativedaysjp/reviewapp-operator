@@ -256,16 +256,13 @@ spec:
                   appRepoBranch:
                     description: TODO
                     type: string
-                  appRepoLatestCommitSha:
+                  appRepoLatestCommitHash:
                     description: TODO
                     type: string
                   applicationName:
                     description: TODO
                     type: string
                   applicationNamespace:
-                    description: TODO
-                    type: string
-                  infraRepoLatestCommitSha:
                     description: TODO
                     type: string
                   status:

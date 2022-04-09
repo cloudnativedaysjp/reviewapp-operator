@@ -40,7 +40,7 @@ var (
 		Repository:    testRaNormal.AppRepoTarget().Repository,
 		Branch:        "test",
 		Number:        testRaNormal.PrNum(),
-		HeadCommitSha: "testset_normal",
+		LatestCommitHash: "testset_normal",
 		Title:         "TEST",
 		Labels:        []string{},
 	}
@@ -184,7 +184,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 					ApplicationName:        "sample-1",
 					ApplicationNamespace:   "argocd",
 					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitSha: testPrNormal.HeadCommitSha,
+					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
 				},
 			}),
 			wantResult: ctrl.Result{},
@@ -211,7 +211,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 					ApplicationName:        "sample-1",
 					ApplicationNamespace:   "argocd",
 					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitSha: testPrNormal.HeadCommitSha,
+					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
@@ -231,7 +231,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
-					ReviewApp:   testutil_withReviewAppStatus(testRaNormal, "argocd", "sample-1", testPrNormal.HeadCommitSha),
+					ReviewApp:   testutil_withReviewAppStatus(testRaNormal, "argocd", "sample-1", testPrNormal.LatestCommitHash),
 					PullRequest: testPrNormal,
 					Application: testAppNormal_updated, // updated
 					Manifests:   testManifestsNormal,
@@ -243,7 +243,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 					ApplicationName:        "sample-1",
 					ApplicationNamespace:   "argocd",
 					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitSha: testPrNormal.HeadCommitSha,
+					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
@@ -263,7 +263,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
-					ReviewApp:   testutil_withReviewAppStatus(testRaNormal, "argocd", "sample-1", testPrNormal.HeadCommitSha),
+					ReviewApp:   testutil_withReviewAppStatus(testRaNormal, "argocd", "sample-1", testPrNormal.LatestCommitHash),
 					PullRequest: testPrNormal,
 					Application: testAppNormal,
 					Manifests:   testManifestsNormal_updated, // updated
@@ -275,7 +275,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 					ApplicationName:        "sample-1",
 					ApplicationNamespace:   "argocd",
 					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitSha: testPrNormal.HeadCommitSha,
+					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
@@ -417,7 +417,7 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	testSecretToken := "test-token"
-	testInfraRepoHeadCommitSha := "12345678"
+	testInfraRepoLatestCommitHash := "12345678"
 
 	type fields struct {
 		NumOfCalledRecorder  int
@@ -457,7 +457,7 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 				GitCommandRepository: func() repositories.GitCommand {
 					// vars
 					infraRepoTarget := testRaNormal.InfraRepoTarget()
-					localDir := models.NewInfraRepoLocal(fmt.Sprintf("/tmp/%s/%s", infraRepoTarget.Organization, infraRepoTarget.Repository)).SetLatestCommitSha(testInfraRepoHeadCommitSha)
+					localDir := models.NewInfraRepoLocal(fmt.Sprintf("/tmp/%s/%s", infraRepoTarget.Organization, infraRepoTarget.Repository)).SetLatestCommitHash(testInfraRepoLatestCommitHash)
 					// mock
 					m := mock.NewMockGitCommand(mockCtrl)
 					m.EXPECT().WithCredential(models.NewGitCredential(infraRepoTarget.Username, testSecretToken)).
@@ -512,7 +512,7 @@ func testutil_withReviewAppStatus(m models.ReviewApp, appNamespace, appName, com
 			ApplicationName:        appName,
 			ApplicationNamespace:   appNamespace,
 			AppRepoBranch:          testPrNormal.Branch,
-			AppRepoLatestCommitSha: commitHash,
+			AppRepoLatestCommitHash: commitHash,
 		},
 		ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 			Application: string(testAppNormal),

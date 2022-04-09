@@ -4,15 +4,15 @@ import "fmt"
 
 type InfraRepoLocalDir struct {
 	baseDir         string
-	latestCommitSha string
+	latestCommitHash string
 }
 
 func NewInfraRepoLocal(baseDir string) InfraRepoLocalDir {
 	return InfraRepoLocalDir{baseDir: baseDir}
 }
 
-func (m InfraRepoLocalDir) SetLatestCommitSha(latestCommitSha string) InfraRepoLocalDir {
-	m.latestCommitSha = latestCommitSha
+func (m InfraRepoLocalDir) SetLatestCommitHash(latestCommitHash string) InfraRepoLocalDir {
+	m.latestCommitHash = latestCommitHash
 	return m
 }
 
@@ -20,8 +20,8 @@ func (m InfraRepoLocalDir) BaseDir() string {
 	return m.baseDir
 }
 
-func (m InfraRepoLocalDir) LatestCommitSha() string {
-	return m.latestCommitSha
+func (m InfraRepoLocalDir) LatestCommitHash() string {
+	return m.latestCommitHash
 }
 
 func (m InfraRepoLocalDir) CommitMsgUpdate(ra ReviewApp) string {
@@ -29,7 +29,7 @@ func (m InfraRepoLocalDir) CommitMsgUpdate(ra ReviewApp) string {
 		"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 		ra.Spec.AppTarget.Organization,
 		ra.Spec.AppTarget.Repository,
-		ra.Status.Sync.AppRepoLatestCommitSha,
+		ra.Status.Sync.AppRepoLatestCommitHash,
 	)
 }
 
@@ -38,6 +38,6 @@ func (m InfraRepoLocalDir) CommitMsgDeletion(ra ReviewApp) string {
 		"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
 		ra.Spec.AppTarget.Organization,
 		ra.Spec.AppTarget.Repository,
-		ra.Status.Sync.AppRepoLatestCommitSha,
+		ra.Status.Sync.AppRepoLatestCommitHash,
 	)
 }
