@@ -1,0 +1,24 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
+kind: ManifestsTemplate
+metadata:
+  name: manifeststemplate-sample
+  namespace: test-ns
+  annotations:
+    testcase: testset-normal
+spec:
+  stable: &manifests
+    kustomization.yaml: |
+      apiVersion: kustomize.config.k8s.io/v1beta1
+      kind: Kustomization
+      namespace: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+      bases:
+      - ../../../base
+      - ./ns.yaml
+    ns.yaml: |
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+        annotations:
+          testcase: testset-normal
+  candidate: *manifests

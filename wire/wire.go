@@ -1,29 +1,36 @@
-//+build wireinject
+//go:build wireinject
+// +build wireinject
 
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
 	"github.com/go-logr/logr"
 	"github.com/google/wire"
 	"k8s.io/utils/exec"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
 )
 
-func NewGitRemoteRepoAppService(l logr.Logger) (*services.GitRemoteRepoAppService, error) {
+func NewGitHubAPIRepository(l logr.Logger) (*githubapi.GitHub, error) {
 	wire.Build(
-		gateways.NewGitHubDriver,
-		wire.Bind(new(gateways.GitHubIFace), new(*gateways.GitHub)),
-		services.NewGitRemoteRepoAppService,
+		githubapi.NewGitHub,
 	)
 	return nil, nil
 }
 
-func NewGitRemoteRepoInfraService(l logr.Logger, e exec.Interface) (*services.GitRemoteRepoInfraService, error) {
+func NewGitCommandRepository(l logr.Logger, e exec.Interface) (*gitcommand.Git, error) {
 	wire.Build(
-		gateways.NewGitCommandDriver,
-		wire.Bind(new(gitcommand.GitCommandIFace), new(*gateways.Git)),
-		services.NewGitRemoteRepoInfraService,
+		gitcommand.NewGit,
+	)
+	return nil, nil
+}
+
+func NewKubernetesRepository(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
+	wire.Build(
+		kubernetes.NewClient,
 	)
 	return nil, nil
 }

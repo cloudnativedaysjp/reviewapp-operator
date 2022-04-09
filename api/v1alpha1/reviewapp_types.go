@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ReviewAppSpec defines the desired state of ReviewApp
@@ -73,9 +74,6 @@ type SyncStatus struct {
 
 	// TODO
 	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
-
-	// TODO
-	InfraRepoLatestCommitSha string `json:"infraRepoLatestCommitSha,omitempty"`
 }
 
 type ManifestsCache struct {
@@ -94,32 +92,13 @@ type SyncStatusCode string
 const (
 	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
 	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
-	// SyncStatusCodeWatchingAppRepo indicates that TODO
-	SyncStatusCodeWatchingAppRepo SyncStatusCode = "WatchingAppRepo"
-	// SyncStatusCodeWatchingTemplates indicates that TODO
-	SyncStatusCodeWatchingTemplates SyncStatusCode = "WatchingTemplates"
-	// SyncStatusCodeNeedToUpdateInfraRepo indicates that watched updated app repo & will update manifests to infra repo
+	// SyncStatusCodeWatchingAppRepo indicates that ReviewApp Object is no changing.
+	SyncStatusCodeWatchingAppRepoAndTemplates SyncStatusCode = "WatchingAppRepoAndTemplates"
+	// SyncStatusCodeNeedToUpdateInfraRepo indicates that ReviewApp Object was updated. Operator will update manifests to infra repo.
 	SyncStatusCodeNeedToUpdateInfraRepo SyncStatusCode = "NeedToUpdateInfraRepo"
-	// SyncStatusCodeUpdatedInfraRepo indicates that watched updated manifest repo & wait ArgoCD Application updated
+	// SyncStatusCodeUpdatedInfraRepo indicates that ReviewApp manifests was deployed to infra repo. Operator is waiting ArgoCD Application updated
 	SyncStatusCodeUpdatedInfraRepo SyncStatusCode = "UpdatedInfraRepo"
 )
-
-type ReviewAppTmp struct {
-	PullRequest                ReviewAppTmpPr
-	Application                string
-	ApplicationWithAnnotations string
-	Manifests                  map[string]string
-}
-
-type ReviewAppTmpPr struct {
-	Organization  string
-	Repository    string
-	Branch        string
-	Number        int
-	HeadCommitSha string
-	Title         string
-	Labels        []string
-}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=ra
@@ -137,8 +116,14 @@ type ReviewApp struct {
 
 	Spec   ReviewAppSpec   `json:"spec,omitempty"`
 	Status ReviewAppStatus `json:"status,omitempty"`
+}
 
-	Tmp ReviewAppTmp `json:"-"`
+func (ReviewApp) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ReviewApp",
+	}
 }
 
 //+kubebuilder:object:root=true

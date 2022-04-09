@@ -1,4 +1,5 @@
-//+build integration_test
+//go:build integration_test
+// +build integration_test
 
 /*
 Copyright 2021.
@@ -10,7 +11,7 @@ You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
+distributed under the License is distributed on an "AS IS" BASIS
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
@@ -28,7 +29,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -72,14 +75,16 @@ var _ = Describe("ReviewAppManager controller", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 		logger := glogr.NewWithOptions(glogr.Options{LogCaller: glogr.None})
-		gitRemoteRepoAppService, err := wire.NewGitRemoteRepoAppService(logger)
+		k8sRepository, err := wire.NewKubernetesRepository(logger, k8sClient)
+		Expect(err).ToNot(HaveOccurred())
+		gitApiRepository, err := wire.NewGitHubAPIRepository(logger)
 		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppManagerReconciler{
-			Client:                  k8sClient,
-			Scheme:                  scheme,
-			Log:                     logger,
-			Recorder:                recorder,
-			GitRemoteRepoAppService: gitRemoteRepoAppService,
+			Scheme:           scheme,
+			Log:              logger,
+			Recorder:         recorder,
+			K8sRepository:    k8sRepository,
+			GitApiRepository: gitApiRepository,
 		}
 		err = reconciler.SetupWithManager(mgr)
 		Expect(err).NotTo(HaveOccurred())
@@ -130,10 +135,15 @@ var _ = Describe("ReviewAppManager controller", func() {
 		ram, err := createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
+		// wait to run reconcile loop
 		ra := dreamkastv1alpha1.ReviewApp{}
 		Eventually(func() error {
 			return k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
-		}).Should(Succeed())
+		},
+			60*time.Second, // timeout
+			10*time.Second, // interval
+		).Should(Succeed())
+
 		Expect(ra.Spec.AppTarget).To(Equal(ram.Spec.AppTarget))
 		Expect(ra.Spec.InfraTarget).To(Equal(ram.Spec.InfraTarget))
 		Expect(ra.Spec.AppConfig.Message).To(Equal(`
@@ -203,13 +213,123 @@ func createSomeResourceForReviewAppManagerTest(ctx context.Context) (*dreamkastv
 	if err := k8sClient.Create(ctx, at); err != nil {
 		return nil, err
 	}
-	mt := newManifestsTemplate("manifeststemplate-test-ram")
+	mt := newManifestsTemplate_RAM("manifeststemplate-test-ram")
 	if err := k8sClient.Create(ctx, mt); err != nil {
 		return nil, err
 	}
-	ram := newReviewAppManager()
+	ram := newReviewAppManager_RAM()
 	if err := k8sClient.Create(ctx, ram); err != nil {
 		return nil, err
 	}
 	return ram, nil
+}
+
+func newReviewAppManager_RAM() *dreamkastv1alpha1.ReviewAppManager {
+	return &dreamkastv1alpha1.ReviewAppManager{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ram",
+			Namespace: testNamespace,
+		},
+		Spec: dreamkastv1alpha1.ReviewAppManagerSpec{
+			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
+				Username:     testGitUsername,
+				Organization: testGitAppOrganization,
+				Repository:   testGitAppRepository,
+				GitSecretRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "git-creds",
+					},
+					Key: "token",
+				},
+			},
+			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
+				Message: `
+* {{.AppRepo.Organization}}
+* {{.AppRepo.Repository}}
+* {{.AppRepo.PrNumber}}
+* {{.InfraRepo.Organization}}
+* {{.InfraRepo.Repository}}
+* {{.Variables.AppRepositoryAlias}}
+* {{.Variables.dummy}}`,
+			},
+			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
+				Username:     testGitUsername,
+				Organization: testGitInfraOrganization,
+				Repository:   testGitInfraRepository,
+				Branch:       testGitInfraBranch,
+				GitSecretRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "git-creds",
+					},
+					Key: "token",
+				},
+			},
+			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
+				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
+					Templates: []dreamkastv1alpha1.NamespacedName{{
+						Namespace: testNamespace,
+						Name:      "manifeststemplate-test-ram",
+					}},
+					Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
+				},
+				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
+					Template: dreamkastv1alpha1.NamespacedName{
+						Namespace: testNamespace,
+						Name:      "applicationtemplate-test-ram",
+					},
+					Filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml",
+				},
+			},
+			Variables: []string{
+				"AppRepositoryAlias=test-ram",
+			},
+		},
+	}
+}
+
+func newManifestsTemplate_RAM(name string) *dreamkastv1alpha1.ManifestsTemplate {
+	kustomizationYaml := `
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: {{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
+bases:
+- ../../../base
+patchesStrategicMerge:
+- ./manifests.yaml
+`
+	manifestsYaml := ` 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+      annotations:
+        commit: {{.AppRepo.LatestCommitSha}}
+    spec:
+      containers:
+        - name: demo
+          image: nginx
+`
+	m := make(map[string]string)
+	m["kustomization.yaml"] = kustomizationYaml
+	m["manifests.yaml"] = manifestsYaml
+
+	return &dreamkastv1alpha1.ManifestsTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
+		Spec: dreamkastv1alpha1.ManifestsTemplateSpec{
+			StableData:    m,
+			CandidateData: m,
+		},
+	}
 }

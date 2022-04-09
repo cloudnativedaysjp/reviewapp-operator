@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: jt-sample-1-
+  namespace: argocd
+  labels:
+    dreamkast.cloudnativedays.jp/parent-reviewapp: reviewapp-sample-shotakitazawa-reviewapp-operator-demo-app-1
+  annotations:
+    testcase: testset-normal
+spec:
+  template:
+    spec:
+      containers:
+        - name: test-job
+          image: bash
+          command: ['bash', '-euxc']
+          args:
+            - |
+              echo '.AppRepo.Organization: ShotaKitazawa';
+              echo '.AppRepo.Repository: reviewapp-operator-demo-app';
+              echo '.AppRepo.PrNumber: 1';
+              echo '.InfraRepo.Organization: ShotaKitazawa';
+              echo '.InfraRepo.Repository: reviewapp-operator-demo-infra';
+              echo '.Variables.AppRepositoryAlias: sample';
+              echo '.Variables.dummy: <no value>';
+      restartPolicy: Never
+

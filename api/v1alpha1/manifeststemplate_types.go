@@ -18,7 +18,16 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+type ManifestsTemplateSpec struct {
+	// CandidateData is field that be given various resources' manifest.
+	CandidateData map[string]string `json:"candidate,omitempty"`
+
+	// StableData is field that be given various resources' manifest.
+	StableData map[string]string `json:"stable,omitempty"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=mt
@@ -31,12 +40,12 @@ type ManifestsTemplate struct {
 	Spec ManifestsTemplateSpec `json:"spec"`
 }
 
-type ManifestsTemplateSpec struct {
-	// CandidateData is field that be given various resources' manifest.
-	CandidateData map[string]string `json:"candidate,omitempty"`
-
-	// StableData is field that be given various resources' manifest.
-	StableData map[string]string `json:"stable,omitempty"`
+func (ManifestsTemplate) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ManifestsTemplate",
+	}
 }
 
 //+kubebuilder:object:root=true

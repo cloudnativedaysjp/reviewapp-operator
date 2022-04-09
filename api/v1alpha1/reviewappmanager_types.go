@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ReviewAppManagerSpec defines the desired state of ReviewAppManager
@@ -159,6 +160,14 @@ type ReviewAppManager struct {
 
 	Spec   ReviewAppManagerSpec   `json:"spec,omitempty"`
 	Status ReviewAppManagerStatus `json:"status,omitempty"`
+}
+
+func (ReviewAppManager) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ReviewAppManager",
+	}
 }
 
 //+kubebuilder:object:root=true

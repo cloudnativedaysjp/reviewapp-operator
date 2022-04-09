@@ -2,321 +2,276 @@ package controllers
 
 import (
 	"context"
-	"fmt"
-	"reflect"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways"
-	"github.com/cloudnativedaysjp/reviewapp-operator/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/kubernetes"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/template"
 )
 
 const (
-	labelReviewAppNameForJob = "dreamkast.cloudnativedays.jp/parent-reviewapp"
-
-	annotationAppOrgNameForArgoCDApplication    = "dreamkast.cloudnativedays.jp/app-organization"
-	annotationAppRepoNameForArgoCDApplication   = "dreamkast.cloudnativedays.jp/app-repository"
-	annotationAppCommitHashForArgoCDApplication = "dreamkast.cloudnativedays.jp/app-commit-hash"
-
 	preStopJobTimeoutSecond = 300
 )
 
-func (r *ReviewAppReconciler) prepare(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (result ctrl.Result, err error) {
-	ra.Tmp.Manifests = make(map[string]string)
+var (
+	backoffRetryCount = backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3)
+)
+
+type ReviewAppPhaseDTO struct {
+	ReviewApp   models.ReviewApp
+	PullRequest models.PullRequest
+	Application models.Application
+	Manifests   models.Manifests
+}
+
+func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) (*ReviewAppPhaseDTO, ctrl.Result, error) {
+	appRepoTarget := ra.AppRepoTarget()
 
 	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx, r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key)
+	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appRepoTarget)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return nil, ctrl.Result{}, err
 	}
+	if err := r.GitApiRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+		return nil, ctrl.Result{}, err
+	}
+
 	// check PRs specified by spec.appRepo.repository
-	pr, err := r.GitRemoteRepoAppService.GetPullRequest(ctx,
-		ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Spec.AppPrNum,
-		ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-	)
+	pr, err := r.GitApiRepository.GetPullRequest(ctx, appRepoTarget, ra.PrNum())
 	if err != nil {
-		return ctrl.Result{}, err
+		return nil, ctrl.Result{}, err
 	}
-	ra.Tmp.PullRequest = (dreamkastv1alpha1.ReviewAppTmpPr)(*pr)
 
 	// template ApplicationTemplate & ManifestsTemplate
-	v := template.NewTemplateValue(
-		pr.Organization, pr.Repository, pr.Branch, pr.Number,
-		ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
-		kubernetes.PickVariablesFromReviewApp(ctx, ra),
-	)
-	v = v.WithAppRepoLatestCommitSha(pr.HeadCommitSha)
+	v := models.NewTemplator(ra, pr)
 
 	// get ApplicationTemplate & template to applicationStr
-	at, err := kubernetes.GetApplicationTemplate(ctx, r.Client, ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name)
+	at, err := r.K8sRepository.GetApplicationTemplate(ctx, ra)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(at), ra.Spec.InfraConfig.ArgoCDApp.Template.Namespace, ra.Spec.InfraConfig.ArgoCDApp.Template.Name))
+			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return nil, ctrl.Result{}, err
 	}
-	if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
-		ra.Tmp.Application, err = v.Templating(at.Spec.CandidateTemplate)
-	} else {
-		ra.Tmp.Application, err = v.Templating(at.Spec.StableTemplate)
-	}
+	application, err := at.GenerateApplication(pr, v)
 	if err != nil {
-		return ctrl.Result{}, err
+		return nil, ctrl.Result{}, err
 	}
 
 	// get ManifestsTemplate & template to manifestsStr
-	for _, mtNN := range ra.Spec.InfraConfig.Manifests.Templates {
-		mt, err := kubernetes.GetManifestsTemplate(ctx, r.Client, mtNN.Namespace, mtNN.Name)
-		if err != nil {
-			if myerrors.IsNotFound(err) {
-				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(mt), mtNN.Namespace, mtNN.Name))
-			}
-			return ctrl.Result{}, err
-		}
-		if r.GitRemoteRepoAppService.IsCandidatePr(pr) {
-			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.CandidateData)
-		} else {
-			ra.Tmp.Manifests, err = v.MapTemplatingAndAppend(ra.Tmp.Manifests, mt.Spec.StableData)
-		}
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *ReviewAppReconciler) confirmAppRepoIsUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
-	var updated bool
-	ra.Status.Sync.AppRepoBranch = ra.Tmp.PullRequest.Branch
-	if ra.Tmp.PullRequest.HeadCommitSha != ra.Status.Sync.AppRepoLatestCommitSha {
-		updated = true
-		ra.Status.Sync.AppRepoLatestCommitSha = ra.Tmp.PullRequest.HeadCommitSha
-	}
-
-	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Tmp.Application)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// update ReviewApp.Status
-	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
-	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
-	if updated {
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
-	} else {
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingTemplates
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *ReviewAppReconciler) confirmTemplatesAreUpdated(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
-	// confirm
-	var updated bool
-	if !reflect.DeepEqual(ra.Tmp.Application, ra.Status.ManifestsCache.Application) {
-		updated = true
-	}
-	if !reflect.DeepEqual(ra.Tmp.Manifests, ra.Status.ManifestsCache.Manifests) {
-		updated = true
-	}
-
-	// get ArgoCD Application name
-	argocdAppNamespacedName, err := kubernetes.PickNamespacedNameFromObjectStr(ctx, ra.Tmp.Application)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// update ReviewApp.Status
-	ra.Status.Sync.ApplicationName = argocdAppNamespacedName.Name
-	ra.Status.Sync.ApplicationNamespace = argocdAppNamespacedName.Namespace
-	if updated {
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
-	} else {
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
-
-	// set annotations to Argo CD Application
-	argocdAppStr := ra.Tmp.Application
-	argocdAppStr, err := kubernetes.SetAnnotationToObjectStr(ctx,
-		argocdAppStr, annotationAppOrgNameForArgoCDApplication, ra.Spec.AppTarget.Organization,
-	)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	argocdAppStr, err = kubernetes.SetAnnotationToObjectStr(ctx,
-		argocdAppStr, annotationAppRepoNameForArgoCDApplication, ra.Spec.AppTarget.Repository,
-	)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	argocdAppStr, err = kubernetes.SetAnnotationToObjectStr(ctx,
-		argocdAppStr, annotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitSha,
-	)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	ra.Tmp.ApplicationWithAnnotations = argocdAppStr
-
-	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
-		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
-	)
+	ra.GroupVersionKind()
+	mts, err := r.K8sRepository.GetManifestsTemplate(ctx, ra)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-			return ctrl.Result{}, nil
+			r.Log.Info(err.Error())
+			return nil, ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return nil, ctrl.Result{}, err
+	}
+	var mt models.ManifestsTemplate
+	for _, mtOne := range mts {
+		mt = mt.AppendOrUpdate(mtOne)
+	}
+	manifests, err := mt.GenerateManifests(pr, v)
+	if err != nil {
+		return nil, ctrl.Result{}, err
+	}
+
+	return &ReviewAppPhaseDTO{ra, pr, application, manifests}, ctrl.Result{}, nil
+}
+
+func (r *ReviewAppReconciler) confirmUpdated(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
+	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
+	pr := dto.PullRequest
+	application := dto.Application
+	manifests := dto.Manifests
+
+	// Is App Repo updated?
+	raStatus, updatedAppRepo := raStatus.UpdateStatusOfAppRepo(pr)
+	// Is ApplicationTemplate updated?
+	raStatus, updatedAt, err := raStatus.UpdateStatusOfApplication(application)
+	if err != nil {
+		return raStatus, ctrl.Result{}, err
+	}
+	// Is ManifestsTemplate updated?
+	updatedMt := raStatus.WasManifestsUpdated(manifests)
+
+	// update ReviewApp.Status
+	if updatedAppRepo || updatedAt || updatedMt {
+		raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo
+	}
+	return raStatus, ctrl.Result{}, nil
+}
+
+func (r *ReviewAppReconciler) deployReviewAppManifestsToInfraRepo(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
+	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
+	infraRepoTarget := ra.InfraRepoTarget()
+	pr := dto.PullRequest
+	application := dto.Application
+	manifests := dto.Manifests
+
+	// set annotations to Argo CD Application
+	appWithAnnotations, err := application.SetSomeAnnotations(ra)
+	if err != nil {
+		return raStatus, ctrl.Result{}, err
+	}
+
+	// get gitRemoteRepo credential from Secret
+	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, infraRepoTarget)
+	if err != nil {
+		if myerrors.IsNotFound(err) || myerrors.IsKeyMissing(err) {
+			r.Log.Info(err.Error())
+			return raStatus, ctrl.Result{}, nil
+		}
+		return raStatus, ctrl.Result{}, err
+	}
+	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// update Application & other manifests from ApplicationTemplate & ManifestsTemplate to InfraRepo
-	updateManifestParam := services.UpdateManifestsParam{
-		Org:    ra.Spec.InfraTarget.Organization,
-		Repo:   ra.Spec.InfraTarget.Repository,
-		Branch: ra.Spec.InfraTarget.Branch,
-		CommitMsg: fmt.Sprintf(
-			"Automatic update by cloudnativedays/reviewapp-operator (%s/%s@%s)",
-			ra.Spec.AppTarget.Organization,
-			ra.Spec.AppTarget.Repository,
-			ra.Status.Sync.AppRepoLatestCommitSha,
-		),
-		Username: ra.Spec.InfraTarget.Username,
-		Token:    gitRemoteRepoCred,
-	}
-	gp, err := r.GitRemoteRepoInfraService.UpdateManifests(ctx, updateManifestParam, ra)
-	if err != nil {
-		return ctrl.Result{}, err
+	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
+	var localDir models.InfraRepoLocalDir
+	if err := backoff.Retry(
+		func() error {
+			// clone
+			localDir, err = r.GitCommandRepository.ForceClone(ctx, infraRepoTarget)
+			if err != nil {
+				return err
+			}
+			// create files
+			files := append([]models.File{}, models.NewFileFromApplication(ra, appWithAnnotations, pr, localDir))
+			files = append(files, models.NewFilesFromManifests(ra, manifests, pr, localDir)...)
+			if err := r.GitCommandRepository.CreateFiles(ctx, localDir, files...); err != nil {
+				return err
+			}
+			// commmit & push
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgUpdate(ra)); err != nil {
+				return err
+			}
+			return nil
+		}, backoffRetryCount); err != nil {
+		return raStatus, ctrl.Result{}, err
 	}
 
 	// update ReviewApp.Status
-	ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
-	ra.Status.Sync.InfraRepoLatestCommitSha = gp.LatestCommitSha
-	ra.Status.ManifestsCache.Application = ra.Tmp.Application
-	ra.Status.ManifestsCache.Manifests = ra.Tmp.Manifests
+	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo
+	raStatus.ManifestsCache.Application = string(application)
+	raStatus.ManifestsCache.Manifests = manifests
 
-	return ctrl.Result{}, nil
+	return raStatus, ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
+	ra := dto.ReviewApp
+	raStatus := ra.GetStatus()
+	appTarget := ra.AppRepoTarget()
+	pr := dto.PullRequest
+
 	// check appRepoSha from annotations in ArgoCD Application
-	hashInArgoCDApplication, err := kubernetes.GetArgoCDAppAnnotation(
-		ctx, r.Client, ra.Status.Sync.ApplicationNamespace, ra.Status.Sync.ApplicationName, annotationAppCommitHashForArgoCDApplication,
-	)
+	application, err := r.K8sRepository.GetArgoCDAppFromReviewAppStatus(ctx, ra.GetStatus())
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			r.Log.Info(err.Error())
+			return raStatus, ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, err
+		return raStatus, ctrl.Result{}, err
+	}
+	hashInArgoCDApplication, err := application.Annotation(models.AnnotationAppCommitHashForArgoCDApplication)
+	if err != nil {
+		return raStatus, ctrl.Result{}, err
 	}
 
-	// if ArgoCD Application updated, send message to PR of AppRepo
-	updated := r.GitRemoteRepoAppService.IsApplicationUpdated(ctx, services.IsApplicationUpdatedParam{
-		HashInRA:                ra.Status.Sync.AppRepoLatestCommitSha,
-		HashInArgoCDApplication: hashInArgoCDApplication,
-	})
-	if updated {
-		if ra.Spec.AppConfig.Message != "" &&
-			(ra.Spec.AppConfig.SendMessageEveryTime || !ra.Status.AlreadySentMessage) {
-
-			// get gitRemoteRepo credential from Secret
-			gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
-				r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
-			)
-			if err != nil {
-				if myerrors.IsNotFound(err) {
-					r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
-					return ctrl.Result{}, nil
-				}
-				return ctrl.Result{}, err
-			}
-
-			// Send Message to AppRepo's PR
-			pr := (*gateways.PullRequest)(&ra.Tmp.PullRequest)
-			if err := r.GitRemoteRepoAppService.SendMessage(ctx,
-				pr, ra.Spec.AppConfig.Message, ra.Spec.AppTarget.Username, gitRemoteRepoCred,
-			); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		// update ReviewApp.Status
-		ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepo
-		ra.Status.AlreadySentMessage = true
+	// if ArgoCD Application has not been updated, early return.
+	if !raStatus.HasApplicationBeenUpdated(hashInArgoCDApplication) {
+		return raStatus, ctrl.Result{}, nil
 	}
 
-	return ctrl.Result{}, nil
+	// send message to PR of AppRepo
+	if !ra.HasMessageAlreadyBeenSent() {
+		// get gitRemoteRepo credential from Secret
+		gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, appTarget)
+		if err != nil {
+			if myerrors.IsNotFound(err) || myerrors.IsKeyMissing(err) {
+				r.Log.Info(err.Error())
+				return raStatus, ctrl.Result{}, nil
+			}
+			return raStatus, ctrl.Result{}, err
+		}
+		if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken)); err != nil {
+			return raStatus, ctrl.Result{}, err
+		}
+		// Send Message to AppRepo's PR
+		if err := r.GitApiRepository.CommentToPullRequest(ctx, pr, ra.Spec.AppConfig.Message); err != nil {
+			return raStatus, ctrl.Result{}, err
+		}
+	}
+
+	// update ReviewApp.Status
+	raStatus.Sync.Status = dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates
+	raStatus.AlreadySentMessage = true
+
+	return raStatus, ctrl.Result{}, nil
 }
 
-func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkastv1alpha1.ReviewApp) (ctrl.Result, error) {
+func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
+	ra := dto.ReviewApp
+	raSource := ra.ToReviewAppCR()
+	infraRepoTarget := ra.InfraRepoTarget()
+	pr := dto.PullRequest
+	application := dto.Application
+	manifests := dto.Manifests
 	// run preStop Job
-	if ra.Spec.PreStopJob.Namespace != "" && ra.Spec.PreStopJob.Name != "" {
-		// get JobTemplate for preStopJob
+	if ra.HavingPreStopJob() {
+		// init templator
+		v := models.NewTemplator(ra, pr)
 
-		jt, err := kubernetes.GetJobTemplate(ctx, r.Client, ra.Spec.PreStopJob.Namespace, ra.Spec.PreStopJob.Name)
+		jt, err := r.K8sRepository.GetPreStopJobTemplate(ctx, ra)
 		if err != nil {
 			if myerrors.IsNotFound(err) {
-				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(jt), jt.Namespace, jt.Name))
+				r.Log.Info(err.Error())
+				r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
 			}
-			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "preStopJob", "not found JobTemplate %s: %s", jt.Name, err)
 			goto finalize
-		}
-
-		// template from JobTemplate to Job
-		v := template.NewTemplateValue(
-			ra.Spec.AppTarget.Organization, ra.Spec.AppTarget.Repository, ra.Status.Sync.AppRepoBranch, ra.Spec.AppPrNum,
-			ra.Spec.InfraTarget.Organization, ra.Spec.InfraTarget.Repository,
-			kubernetes.PickVariablesFromReviewApp(ctx, ra),
-		)
-		v = v.WithAppRepoLatestCommitSha(ra.Status.Sync.AppRepoLatestCommitSha)
-		templatedJob, err := v.Templating(jt.Spec.Template)
-		if err != nil {
-			return ctrl.Result{}, err
 		}
 
 		// get Job Object
-		preStopJob, err := kubernetes.PickJobObjectFromObjectStr(ctx, templatedJob)
+		preStopJob, err := jt.GenerateJob(ra, pr, v)
 		if err != nil {
-			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot unmarshal .spec.template of JobTemplate %s: %s", jt.Name, err)
+			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot unmarshal .spec.template of JobTemplate %s: %s", jt.Name, err)
 			goto finalize
 		}
 
-		// set specifiable label to Job
-		if err := kubernetes.SetLabel(ctx, preStopJob, labelReviewAppNameForJob, ra.Name); err != nil {
-			return ctrl.Result{}, err
-		}
-
 		// create job & wait until Job completed on singleflight
-		r.Recorder.Eventf(ra, corev1.EventTypeNormal, "running preStopJob", "running preStopJob (%s: %s)", labelReviewAppNameForJob, ra.Name)
-		if err := kubernetes.CreateJob(ctx, r.Client, preStopJob); err != nil {
-			r.Recorder.Eventf(ra, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job (%s: %s): %s", labelReviewAppNameForJob, ra.Name, err)
+		r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "running preStopJob", "running preStopJob (%s: %s)", models.LabelReviewAppNameForJob, ra.Name)
+		if err := r.K8sRepository.CreateJob(ctx, preStopJob); err != nil {
+			r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "failed to run preStopJob", "cannot create Job (%s: %s): %s", models.LabelReviewAppNameForJob, ra.Name, err)
 			goto finalize
 		}
 		timeout := time.Now().Add(preStopJobTimeoutSecond * time.Second)
 		for {
 			if time.Since(timeout) >= 0 {
-				r.Recorder.Eventf(ra, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob (%s: %s) is timeout (%ds)", labelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
+				r.Recorder.Eventf(raSource, corev1.EventTypeWarning, "preStopJob is timeout", "preStopJob (%s: %s) is timeout (%ds)", models.LabelReviewAppNameForJob, ra.Name, preStopJobTimeoutSecond)
 				goto finalize
 			}
-			appliedPreStopJob, err := kubernetes.GetLatestJobFromLabel(ctx, r.Client, preStopJob.Namespace, labelReviewAppNameForJob, ra.Name)
+			appliedPreStopJob, err := r.K8sRepository.GetLatestJobFromLabel(ctx, preStopJob.Namespace, models.LabelReviewAppNameForJob, ra.Name)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 			if appliedPreStopJob.Status.Succeeded != 0 {
-				r.Recorder.Eventf(ra, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", labelReviewAppNameForJob, ra.Name)
+				r.Recorder.Eventf(raSource, corev1.EventTypeNormal, "finish preStopJob", "preStopJob (%s: %s) is succeeded", models.LabelReviewAppNameForJob, ra.Name)
 				break
 			}
 			time.Sleep(10 * time.Second)
@@ -324,43 +279,50 @@ func (r *ReviewAppReconciler) reconcileDelete(ctx context.Context, ra *dreamkast
 	}
 
 finalize:
-	// remove metrics
-	metrics.RemoveMetrics(*ra)
-
 	// get gitRemoteRepo credential from Secret
-	gitRemoteRepoCred, err := kubernetes.GetSecretValue(ctx,
-		r.Client, ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key,
-	)
+	gitRemoteRepoToken, err := r.K8sRepository.GetSecretValue(ctx, ra.Namespace, infraRepoTarget)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("Secret %s/%s data[%s] not found", ra.Namespace, ra.Spec.AppTarget.GitSecretRef.Name, ra.Spec.AppTarget.GitSecretRef.Key))
+			r.Log.Info(err.Error())
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}
-
-	// delete some manifests
-	deleteManifestsParam := services.DeleteManifestsParam{
-		Org:    ra.Spec.InfraTarget.Organization,
-		Repo:   ra.Spec.InfraTarget.Repository,
-		Branch: ra.Spec.InfraTarget.Branch,
-		CommitMsg: fmt.Sprintf(
-			"Automatic GC by cloudnativedays/reviewapp-operator (%s/%s@%s)",
-			ra.Spec.AppTarget.Organization,
-			ra.Spec.AppTarget.Repository,
-			ra.Status.Sync.AppRepoLatestCommitSha,
-		),
-		Username: ra.Spec.InfraTarget.Username,
-		Token:    gitRemoteRepoCred,
+	if err := r.GitCommandRepository.WithCredential(models.NewGitCredential(ra.Spec.InfraTarget.Username, gitRemoteRepoToken)); err != nil {
+		return ctrl.Result{}, err
 	}
-	if _, err := r.GitRemoteRepoInfraService.DeleteManifests(ctx, deleteManifestsParam, ra); err != nil {
+
+	// 処理中に誰かが同一ブランチにpushすると s.gitCommand.CommitAndPush() に失敗するため、リトライする
+	var localDir models.InfraRepoLocalDir
+	if err := backoff.Retry(
+		func() error {
+			// clone
+			localDir, err = r.GitCommandRepository.ForceClone(ctx, infraRepoTarget)
+			if err != nil {
+				return err
+			}
+			// delete files
+			files := append([]models.File{}, models.NewFileFromApplication(ra, application, pr, localDir))
+			files = append(files, models.NewFilesFromManifests(ra, manifests, pr, localDir)...)
+			if err := r.GitCommandRepository.DeleteFiles(ctx, localDir, files...); err != nil {
+				return err
+			}
+			// commmit & push
+			if _, err := r.GitCommandRepository.CommitAndPush(ctx, localDir, localDir.CommitMsgDeletion(ra)); err != nil {
+				return err
+			}
+			return nil
+		}, backoffRetryCount); err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Remove Finalizers
-	if err := kubernetes.RemoveFinalizersToReviewApp(ctx, r.Client, ra, finalizer); err != nil {
+	if err := r.K8sRepository.RemoveFinalizersFromReviewApp(ctx, ra, finalizer); err != nil {
 		return ctrl.Result{}, err
 	}
+
+	// remove metrics
+	metrics.RemoveMetrics(ra)
 
 	return ctrl.Result{}, nil
 }

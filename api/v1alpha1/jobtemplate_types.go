@@ -18,7 +18,15 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+// JobTemplateSpec defines the desired state of JobTemplate
+type JobTemplateSpec struct {
+
+	// Template is included Job manifest. (apiVersion, kind, metadata, spec, ...)
+	Template string `json:"template,omitempty"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=jt
@@ -31,11 +39,12 @@ type JobTemplate struct {
 	Spec JobTemplateSpec `json:"spec,omitempty"`
 }
 
-// JobTemplateSpec defines the desired state of JobTemplate
-type JobTemplateSpec struct {
-
-	// Template is included Job manifest. (apiVersion, kind, metadata, spec, ...)
-	Template string `json:"template,omitempty"`
+func (JobTemplate) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "JobTemplate",
+	}
 }
 
 //+kubebuilder:object:root=true

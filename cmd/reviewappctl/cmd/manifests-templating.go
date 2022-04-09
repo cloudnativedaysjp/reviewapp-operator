@@ -41,11 +41,11 @@ func init() {
 	manifestsTemplatingCmd.Flags().StringVarP(&mto.basefile, "load", "f", "manifests_template.yaml",
 		"filename of manifests based on ManifestsTemplate")
 	manifestsTemplatingCmd.Flags().BoolVarP(&mto.validate, "validate", "", true,
-		"TODO: description")
+		"validate manifests if this flag is true")
 	manifestsTemplatingCmd.Flags().BoolVarP(&mto.isStable, "is-stable", "", false,
-		"TODO: description")
+		"using Stable template if this flag is true")
 	manifestsTemplatingCmd.Flags().BoolVarP(&mto.isCandidate, "is-candidate", "", false,
-		"TODO: description")
+		"using Candidate template if this flag is true")
 
 	RootCmd.AddCommand(manifestsTemplatingCmd)
 }

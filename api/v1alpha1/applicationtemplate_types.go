@@ -18,7 +18,18 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+// ApplicationTemplateSpec defines the desired state of ApplicationTemplate
+type ApplicationTemplateSpec struct {
+
+	// CandidateTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	CandidateTemplate string `json:"candidate,omitempty"`
+
+	// StableTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
+	StableTemplate string `json:"stable,omitempty"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:resource:shortName=at
@@ -31,14 +42,12 @@ type ApplicationTemplate struct {
 	Spec ApplicationTemplateSpec `json:"spec"`
 }
 
-// ApplicationTemplateSpec defines the desired state of ApplicationTemplate
-type ApplicationTemplateSpec struct {
-
-	// CandidateTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	CandidateTemplate string `json:"candidate,omitempty"`
-
-	// StableTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	StableTemplate string `json:"stable,omitempty"`
+func (ApplicationTemplate) GVK() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   GroupVersion.Group,
+		Version: GroupVersion.Version,
+		Kind:    "ApplicationTemplate",
+	}
 }
 
 //+kubebuilder:object:root=true
