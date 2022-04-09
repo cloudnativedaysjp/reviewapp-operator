@@ -143,7 +143,7 @@ var _ = Describe("ReviewApp controller", func() {
 				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-				g.Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
+				g.Expect(ra.Status.Sync.AppRepoLatestCommitHash).NotTo(BeEmpty())
 			}, timeout, interval).Should(Succeed())
 		})
 	})
@@ -200,7 +200,7 @@ var _ = Describe("ReviewApp controller", func() {
 			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
 			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
 			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-			Expect(ra.Status.Sync.AppRepoLatestCommitSha).NotTo(BeEmpty())
+			Expect(ra.Status.Sync.AppRepoLatestCommitHash).NotTo(BeEmpty())
 		})
 		It("should commit to infra-repo", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
@@ -347,7 +347,7 @@ spec:
       labels:
         app: nginx
       annotations:
-        commit: {{.AppRepo.LatestCommitSha}}
+        commit: {{.AppRepo.LatestCommitHash}}
     spec:
       containers:
         - name: demo
@@ -445,7 +445,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginx:{{.AppRepo.LatestCommitSha}}
+          image: nginx:{{.AppRepo.LatestCommitHash}}
 `
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{

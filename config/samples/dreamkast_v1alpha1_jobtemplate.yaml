@@ -21,7 +21,7 @@ spec:
                   echo '.AppRepo.Organization: {{.AppRepo.Organization}}';
                   echo '.AppRepo.Repository: {{.AppRepo.Repository}}';
                   echo '.AppRepo.PrNumber: {{.AppRepo.PrNumber}}';
-                  echo '.AppRepo.LatestCommitSha: {{.AppRepo.LatestCommitSha}}';
+                  echo '.AppRepo.LatestCommitHash: {{.AppRepo.LatestCommitHash}}';
                   echo '.InfraRepo.Organization: {{.InfraRepo.Organization}}';
                   echo '.InfraRepo.Repository: {{.InfraRepo.Repository}}';
                   echo '.Variables.AppRepositoryAlias: {{.Variables.AppRepositoryAlias}}';

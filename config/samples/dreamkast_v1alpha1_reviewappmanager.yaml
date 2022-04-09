@@ -22,7 +22,7 @@ spec:
       * {{.AppRepo.Organization}}
       * {{.AppRepo.Repository}}
       * {{.AppRepo.PrNumber}}
-      * {{.AppRepo.LatestCommitSha}}
+      * {{.AppRepo.LatestCommitHash}}
       * {{.InfraRepo.Organization}}
       * {{.InfraRepo.Repository}}
       * {{.Variables.AppRepositoryAlias}}

@@ -73,7 +73,7 @@ type SyncStatus struct {
 	AppRepoBranch string `json:"appRepoBranch,omitempty"`
 
 	// TODO
-	AppRepoLatestCommitSha string `json:"appRepoLatestCommitSha,omitempty"`
+	AppRepoLatestCommitHash string `json:"appRepoLatestCommitHash,omitempty"`
 }
 
 type ManifestsCache struct {

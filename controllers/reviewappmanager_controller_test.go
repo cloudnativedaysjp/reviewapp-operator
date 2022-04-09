@@ -312,7 +312,7 @@ spec:
       labels:
         app: nginx
       annotations:
-        commit: {{.AppRepo.LatestCommitSha}}
+        commit: {{.AppRepo.LatestCommitHash}}
     spec:
       containers:
         - name: demo
