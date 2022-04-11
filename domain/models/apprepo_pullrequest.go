@@ -7,24 +7,24 @@ const (
 )
 
 type PullRequest struct {
-	Organization  string
-	Repository    string
-	Branch        string
-	Number        int
+	Organization     string
+	Repository       string
+	Branch           string
+	Number           int
 	LatestCommitHash string
-	Title         string
-	Labels        []string
+	Title            string
+	Labels           []string
 }
 
 func NewPullRequest(organization, repository, branch string, number int, headCommitHash string, title string, labels []string) PullRequest {
 	return PullRequest{
-		Organization:  organization,
-		Repository:    repository,
-		Branch:        branch,
-		Number:        number,
+		Organization:     organization,
+		Repository:       repository,
+		Branch:           branch,
+		Number:           number,
 		LatestCommitHash: headCommitHash,
-		Title:         title,
-		Labels:        labels,
+		Title:            title,
+		Labels:           labels,
 	}
 }
 

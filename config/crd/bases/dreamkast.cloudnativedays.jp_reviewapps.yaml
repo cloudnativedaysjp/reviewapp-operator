@@ -232,11 +232,6 @@ spec:
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
             properties:
-              alreadySentMessage:
-                description: AlreadySentMessage is used to decide sending message
-                  to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is
-                  true.
-                type: boolean
               manifestsCache:
                 description: ManifestsCache is used in "confirm Templates Are Updated"
                   for confirm templates updated
@@ -253,12 +248,11 @@ spec:
               sync:
                 description: TODO
                 properties:
-                  appRepoBranch:
-                    description: TODO
-                    type: string
-                  appRepoLatestCommitHash:
-                    description: TODO
-                    type: string
+                  alreadySentMessage:
+                    description: AlreadySentMessage is used to decide sending message
+                      to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime
+                      is true.
+                    type: boolean
                   applicationName:
                     description: TODO
                     type: string
@@ -266,10 +260,30 @@ spec:
                     description: TODO
                     type: string
                   status:
+                    default: Initialize
                     description: Status is the sync state of the comparison
                     type: string
-                required:
-                - status
+                  syncedPullRequest:
+                    description: TODO
+                    properties:
+                      branch:
+                        description: TODO
+                        type: string
+                      labels:
+                        description: TODO
+                        items:
+                          type: string
+                        type: array
+                      latestCommitHash:
+                        description: TODO
+                        type: string
+                      syncTimestamp:
+                        description: TODO
+                        type: string
+                      title:
+                        description: TODO
+                        type: string
+                    type: object
                 type: object
             type: object
         type: object

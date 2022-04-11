@@ -48,20 +48,22 @@ type ReviewAppSpec struct {
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
+
 	// TODO
 	Sync SyncStatus `json:"sync,omitempty"`
 
 	// ManifestsCache is used in "confirm Templates Are Updated" for confirm templates updated
 	ManifestsCache ManifestsCache `json:"manifestsCache,omitempty"`
-
-	// AlreadySentMessage is used to decide sending message to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is true.
-	AlreadySentMessage bool `json:"alreadySentMessage,omitempty"`
 }
 
 type SyncStatus struct {
 
+	// +kubebuilder:default="Initialize"
 	// Status is the sync state of the comparison
-	Status SyncStatusCode `json:"status"`
+	Status SyncStatusCode `json:"status,omitempty"`
+
+	// TODO
+	SyncedPullRequest ReviewAppStatusSyncedPullRequest `json:"syncedPullRequest,omitempty"`
 
 	// TODO
 	ApplicationName string `json:"applicationName,omitempty"`
@@ -69,11 +71,26 @@ type SyncStatus struct {
 	// TODO
 	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
 
-	// TODO
-	AppRepoBranch string `json:"appRepoBranch,omitempty"`
+	// AlreadySentMessage is used to decide sending message to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is true.
+	AlreadySentMessage bool `json:"alreadySentMessage,omitempty"`
+}
+
+type ReviewAppStatusSyncedPullRequest struct {
 
 	// TODO
-	AppRepoLatestCommitHash string `json:"appRepoLatestCommitHash,omitempty"`
+	Branch string `json:"branch,omitempty"`
+
+	// TODO
+	LatestCommitHash string `json:"latestCommitHash,omitempty"`
+
+	// TODO
+	Title string `json:"title,omitempty"`
+
+	// TODO
+	Labels []string `json:"labels,omitempty"`
+
+	// TODO
+	SyncTimestamp string `json:"syncTimestamp,omitempty"`
 }
 
 type ManifestsCache struct {
@@ -92,6 +109,8 @@ type SyncStatusCode string
 const (
 	// SyncStatusCodeUnknown indicates that the status of a sync could not be reliably determined
 	SyncStatusCodeUnknown SyncStatusCode = "Unknown"
+	// SyncStatusCodeInitialize indicates that ReviewApp Object is created now.
+	SyncStatusCodeInitialize SyncStatusCode = "Initialize"
 	// SyncStatusCodeWatchingAppRepo indicates that ReviewApp Object is no changing.
 	SyncStatusCodeWatchingAppRepoAndTemplates SyncStatusCode = "WatchingAppRepoAndTemplates"
 	// SyncStatusCodeNeedToUpdateInfraRepo indicates that ReviewApp Object was updated. Operator will update manifests to infra repo.

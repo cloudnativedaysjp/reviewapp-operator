@@ -36,10 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
-
-const ()
 
 var _ = Describe("ReviewAppManager controller", func() {
 	//! [setup]
@@ -127,7 +126,11 @@ var _ = Describe("ReviewAppManager controller", func() {
 	//! [setup]
 
 	//! [test]
-	It("should create ReviewApp when PR is opened", func() {
+	It("should be created ReviewApp when PR is opened", func() {
+		// freeze time.Now()
+		now := time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
+		datetimeFactoryForRAM = utils.NewDatetimeMockFactory(now)
+
 		// Control external resources: open PR for test
 		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
@@ -154,9 +157,18 @@ var _ = Describe("ReviewAppManager controller", func() {
 * reviewapp-operator-demo-infra
 * test-ram
 * <no value>`))
+		Expect(ra.Status.Sync.SyncedPullRequest.Branch).To(Equal("demo-01"))
+		Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeZero())
+		Expect(ra.Status.Sync.SyncedPullRequest.Title).To(Equal("test PR for github.com/cloudnativedaysjp/reviewapp-operator (ReviewAppManager)"))
+		Expect(ra.Status.Sync.SyncedPullRequest.Labels).To(BeEmpty())
+		Expect(ra.Status.Sync.SyncedPullRequest.SyncTimestamp).To(Equal("2006-01-02T15:04:05Z"))
 	})
 
-	It("should delete ReviewApp when PR is closed", func() {
+	// TODO
+	// It("should be updated ReviewApp when PR is opened", func() {
+	// })
+
+	It("should be deleted ReviewApp when PR is closed", func() {
 		// Control external resources: open PR for test
 		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
@@ -185,7 +197,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 		).Should(Succeed())
 	})
 
-	It("should update status", func() {
+	It("should be updated ReviewAppManager status", func() {
 		// Control external resources: open PR for test
 		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())

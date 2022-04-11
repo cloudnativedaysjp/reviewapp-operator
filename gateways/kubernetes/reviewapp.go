@@ -53,7 +53,7 @@ func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.Review
 	return nil
 }
 
-func (c Client) UpdateReviewAppStatus(ctx context.Context, ra models.ReviewApp) error {
+func (c Client) ApplyReviewAppStatus(ctx context.Context, ra models.ReviewApp) error {
 	var raCurrent dreamkastv1alpha1.ReviewApp
 	nn := types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}
 	if err := c.Get(ctx, nn, &raCurrent); err != nil {
@@ -64,9 +64,12 @@ func (c Client) UpdateReviewAppStatus(ctx context.Context, ra models.ReviewApp) 
 		return wrapedErr
 	}
 
-	raCurrent.Status = ra.Status
-	if err := c.Status().Update(ctx, &raCurrent); err != nil {
-		return xerrors.Errorf("Error to Update %s: %w", reflect.TypeOf(raCurrent), err)
+	patch := client.MergeFrom(&raCurrent)
+	newRa := raCurrent.DeepCopy()
+	newRa.Status = ra.Status
+	if err := c.Status().Patch(ctx, newRa, patch); err != nil {
+		// TODO
+		return xerrors.Errorf("Error to Patch %s: %w", reflect.TypeOf(raCurrent), err)
 	}
 	return nil
 }

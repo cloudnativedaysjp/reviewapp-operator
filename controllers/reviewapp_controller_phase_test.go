@@ -6,6 +6,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/go-logr/glogr"
@@ -21,6 +22,8 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/mock"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
+	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 )
 
 var (
@@ -36,13 +39,13 @@ var (
 	testPreStopJtNormal,
 	testPreStopJobNormal = testutils.GenerateObjects("testset_normal")
 	testPrNormal = models.PullRequest{
-		Organization:  testRaNormal.AppRepoTarget().Organization,
-		Repository:    testRaNormal.AppRepoTarget().Repository,
-		Branch:        "test",
-		Number:        testRaNormal.PrNum(),
+		Organization:     testRaNormal.AppRepoTarget().Organization,
+		Repository:       testRaNormal.AppRepoTarget().Repository,
+		Branch:           "test",
+		Number:           testRaNormal.PrNum(),
 		LatestCommitHash: "testset_normal",
-		Title:         "TEST",
-		Labels:        []string{},
+		Title:            "TEST",
+		Labels:           []string{},
 	}
 
 	_,
@@ -54,16 +57,21 @@ var (
 	_ = testutils.GenerateObjects("testset_normal_updated")
 )
 
+func TestMain(m *testing.M) {
+	datetimeFactoryForRA = utils.NewDatetimeFactory()
+	code := m.Run()
+	os.Exit(code)
+}
+
 func TestReviewAppReconciler_prepare(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	testSecretToken := "test-token"
 
 	type fields struct {
-		NumOfCalledRecorder  int
-		K8sRepository        func() repositories.KubernetesRepository
-		GitApiRepository     func() repositories.GitAPI
-		GitCommandRepository func() repositories.GitCommand
+		NumOfCalledRecorder int
+		K8sRepository       func() repositories.KubernetesRepository
+		PullRequestService  func() services.PullRequestServiceIface
 	}
 	type args struct {
 		ra models.ReviewApp
@@ -90,15 +98,12 @@ func TestReviewAppReconciler_prepare(t *testing.T) {
 						Return([]models.ManifestsTemplate{testMtNormal}, nil)
 					return m
 				},
-				GitApiRepository: func() repositories.GitAPI {
-					m := mock.NewMockGitAPI(mockCtrl)
-					m.EXPECT().WithCredential(models.NewGitCredential(testRaNormal.AppRepoTarget().Username, testSecretToken)).
-						Return(nil)
-					m.EXPECT().GetPullRequest(testCtx, testRaNormal.AppRepoTarget(), testRaNormal.PrNum()).
+				PullRequestService: func() services.PullRequestServiceIface {
+					m := mock.NewMockPullRequestServiceIface(mockCtrl)
+					m.EXPECT().Get(testCtx, testRaNormal, models.NewGitCredential(testRaNormal.AppRepoTarget().Username, testSecretToken), datetimeFactoryForRA).
 						Return(testPrNormal, nil)
 					return m
 				},
-				GitCommandRepository: func() repositories.GitCommand { return mock.NewMockGitCommand(mockCtrl) }, // unused
 			},
 			args: args{ra: testRaNormal},
 			wantDTO: &ReviewAppPhaseDTO{
@@ -115,12 +120,11 @@ func TestReviewAppReconciler_prepare(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			r := &ReviewAppReconciler{
-				Log:                  testLogger,
-				Scheme:               testScheme,
-				Recorder:             record.NewFakeRecorder(tt.fields.NumOfCalledRecorder),
-				K8sRepository:        tt.fields.K8sRepository(),
-				GitApiRepository:     tt.fields.GitApiRepository(),
-				GitCommandRepository: tt.fields.GitCommandRepository(),
+				Log:                testLogger,
+				Scheme:             testScheme,
+				Recorder:           record.NewFakeRecorder(tt.fields.NumOfCalledRecorder),
+				K8sRepository:      tt.fields.K8sRepository(),
+				PullRequestService: tt.fields.PullRequestService(),
 			}
 			dto, result, err := r.prepare(testCtx, tt.args.ra)
 			if (err != nil) != tt.wantErr {
@@ -142,10 +146,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	type fields struct {
-		NumOfCalledRecorder  int
-		K8sRepository        func() repositories.KubernetesRepository
-		GitApiRepository     func() repositories.GitAPI
-		GitCommandRepository func() repositories.GitCommand
+		NumOfCalledRecorder int
 	}
 	type args struct {
 		dto ReviewAppPhaseDTO
@@ -161,10 +162,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 		{
 			name: "[normal] first time",
 			fields: fields{
-				NumOfCalledRecorder:  0,
-				K8sRepository:        func() repositories.KubernetesRepository { return mock.NewMockKubernetesRepository(mockCtrl) }, // unused
-				GitApiRepository:     func() repositories.GitAPI { return mock.NewMockGitAPI(mockCtrl) },                             // unused
-				GitCommandRepository: func() repositories.GitCommand { return mock.NewMockGitCommand(mockCtrl) },                     // unused
+				NumOfCalledRecorder: 0,
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
@@ -180,11 +178,15 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			wantRaStatus: models.ReviewAppStatus(dreamkastv1alpha1.ReviewAppStatus{
 				Sync: dreamkastv1alpha1.SyncStatus{
-					Status:                 dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
-					ApplicationName:        "sample-1",
-					ApplicationNamespace:   "argocd",
-					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
+					Status:               dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+					ApplicationName:      "sample-1",
+					ApplicationNamespace: "argocd",
+					SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+						Branch:           testPrNormal.Branch,
+						LatestCommitHash: testPrNormal.LatestCommitHash,
+						Title:            testPrNormal.Title,
+						Labels:           testPrNormal.Labels,
+					},
 				},
 			}),
 			wantResult: ctrl.Result{},
@@ -192,10 +194,7 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 		{
 			name: "[normal] updated commitHash",
 			fields: fields{
-				NumOfCalledRecorder:  0,
-				K8sRepository:        func() repositories.KubernetesRepository { return mock.NewMockKubernetesRepository(mockCtrl) }, // unused
-				GitApiRepository:     func() repositories.GitAPI { return mock.NewMockGitAPI(mockCtrl) },                             // unused
-				GitCommandRepository: func() repositories.GitCommand { return mock.NewMockGitCommand(mockCtrl) },                     // unused
+				NumOfCalledRecorder: 0,
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
@@ -207,27 +206,28 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			wantRaStatus: models.ReviewAppStatus(dreamkastv1alpha1.ReviewAppStatus{
 				Sync: dreamkastv1alpha1.SyncStatus{
-					Status:                 dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
-					ApplicationName:        "sample-1",
-					ApplicationNamespace:   "argocd",
-					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
+					Status: dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+					SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+						Branch:           testPrNormal.Branch,
+						LatestCommitHash: testPrNormal.LatestCommitHash,
+						Title:            testPrNormal.Title,
+						Labels:           testPrNormal.Labels,
+					},
+					ApplicationName:      "sample-1",
+					ApplicationNamespace: "argocd",
+					AlreadySentMessage:   true,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
 					Manifests:   testManifestsNormal,
 				},
-				AlreadySentMessage: true,
 			}),
 			wantResult: ctrl.Result{},
 		},
 		{
 			name: "[normal] updated ApplicationTemplate",
 			fields: fields{
-				NumOfCalledRecorder:  0,
-				K8sRepository:        func() repositories.KubernetesRepository { return mock.NewMockKubernetesRepository(mockCtrl) }, // unused
-				GitApiRepository:     func() repositories.GitAPI { return mock.NewMockGitAPI(mockCtrl) },                             // unused
-				GitCommandRepository: func() repositories.GitCommand { return mock.NewMockGitCommand(mockCtrl) },                     // unused
+				NumOfCalledRecorder: 0,
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
@@ -239,27 +239,28 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			wantRaStatus: models.ReviewAppStatus(dreamkastv1alpha1.ReviewAppStatus{
 				Sync: dreamkastv1alpha1.SyncStatus{
-					Status:                 dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
-					ApplicationName:        "sample-1",
-					ApplicationNamespace:   "argocd",
-					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
+					Status: dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+					SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+						Branch:           testPrNormal.Branch,
+						LatestCommitHash: testPrNormal.LatestCommitHash,
+						Title:            testPrNormal.Title,
+						Labels:           testPrNormal.Labels,
+					},
+					ApplicationName:      "sample-1",
+					ApplicationNamespace: "argocd",
+					AlreadySentMessage:   true,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
 					Manifests:   testManifestsNormal,
 				},
-				AlreadySentMessage: true,
 			}),
 			wantResult: ctrl.Result{},
 		},
 		{
 			name: "[normal] updated ManifestsTemplate",
 			fields: fields{
-				NumOfCalledRecorder:  0,
-				K8sRepository:        func() repositories.KubernetesRepository { return mock.NewMockKubernetesRepository(mockCtrl) }, // unused
-				GitApiRepository:     func() repositories.GitAPI { return mock.NewMockGitAPI(mockCtrl) },                             // unused
-				GitCommandRepository: func() repositories.GitCommand { return mock.NewMockGitCommand(mockCtrl) },                     // unused
+				NumOfCalledRecorder: 0,
 			},
 			args: args{
 				dto: ReviewAppPhaseDTO{
@@ -271,17 +272,21 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 			},
 			wantRaStatus: models.ReviewAppStatus(dreamkastv1alpha1.ReviewAppStatus{
 				Sync: dreamkastv1alpha1.SyncStatus{
-					Status:                 dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
-					ApplicationName:        "sample-1",
-					ApplicationNamespace:   "argocd",
-					AppRepoBranch:          testPrNormal.Branch,
-					AppRepoLatestCommitHash: testPrNormal.LatestCommitHash,
+					Status: dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+					SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+						Branch:           testPrNormal.Branch,
+						LatestCommitHash: testPrNormal.LatestCommitHash,
+						Title:            testPrNormal.Title,
+						Labels:           testPrNormal.Labels,
+					},
+					ApplicationName:      "sample-1",
+					ApplicationNamespace: "argocd",
+					AlreadySentMessage:   true,
 				},
 				ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 					Application: string(testAppNormal),
 					Manifests:   testManifestsNormal,
 				},
-				AlreadySentMessage: true,
 			}),
 			wantResult: ctrl.Result{},
 		},
@@ -291,12 +296,9 @@ func TestReviewAppReconciler_confirmUpdated(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			r := &ReviewAppReconciler{
-				Log:                  testLogger,
-				Scheme:               testScheme,
-				Recorder:             record.NewFakeRecorder(tt.fields.NumOfCalledRecorder),
-				K8sRepository:        tt.fields.K8sRepository(),
-				GitApiRepository:     tt.fields.GitApiRepository(),
-				GitCommandRepository: tt.fields.GitCommandRepository(),
+				Log:      testLogger,
+				Scheme:   testScheme,
+				Recorder: record.NewFakeRecorder(tt.fields.NumOfCalledRecorder),
 			}
 			raStatus, result, err := r.confirmUpdated(testCtx, tt.args.dto)
 			if (err != nil) != tt.wantErr {
@@ -422,7 +424,6 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 	type fields struct {
 		NumOfCalledRecorder  int
 		K8sRepository        func() repositories.KubernetesRepository
-		GitApiRepository     func() repositories.GitAPI
 		GitCommandRepository func() repositories.GitCommand
 	}
 	type args struct {
@@ -453,7 +454,6 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 						Return(nil)
 					return m
 				},
-				GitApiRepository: func() repositories.GitAPI { return mock.NewMockGitAPI(mockCtrl) }, // unused
 				GitCommandRepository: func() repositories.GitCommand {
 					// vars
 					infraRepoTarget := testRaNormal.InfraRepoTarget()
@@ -490,7 +490,6 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 				Scheme:               testScheme,
 				Recorder:             record.NewFakeRecorder(tt.fields.NumOfCalledRecorder),
 				K8sRepository:        tt.fields.K8sRepository(),
-				GitApiRepository:     tt.fields.GitApiRepository(),
 				GitCommandRepository: tt.fields.GitCommandRepository(),
 			}
 			result, err := r.reconcileDelete(testCtx, tt.args.dto)
@@ -508,17 +507,21 @@ func TestReviewAppReconciler_reconcileDelete(t *testing.T) {
 func testutil_withReviewAppStatus(m models.ReviewApp, appNamespace, appName, commitHash string) models.ReviewApp {
 	m.Status = dreamkastv1alpha1.ReviewAppStatus{
 		Sync: dreamkastv1alpha1.SyncStatus{
-			Status:                 dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
-			ApplicationName:        appName,
-			ApplicationNamespace:   appNamespace,
-			AppRepoBranch:          testPrNormal.Branch,
-			AppRepoLatestCommitHash: commitHash,
+			Status: dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
+			SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
+				Branch:           testPrNormal.Branch,
+				LatestCommitHash: commitHash,
+				Title:            testPrNormal.Title,
+				Labels:           testPrNormal.Labels,
+			},
+			ApplicationName:      appName,
+			ApplicationNamespace: appNamespace,
+			AlreadySentMessage:   true,
 		},
 		ManifestsCache: dreamkastv1alpha1.ManifestsCache{
 			Application: string(testAppNormal),
 			Manifests:   testManifestsNormal,
 		},
-		AlreadySentMessage: true,
 	}
 	return m
 }

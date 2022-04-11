@@ -66,7 +66,7 @@ func (m Application) SetSomeAnnotations(ra ReviewApp) (Application, error) {
 	if err != nil {
 		return "", err
 	}
-	appWithAnnotations, err = appWithAnnotations.setAnnotation(AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.AppRepoLatestCommitHash)
+	appWithAnnotations, err = appWithAnnotations.setAnnotation(AnnotationAppCommitHashForArgoCDApplication, ra.Status.Sync.SyncedPullRequest.LatestCommitHash)
 	if err != nil {
 		return "", err
 	}
