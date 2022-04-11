@@ -9,6 +9,9 @@ on:
       - main
     types: [opened, synchronize]
 
+env:
+  GOLANG_VERSION: '1.17.8'
+
 concurrency: integration-test
 
 jobs:
@@ -22,7 +25,7 @@ jobs:
       - uses: helm/kind-action@v1.2.0
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.16.8'
+          go-version: ${{ env.GOLANG_VERSION }}
       - uses: actions/cache@v2
         with:
           path: |
