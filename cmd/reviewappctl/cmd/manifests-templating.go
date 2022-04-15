@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/cli-runtime/pkg/resource"
 	"sigs.k8s.io/yaml"
 
@@ -88,10 +89,10 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 		}
 	}
 	if mt.Spec.StableData == nil {
-		mt.Spec.StableData = make(map[string]string)
+		mt.Spec.StableData = make(map[string]unstructured.Unstructured)
 	}
 	if mt.Spec.CandidateData == nil {
-		mt.Spec.CandidateData = make(map[string]string)
+		mt.Spec.CandidateData = make(map[string]unstructured.Unstructured)
 	}
 
 	// load manifests & construct ManifestsTemplate
@@ -125,11 +126,15 @@ func runManifestsTemplating(cmd *cobra.Command, files []string) error {
 		if err != nil {
 			return err
 		}
+		var data unstructured.Unstructured
+		if err := yaml.Unmarshal(b, &data); err != nil {
+			return err
+		}
 		filename := filepath.Base(file)
 		if mto.isStable {
-			mt.Spec.StableData[filename] = string(b)
+			mt.Spec.StableData[filename] = data
 		} else if mto.isCandidate {
-			mt.Spec.CandidateData[filename] = string(b)
+			mt.Spec.CandidateData[filename] = data
 		}
 	}
 

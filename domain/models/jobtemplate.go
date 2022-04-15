@@ -14,17 +14,30 @@ const (
 
 type JobTemplate dreamkastv1alpha1.JobTemplate
 
+func (m JobTemplate) StableStr() (string, error) {
+	return m.toStr(m.Spec.StableTemplate)
+}
+
+func (m JobTemplate) CandidateStr() (string, error) {
+	return m.toStr(m.Spec.CandidateTemplate)
+}
+
+func (m JobTemplate) toStr(a batchv1.Job) (string, error) {
+	b, err := yaml.Marshal(a)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 func (m JobTemplate) GenerateJob(ra ReviewApp, pr PullRequest, v Templator) (*batchv1.Job, error) {
 	var template string
 	var err error
-	/* TODO
 	if pr.IsCandidate() {
-		template = m.GetCandidateStr()
+		template, err = m.CandidateStr()
 	} else {
-		template = m.GetStableStr()
+		template, err = m.StableStr()
 	}
-	*/
-	template = m.Spec.Template
 	jobStr, err := v.Templating(template)
 	if err != nil {
 		return nil, err

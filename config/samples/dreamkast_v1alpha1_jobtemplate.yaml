@@ -3,7 +3,7 @@ kind: JobTemplate
 metadata:
   name: jobtemplate-sample
 spec:
-  template: |
+  stableTemplate: &job
     apiVersion: batch/v1
     kind: Job
     metadata:
@@ -27,4 +27,4 @@ spec:
                   echo '.Variables.AppRepositoryAlias: {{.Variables.AppRepositoryAlias}}';
                   echo '.Variables.dummy: {{.Variables.dummy}}';
           restartPolicy: Never
-
+  candidateTemplate: *job

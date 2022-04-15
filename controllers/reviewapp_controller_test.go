@@ -38,6 +38,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
@@ -157,7 +158,7 @@ var _ = Describe("ReviewApp controller", func() {
 		Expect(files).To(Equal([]string{
 			".apps/dev/test-ra-2.yaml",
 			"overlays/dev/test-ra-2/kustomization.yaml",
-			"overlays/dev/test-ra-2/manifests.yaml",
+			"overlays/dev/test-ra-2/manifest.yaml",
 		}))
 	})
 	It("should check Argo CD Application", func() {
@@ -210,7 +211,7 @@ var _ = Describe("ReviewApp controller", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
-				"overlays/dev/test-ra-2/manifests.yaml",
+				"overlays/dev/test-ra-2/manifest.yaml",
 			}))
 		})
 		It("should check Argo CD Application", func() {
@@ -255,7 +256,7 @@ var _ = Describe("ReviewApp controller", func() {
 			Expect(files).To(Equal([]string{
 				".apps/dev/test-ra-2.yaml",
 				"overlays/dev/test-ra-2/kustomization.yaml",
-				"overlays/dev/test-ra-2/manifests.yaml",
+				"overlays/dev/test-ra-2/manifest.yaml",
 			}))
 		})
 	})
@@ -293,7 +294,8 @@ func newArgoCDApplication() *argocd_application_v1alpha1.Application {
 }
 
 func newApplicationTemplate(name string) *dreamkastv1alpha1.ApplicationTemplate {
-	app := `
+	var app argocd_application_v1alpha1.Application
+	appStr := `
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -314,6 +316,9 @@ spec:
     syncOptions:
     - CreateNamespace=true
 `
+	if err := yaml.Unmarshal([]byte(appStr), &app); err != nil {
+		// TODO
+	}
 	return &dreamkastv1alpha1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -327,16 +332,20 @@ spec:
 }
 
 func newManifestsTemplate(name string) *dreamkastv1alpha1.ManifestsTemplate {
-	kustomizationYaml := `
+	var kustomizationYaml, manifestYaml unstructured.Unstructured
+	kustomizationYamlStr := `
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: {{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
 bases:
 - ../../../base
 patchesStrategicMerge:
-- ./manifests.yaml
+- ./manifest.yaml
 `
-	manifestsYaml := `
+	if err := yaml.Unmarshal([]byte(kustomizationYamlStr), kustomizationYaml); err != nil {
+		// TODO
+	}
+	manifestYamlStr := `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -357,9 +366,12 @@ spec:
         - name: demo
           image: nginx
 `
-	m := make(map[string]string)
+	if err := yaml.Unmarshal([]byte(manifestYamlStr), manifestYaml); err != nil {
+		// TODO
+	}
+	m := make(map[string]unstructured.Unstructured)
 	m["kustomization.yaml"] = kustomizationYaml
-	m["manifests.yaml"] = manifestsYaml
+	m["manifest.yaml"] = manifestYaml
 
 	return &dreamkastv1alpha1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -432,7 +444,8 @@ func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
 }
 
 func newPatchOfManifestsTemplate(name string) *unstructured.Unstructured {
-	manifestsYaml := `
+	var manifestYaml unstructured.Unstructured
+	manifestYamlStr := `
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -451,6 +464,10 @@ spec:
         - name: nginx
           image: nginx:{{.AppRepo.LatestCommitHash}}
 `
+	if err := yaml.Unmarshal([]byte(manifestYamlStr), &manifestYaml); err != nil {
+		// TODO
+	}
+
 	patch := &unstructured.Unstructured{}
 	patch.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   dreamkastv1alpha1.GroupVersion.Group,
@@ -461,7 +478,7 @@ spec:
 	patch.SetName("manifeststemplate-test-ra")
 	patch.UnstructuredContent()["spec"] = map[string]interface{}{
 		"stable": map[string]interface{}{
-			"manifests.yaml": manifestsYaml,
+			"manifest.yaml": manifestYaml,
 		},
 	}
 	return patch

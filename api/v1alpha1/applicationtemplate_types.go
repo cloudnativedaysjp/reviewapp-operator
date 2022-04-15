@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -24,11 +25,13 @@ import (
 // ApplicationTemplateSpec defines the desired state of ApplicationTemplate
 type ApplicationTemplateSpec struct {
 
+	// +kubebuilder:validation:Required
 	// CandidateTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	CandidateTemplate string `json:"candidate,omitempty"`
+	CandidateTemplate argocd_application_v1alpha1.Application `json:"candidateTemplate,omitempty"`
 
+	// +kubebuilder:validation:Required
 	// StableTemplate is included ArgoCD Application manifest. (apiVersion, kind, metadata, spec, ...)
-	StableTemplate string `json:"stable,omitempty"`
+	StableTemplate argocd_application_v1alpha1.Application `json:"stableTemplate,omitempty"`
 }
 
 //+kubebuilder:object:root=true

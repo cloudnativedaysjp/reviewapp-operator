@@ -3,7 +3,7 @@ kind: ManifestsTemplate
 metadata:
   name: manifeststemplate-sample
 spec:
-  stable: &manifests
+  stableTemplates: &manifests
     kustomization.yaml: |
       apiVersion: kustomize.config.k8s.io/v1beta1
       kind: Kustomization
@@ -16,4 +16,4 @@ spec:
       kind: Namespace
       metadata:
         name: demo-dev-{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
-  candidate: *manifests
+  candidateTemplates: *manifests

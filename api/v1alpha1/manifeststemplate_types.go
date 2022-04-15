@@ -18,15 +18,21 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type ManifestsTemplateSpec struct {
-	// CandidateData is field that be given various resources' manifest.
-	CandidateData map[string]string `json:"candidate,omitempty"`
 
+	// +kubebuilder:validation:Required
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// CandidateData is field that be given various resources' manifest.
+	CandidateData map[string]unstructured.Unstructured `json:"candidateTemplates"`
+
+	// +kubebuilder:validation:Required
+	// +kubebuilder:pruning:PreserveUnknownFields
 	// StableData is field that be given various resources' manifest.
-	StableData map[string]string `json:"stable,omitempty"`
+	StableData map[string]unstructured.Unstructured `json:"stableTemplates"`
 }
 
 //+kubebuilder:object:root=true

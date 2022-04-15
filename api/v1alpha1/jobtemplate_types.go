@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -24,8 +25,13 @@ import (
 // JobTemplateSpec defines the desired state of JobTemplate
 type JobTemplateSpec struct {
 
-	// Template is included Job manifest. (apiVersion, kind, metadata, spec, ...)
-	Template string `json:"template,omitempty"`
+	// +kubebuilder:validation:Required
+	// CandidateTemplate is included Job manifest. (apiVersion, kind, metadata, spec, ...)
+	CandidateTemplate batchv1.Job `json:"candidateTemplate,omitempty"`
+
+	// +kubebuilder:validation:Required
+	// StableTemplate is included Job manifest. (apiVersion, kind, metadata, spec, ...)
+	StableTemplate batchv1.Job `json:"stableTemplate,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -31,8 +31,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
@@ -305,16 +307,20 @@ func newReviewAppManager_RAM() *dreamkastv1alpha1.ReviewAppManager {
 }
 
 func newManifestsTemplate_RAM(name string) *dreamkastv1alpha1.ManifestsTemplate {
-	kustomizationYaml := `
+	var kustomizationYaml, manifestYaml unstructured.Unstructured
+	kustomizationYamlStr := `
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: {{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}
 bases:
 - ../../../base
 patchesStrategicMerge:
-- ./manifests.yaml
+- ./manifest.yaml
 `
-	manifestsYaml := ` 
+	if err := yaml.Unmarshal([]byte(kustomizationYamlStr), &kustomizationYaml); err != nil {
+		// TODO
+	}
+	manifestYamlStr := ` 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -335,9 +341,12 @@ spec:
         - name: demo
           image: nginx
 `
-	m := make(map[string]string)
+	if err := yaml.Unmarshal([]byte(manifestYamlStr), &manifestYaml); err != nil {
+		// TODO
+	}
+	m := make(map[string]unstructured.Unstructured)
 	m["kustomization.yaml"] = kustomizationYaml
-	m["manifests.yaml"] = manifestsYaml
+	m["manifest.yaml"] = manifestYaml
 
 	return &dreamkastv1alpha1.ManifestsTemplate{
 		ObjectMeta: metav1.ObjectMeta{

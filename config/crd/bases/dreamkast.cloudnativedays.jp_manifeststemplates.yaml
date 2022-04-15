@@ -37,18 +37,23 @@ spec:
             type: object
           spec:
             properties:
-              candidate:
+              candidateTemplates:
                 additionalProperties:
-                  type: string
+                  type: object
                 description: CandidateData is field that be given various resources'
                   manifest.
                 type: object
-              stable:
+                x-kubernetes-preserve-unknown-fields: true
+              stableTemplates:
                 additionalProperties:
-                  type: string
+                  type: object
                 description: StableData is field that be given various resources'
                   manifest.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
+            required:
+            - candidateTemplates
+            - stableTemplates
             type: object
         required:
         - spec

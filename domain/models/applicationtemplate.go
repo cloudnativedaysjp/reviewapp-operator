@@ -1,6 +1,7 @@
 package models
 
 import (
+	argocd_application_v1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -14,21 +15,32 @@ import (
 
 type ApplicationTemplate dreamkastv1alpha1.ApplicationTemplate
 
-func (m ApplicationTemplate) StableStr() string {
-	return m.Spec.StableTemplate
+func (m ApplicationTemplate) StableStr() (string, error) {
+	return m.toStr(m.Spec.StableTemplate)
 }
 
-func (m ApplicationTemplate) CandidateStr() string {
-	return m.Spec.CandidateTemplate
+func (m ApplicationTemplate) CandidateStr() (string, error) {
+	return m.toStr(m.Spec.CandidateTemplate)
+}
+
+func (m ApplicationTemplate) toStr(a argocd_application_v1alpha1.Application) (string, error) {
+	b, err := yaml.Marshal(a)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 func (m ApplicationTemplate) GenerateApplication(pr PullRequest, v Templator) (Application, error) {
 	var template string
 	var err error
 	if pr.IsCandidate() {
-		template = m.CandidateStr()
+		template, err = m.CandidateStr()
 	} else {
-		template = m.StableStr()
+		template, err = m.StableStr()
+	}
+	if err != nil {
+		return "", err
 	}
 	application, err := v.Templating(template)
 	if err != nil {
