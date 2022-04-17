@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +33,7 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
 var (
@@ -164,6 +166,18 @@ func (r *ReviewAppManagerReconciler) removeMetrics(name, namespace string) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReviewAppManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	setupLog := ctrl.Log.WithName("setup")
+	var err error
+	r.K8sRepository, err = wire.NewKubernetesRepository(r.Log, mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
+		os.Exit(1)
+	}
+	r.GitApiRepository, err = wire.NewGitHubAPIRepository(r.Log)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
+		os.Exit(1)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1alpha1.ReviewAppManager{}).
 		Owns(&dreamkastv1alpha1.ReviewApp{}).

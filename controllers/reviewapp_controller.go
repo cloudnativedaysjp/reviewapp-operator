@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,6 +38,7 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
 const (
@@ -165,6 +168,28 @@ func (r *ReviewAppReconciler) removeMetrics(ra models.ReviewApp) {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	setupLog := ctrl.Log.WithName("setup")
+	var err error
+	r.K8sRepository, err = wire.NewKubernetesRepository(r.Log, mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
+		os.Exit(1)
+	}
+	r.GitApiRepository, err = wire.NewGitHubAPIRepository(r.Log)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
+		os.Exit(1)
+	}
+	r.GitCommandRepository, err = wire.NewGitCommandRepository(r.Log, exec.New())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
+		os.Exit(1)
+	}
+	r.PullRequestService, err = wire.NewPullRequestService(r.Log)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewPullRequestService")
+		os.Exit(1)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1alpha1.ReviewApp{}).
 		Complete(r)

@@ -26,7 +26,6 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/utils/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -35,7 +34,6 @@ import (
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
-	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -86,63 +84,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	{ // initialize controller: ReviewAppManager
-		ramLogger := ctrl.Log.WithName("controllers").WithName("ReviewAppManager")
-		k8sRepository, err := wire.NewKubernetesRepository(ramLogger, mgr.GetClient())
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
-			os.Exit(1)
-		}
-		gitApiRepository, err := wire.NewGitHubAPIRepository(ramLogger)
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
-			os.Exit(1)
-		}
-		if err = (&controllers.ReviewAppManagerReconciler{
-			Log:              ramLogger,
-			Scheme:           mgr.GetScheme(),
-			Recorder:         mgr.GetEventRecorderFor("reviewappmanager-controler"),
-			K8sRepository:    k8sRepository,
-			GitApiRepository: gitApiRepository,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
-			os.Exit(1)
-		}
+	if err = (&controllers.ReviewAppManagerReconciler{
+		Log:      ctrl.Log.WithName("controllers").WithName("ReviewAppManager"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("reviewappmanager-controler"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ReviewAppManager")
+		os.Exit(1)
 	}
-	{ // initialize controller: ReviewApp
-		raLogger := ctrl.Log.WithName("controllers").WithName("ReviewApp")
-		k8sRepository, err := wire.NewKubernetesRepository(raLogger, mgr.GetClient())
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
-			os.Exit(1)
-		}
-		gitApiRepository, err := wire.NewGitHubAPIRepository(raLogger)
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
-			os.Exit(1)
-		}
-		gitCommandRepository, err := wire.NewGitCommandRepository(raLogger, exec.New())
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
-			os.Exit(1)
-		}
-		pullRequestService, err := wire.NewPullRequestService(raLogger)
-		if err != nil {
-			setupLog.Error(err, "unable to initialize", "wire.NewPullRequestService")
-			os.Exit(1)
-		}
-		if err = (&controllers.ReviewAppReconciler{
-			Log:                  raLogger,
-			Scheme:               mgr.GetScheme(),
-			Recorder:             mgr.GetEventRecorderFor("reviewapp-controler"),
-			K8sRepository:        k8sRepository,
-			GitApiRepository:     gitApiRepository,
-			GitCommandRepository: gitCommandRepository,
-			PullRequestService:   pullRequestService,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
-			os.Exit(1)
-		}
+	if err = (&controllers.ReviewAppReconciler{
+		Log:      ctrl.Log.WithName("controllers").WithName("ReviewApp"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("reviewapp-controler"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
+		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
 
