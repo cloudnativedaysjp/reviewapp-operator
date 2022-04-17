@@ -96,21 +96,6 @@ func (g *GitHub) CommentToPullRequest(ctx context.Context, pr models.PullRequest
 	return nil
 }
 
-func (g *GitHub) GetCommitHashes(ctx context.Context, prModel models.PullRequest) ([]string, error) {
-	if !g.haveClient(ctx) {
-		return nil, xerrors.Errorf("GitHub have no client")
-	}
-	prCommits, _, err := g.client.PullRequests.ListCommits(ctx, prModel.Organization, prModel.Repository, prModel.Number, &github.ListOptions{})
-	if err != nil {
-		return nil, xerrors.Errorf("%w", err)
-	}
-	result := []string{}
-	for _, prCommit := range prCommits {
-		result = append(result, prCommit.Commit.GetSHA())
-	}
-	return result, nil
-}
-
 func (g *GitHub) haveClient(ctx context.Context) bool {
 	if g.client != nil {
 		if _, _, err := g.client.Users.Get(ctx, g.username); err == nil {

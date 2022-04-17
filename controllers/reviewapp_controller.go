@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -26,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -36,6 +38,7 @@ import (
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
 const (
@@ -70,10 +73,6 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 		ra, err := r.K8sRepository.GetReviewApp(ctx, req.Namespace, req.Name)
 		if err != nil {
-			if myerrors.IsNotFound(err) {
-				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
-				return ctrl.Result{}, nil
-			}
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 
@@ -103,7 +102,16 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
 	ra := dto.ReviewApp
 	raStatus := ra.GetStatus()
-	metrics.SetMetricsUp(dto.ReviewApp)
+
+	// set metrics
+	metrics.UpVec.WithLabelValues(
+		ra.Name,
+		ra.Namespace,
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Organization,
+	).Set(1)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
@@ -142,8 +150,46 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
 }
 
+func (r *ReviewAppReconciler) removeMetrics(ra models.ReviewApp) {
+	metrics.UpVec.DeleteLabelValues(
+		ra.Name,
+		ra.Namespace,
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Organization,
+	)
+	metrics.RequestToGitHubApiCounterVec.DeleteLabelValues(
+		ra.Name,
+		ra.Namespace,
+		"ReviewApp",
+	)
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	setupLog := ctrl.Log.WithName("setup")
+	var err error
+	r.K8sRepository, err = wire.NewKubernetesRepository(r.Log, mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
+		os.Exit(1)
+	}
+	r.GitApiRepository, err = wire.NewGitHubAPIRepository(r.Log)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
+		os.Exit(1)
+	}
+	r.GitCommandRepository, err = wire.NewGitCommandRepository(r.Log, exec.New())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
+		os.Exit(1)
+	}
+	r.PullRequestService, err = wire.NewPullRequestService(r.Log)
+	if err != nil {
+		setupLog.Error(err, "unable to initialize", "wire.NewPullRequestService")
+		os.Exit(1)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1alpha1.ReviewApp{}).
 		Complete(r)
