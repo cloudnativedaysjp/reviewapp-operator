@@ -201,6 +201,12 @@ func (r *ReviewAppReconciler) commentToAppRepoPullRequest(ctx context.Context, d
 		if err := r.GitApiRepository.CommentToPullRequest(ctx, pr, ra.Spec.AppConfig.Message); err != nil {
 			return raStatus, ctrl.Result{}, err
 		}
+		// add metrics
+		metrics.RequestToGitHubApiCounterVec.WithLabelValues(
+			ra.Name,
+			ra.Namespace,
+			"ReviewApp",
+		).Add(1)
 	}
 
 	// update ReviewApp.Status
@@ -306,7 +312,7 @@ finalize:
 	}
 
 	// remove metrics
-	metrics.RemoveMetrics(ra)
+	r.removeMetrics(ra)
 
 	return ctrl.Result{}, nil
 }

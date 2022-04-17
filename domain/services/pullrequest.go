@@ -7,6 +7,7 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 )
 
 const (
@@ -53,6 +54,13 @@ func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred m
 	if err != nil {
 		return models.PullRequest{}, err
 	}
+	// add metrics
+	metrics.RequestToGitHubApiCounterVec.WithLabelValues(
+		ra.Name,
+		ra.Namespace,
+		"ReviewApp",
+	).Add(1)
+
 	raStatus.Sync.SyncedPullRequest.SyncTimestamp = now.ToString()
 	return pr, nil
 }

@@ -30,9 +30,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 	//+kubebuilder:scaffold:imports
 )
@@ -143,6 +145,8 @@ func main() {
 		}
 	}
 	//+kubebuilder:scaffold:builder
+
+	metrics.Register(k8smetrics.Registry)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

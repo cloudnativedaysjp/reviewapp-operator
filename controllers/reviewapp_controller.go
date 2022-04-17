@@ -70,10 +70,6 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 		ra, err := r.K8sRepository.GetReviewApp(ctx, req.Namespace, req.Name)
 		if err != nil {
-			if myerrors.IsNotFound(err) {
-				r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ra), req.Namespace, req.Name))
-				return ctrl.Result{}, nil
-			}
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 
@@ -103,7 +99,16 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
 	ra := dto.ReviewApp
 	raStatus := ra.GetStatus()
-	metrics.SetMetricsUp(dto.ReviewApp)
+
+	// set metrics
+	metrics.UpVec.WithLabelValues(
+		ra.Name,
+		ra.Namespace,
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Organization,
+	).Set(1)
 
 	// run/skip processes by ReviewApp state
 	errs := []error{}
@@ -140,6 +145,22 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 	}
 
 	return ctrl.Result{}, kerrors.NewAggregate(errs)
+}
+
+func (r *ReviewAppReconciler) removeMetrics(ra models.ReviewApp) {
+	metrics.UpVec.DeleteLabelValues(
+		ra.Name,
+		ra.Namespace,
+		ra.Spec.AppTarget.Organization,
+		ra.Spec.AppTarget.Repository,
+		ra.Spec.InfraTarget.Organization,
+		ra.Spec.InfraTarget.Organization,
+	)
+	metrics.RequestToGitHubApiCounterVec.DeleteLabelValues(
+		ra.Name,
+		ra.Namespace,
+		"ReviewApp",
+	)
 }
 
 // SetupWithManager sets up the controller with the Manager.

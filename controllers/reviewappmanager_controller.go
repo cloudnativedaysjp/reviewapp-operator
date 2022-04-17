@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +31,7 @@ import (
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
 	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
 	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
+	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
 )
 
 var (
@@ -61,7 +61,7 @@ func (r *ReviewAppManagerReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	ram, err := r.K8sRepository.GetReviewAppManager(ctx, req.Namespace, req.Name)
 	if err != nil {
 		if myerrors.IsNotFound(err) {
-			r.Log.Info(fmt.Sprintf("%s %s/%s not found", reflect.TypeOf(ram), req.Namespace, req.Name))
+			r.removeMetrics(req.Name, req.Namespace)
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -94,6 +94,13 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	// add metrics
+	metrics.RequestToGitHubApiCounterVec.WithLabelValues(
+		ram.Name,
+		ram.Namespace,
+		"ReviewAppManager",
+	).Add(1)
+
 	// exclude PRs with specific labels
 	prs = prs.ExcludeSpecificPR(ram)
 	// apply ReviewApp
@@ -145,6 +152,14 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ReviewAppManagerReconciler) removeMetrics(name, namespace string) {
+	metrics.RequestToGitHubApiCounterVec.DeleteLabelValues(
+		name,
+		namespace,
+		"ReviewAppManager",
+	)
 }
 
 // SetupWithManager sets up the controller with the Manager.
