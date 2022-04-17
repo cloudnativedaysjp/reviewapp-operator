@@ -5,22 +5,19 @@ import (
 )
 
 const (
-	metricsNamespace   = "reviewapp_operator"
-	reviewappSubsystem = "reviewapp"
+	metricsNamespace = "reviewapp_operator"
 )
 
 var (
 	UpVec = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
-		Subsystem: reviewappSubsystem,
 		Name:      "up",
 		Help:      "Operator's status is healthy when this flag equals 1",
 	}, []string{"name", "namespace", "appOrganization", "appRepository", "infraOrganization", "infraRepository"})
 	RequestToGitHubApiCounterVec = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: metricsNamespace,
-		Subsystem: reviewappSubsystem,
-		Name:      "",
-		Help:      "Operator's status is healthy when this flag equals 1",
+		Name:      "github_api_requests_total",
+		Help:      "The number of Requesting to GitHub API",
 	}, []string{"name", "namespace", "kind"})
 )
 
