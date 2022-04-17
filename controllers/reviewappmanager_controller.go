@@ -23,9 +23,13 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
@@ -178,17 +182,46 @@ func (r *ReviewAppManagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
 		os.Exit(1)
 	}
+	mapFunc := handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+		rams := dreamkastv1alpha1.ReviewAppManagerList{}
+		mgr.GetCache().List(context.Background(), &rams)
+		for _, ram := range rams.Items {
+			nn := dreamkastv1alpha1.NamespacedName{Name: object.GetName(), Namespace: object.GetNamespace()}
+			switch object.(type) {
+			case *dreamkastv1alpha1.ApplicationTemplate:
+				if nn == ram.Spec.InfraConfig.ArgoCDApp.Template {
+					return []reconcile.Request{{
+						NamespacedName: types.NamespacedName{
+							Name:      ram.Name,
+							Namespace: ram.Namespace,
+						},
+					}}
+				}
+			case *dreamkastv1alpha1.ManifestsTemplate:
+				for _, template := range ram.Spec.InfraConfig.Manifests.Templates {
+					if nn == template {
+						return []reconcile.Request{{
+							NamespacedName: types.NamespacedName{
+								Name:      ram.Name,
+								Namespace: ram.Namespace,
+							},
+						}}
+					}
+				}
+			}
+		}
+		return []reconcile.Request{}
+	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1alpha1.ReviewAppManager{}).
 		Owns(&dreamkastv1alpha1.ReviewApp{}).
-		// TODO: at, mt 更新時にも reconcile が走るようにする
-		// Watches(
-		// 	&source.Kind{Type: &dreamkastv1alpha1.ApplicationTemplate{}},
-		// 	&handler.EnqueueRequestForObject{},
-		// ).
-		// Watches(
-		// 	&source.Kind{Type: &dreamkastv1alpha1.ManifestsTemplate{}},
-		// 	&handler.EnqueueRequestForObject{},
-		// ).
+		Watches(
+			&source.Kind{Type: &dreamkastv1alpha1.ApplicationTemplate{}},
+			mapFunc,
+		).
+		Watches(
+			&source.Kind{Type: &dreamkastv1alpha1.ManifestsTemplate{}},
+			mapFunc,
+		).
 		Complete(r)
 }
