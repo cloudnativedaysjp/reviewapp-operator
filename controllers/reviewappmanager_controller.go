@@ -129,7 +129,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 		}
 		// update Status of RA if above is first apply
 		if !raAlreadyExists {
-			if err := r.K8sRepository.ApplyReviewAppStatus(ctx, ra); err != nil {
+			if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
 				return ctrl.Result{}, err
 			}
 		}

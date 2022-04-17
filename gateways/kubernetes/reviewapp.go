@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/cenkalti/backoff/v4"
 	"golang.org/x/xerrors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,17 +54,23 @@ func (c Client) ApplyReviewAppWithOwnerRef(ctx context.Context, ra models.Review
 	return nil
 }
 
-func (c Client) ApplyReviewAppStatus(ctx context.Context, ra models.ReviewApp) error {
+func (c Client) PatchReviewAppStatus(ctx context.Context, ra models.ReviewApp) error {
+	// get curret ReviewApp object (retry: 3)
 	var raCurrent dreamkastv1alpha1.ReviewApp
-	nn := types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}
-	if err := c.Get(ctx, nn, &raCurrent); err != nil {
-		wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(raCurrent), err)
-		if apierrors.IsNotFound(err) {
-			return myerrors.NewK8sObjectNotFound(wrapedErr, raCurrent.GVK(), nn)
+	if err := backoff.Retry(func() error {
+		nn := types.NamespacedName{Name: ra.Name, Namespace: ra.Namespace}
+		if err := c.Get(ctx, nn, &raCurrent); err != nil {
+			wrapedErr := xerrors.Errorf("Error to Get %s: %w", reflect.TypeOf(raCurrent), err)
+			if apierrors.IsNotFound(err) {
+				return myerrors.NewK8sObjectNotFound(wrapedErr, raCurrent.GVK(), nn)
+			}
+			return wrapedErr
 		}
-		return wrapedErr
+		return nil
+	}, backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 3)); err != nil {
+		return err
 	}
-
+	// patch to ReviewApp object
 	patch := client.MergeFrom(&raCurrent)
 	newRa := raCurrent.DeepCopy()
 	newRa.Status = ra.Status

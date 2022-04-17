@@ -29,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
@@ -72,8 +71,8 @@ func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
 		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
 		ra, err := r.K8sRepository.GetReviewApp(ctx, req.Namespace, req.Name)
-		if err != nil {
-			return ctrl.Result{}, client.IgnoreNotFound(err)
+		if err != nil && !myerrors.IsNotFound(err) {
+			return ctrl.Result{}, err
 		}
 
 		dto, result, err := r.prepare(ctx, ra)
@@ -143,7 +142,7 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 		r.commentToAppRepoPullRequest)
 
 	// update status
-	if err := r.K8sRepository.ApplyReviewAppStatus(ctx, ra); err != nil {
+	if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
 		return ctrl.Result{}, err
 	}
 

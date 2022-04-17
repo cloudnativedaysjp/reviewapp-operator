@@ -21,7 +21,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -206,16 +205,22 @@ var _ = Describe("ReviewAppManager controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		updated := dreamkastv1alpha1.ReviewAppManager{}
-		Eventually(func() error {
+		Eventually(func() ([]dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests, error) {
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram"}, &updated)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			if len(updated.Status.SyncedPullRequests) == 0 {
-				return errors.New("status should be updated")
-			}
-			return nil
-		}).Should(Succeed())
+			return updated.Status.SyncedPullRequests, nil
+		},
+			60*time.Second, // timeout
+			10*time.Second, // interval
+		).Should(ContainElement(
+			dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests{
+				Organization:  testGitAppOrganization,
+				Repository:    testGitAppRepository,
+				Number:        testGitAppPrNumForRAM,
+				ReviewAppName: fmt.Sprintf("test-ram-shotakitazawa-reviewapp-operator-demo-app-%d", testGitAppPrNumForRAM),
+			}))
 	})
 	//! [test]
 })
