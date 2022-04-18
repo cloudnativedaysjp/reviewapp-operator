@@ -15,7 +15,7 @@ const (
 )
 
 type PullRequestServiceIface interface {
-	Get(context.Context, models.ReviewApp, models.GitCredential, *utils.DatetimeFactory) (models.PullRequest, error)
+	Get(context.Context, models.ReviewApp, models.GitCredential, *utils.DatetimeFactory) (models.PullRequest, models.ReviewAppStatus, error)
 }
 
 type PullRequestService struct {
@@ -26,7 +26,7 @@ func NewPullRequestService(gitApi repositories.GitAPI) *PullRequestService {
 	return &PullRequestService{gitApi}
 }
 
-func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred models.GitCredential, f *utils.DatetimeFactory) (models.PullRequest, error) {
+func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred models.GitCredential, f *utils.DatetimeFactory) (models.PullRequest, models.ReviewAppStatus, error) {
 	appRepoTarget := ra.AppRepoTarget()
 	raStatus := ra.GetStatus()
 	now := f.Now()
@@ -35,7 +35,7 @@ func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred m
 	if previousSyncedTimestamp != "" {
 		t, err := utils.NewDatetime(previousSyncedTimestamp)
 		if err != nil {
-			return models.PullRequest{}, err
+			return models.PullRequest{}, raStatus, err
 		}
 		// if dont need resync, return values from ReviewApp Object
 		if !t.Before(now, pullRequestResyncPeriod) {
@@ -43,16 +43,16 @@ func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred m
 				appRepoTarget.Organization, appRepoTarget.Repository, raStatus.Sync.SyncedPullRequest.Branch,
 				ra.PrNum(), raStatus.Sync.SyncedPullRequest.LatestCommitHash,
 				raStatus.Sync.SyncedPullRequest.Title, raStatus.Sync.SyncedPullRequest.Labels,
-			), nil
+			), raStatus, nil
 		}
 	}
 	// otherwise, get from GitAPI repository & update timestamp
 	if err := s.GitApiRepository.WithCredential(cred); err != nil {
-		return models.PullRequest{}, err
+		return models.PullRequest{}, raStatus, err
 	}
 	pr, err := s.GitApiRepository.GetPullRequest(ctx, appRepoTarget, ra.PrNum())
 	if err != nil {
-		return models.PullRequest{}, err
+		return models.PullRequest{}, raStatus, err
 	}
 	// add metrics
 	metrics.RequestToGitHubApiCounterVec.WithLabelValues(
@@ -62,5 +62,5 @@ func (s PullRequestService) Get(ctx context.Context, ra models.ReviewApp, cred m
 	).Add(1)
 
 	raStatus.Sync.SyncedPullRequest.SyncTimestamp = now.ToString()
-	return pr, nil
+	return pr, raStatus, nil
 }

@@ -37,12 +37,13 @@ func (m *MockPullRequestServiceIface) EXPECT() *MockPullRequestServiceIfaceMockR
 }
 
 // Get mocks base method.
-func (m *MockPullRequestServiceIface) Get(arg0 context.Context, arg1 models.ReviewApp, arg2 models.GitCredential, arg3 *utils.DatetimeFactory) (models.PullRequest, error) {
+func (m *MockPullRequestServiceIface) Get(arg0 context.Context, arg1 models.ReviewApp, arg2 models.GitCredential, arg3 *utils.DatetimeFactory) (models.PullRequest, models.ReviewAppStatus, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(models.PullRequest)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(models.ReviewAppStatus)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Get indicates an expected call of Get.

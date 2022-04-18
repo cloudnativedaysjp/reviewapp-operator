@@ -101,7 +101,7 @@ func TestReviewAppReconciler_prepare(t *testing.T) {
 				PullRequestService: func() services.PullRequestServiceIface {
 					m := mock.NewMockPullRequestServiceIface(mockCtrl)
 					m.EXPECT().Get(testCtx, testRaNormal, models.NewGitCredential(testRaNormal.AppRepoTarget().Username, testSecretToken), datetimeFactoryForRA).
-						Return(testPrNormal, nil)
+						Return(testPrNormal, models.ReviewAppStatus(testRaNormal.Status), nil)
 					return m
 				},
 			},
