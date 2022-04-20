@@ -127,7 +127,7 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 		if err := r.K8sRepository.ApplyReviewAppWithOwnerRef(ctx, ra, ram); err != nil {
 			return ctrl.Result{}, err
 		}
-		// update Statu
+		// update Status
 		if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
 			return ctrl.Result{}, err
 		}
