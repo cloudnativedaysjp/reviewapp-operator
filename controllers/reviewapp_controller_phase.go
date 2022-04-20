@@ -59,7 +59,6 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	}
 
 	// get ManifestsTemplate & template to manifestsStr
-	ra.GroupVersionKind()
 	mts, err := r.K8sRepository.GetManifestsTemplate(ctx, ra)
 	if err != nil {
 		return nil, ctrl.Result{}, err

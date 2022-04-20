@@ -58,7 +58,6 @@ type ReviewAppStatus struct {
 
 type SyncStatus struct {
 
-	// +kubebuilder:default="Initialize"
 	// Status is the sync state of the comparison
 	Status SyncStatusCode `json:"status,omitempty"`
 
