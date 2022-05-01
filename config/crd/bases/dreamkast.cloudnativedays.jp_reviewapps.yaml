@@ -260,7 +260,6 @@ spec:
                     description: TODO
                     type: string
                   status:
-                    default: Initialize
                     description: Status is the sync state of the comparison
                     type: string
                   syncedPullRequest:

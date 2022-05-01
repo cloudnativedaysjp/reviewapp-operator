@@ -116,22 +116,20 @@ func (r *ReviewAppManagerReconciler) reconcile(ctx context.Context, ram models.R
 			return ctrl.Result{}, err
 		}
 		// get RA
-		raAlreadyExists := true
 		if _, err := r.K8sRepository.GetReviewApp(ctx, ra.Namespace, ra.Name); err != nil {
 			if !myerrors.IsNotFound(err) {
 				return ctrl.Result{}, err
 			}
-			raAlreadyExists = false
+			// if ReviewApp Object has not existed, set to status.sync.status
+			ra.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeInitialize
 		}
 		// apply RA
 		if err := r.K8sRepository.ApplyReviewAppWithOwnerRef(ctx, ra, ram); err != nil {
 			return ctrl.Result{}, err
 		}
-		// update Status of RA if above is first apply
-		if !raAlreadyExists {
-			if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
-				return ctrl.Result{}, err
-			}
+		// update Status
+		if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
+			return ctrl.Result{}, err
 		}
 		// update values for updating RAM.status
 		syncedPullRequests = append(syncedPullRequests, dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests{

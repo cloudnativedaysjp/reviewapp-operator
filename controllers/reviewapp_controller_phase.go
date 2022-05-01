@@ -39,10 +39,11 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	}
 
 	// check PRs specified by spec.appRepo.repository
-	pr, err := r.PullRequestService.Get(ctx, ra, models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken), datetimeFactoryForRA)
+	pr, raStatus, err := r.PullRequestService.Get(ctx, ra, models.NewGitCredential(ra.Spec.AppTarget.Username, gitRemoteRepoToken), datetimeFactoryForRA)
 	if err != nil {
 		return nil, ctrl.Result{}, err
 	}
+	ra.Status = dreamkastv1alpha1.ReviewAppStatus(raStatus)
 
 	// template ApplicationTemplate & ManifestsTemplate
 	v := models.NewTemplator(ra, pr)
@@ -58,7 +59,6 @@ func (r *ReviewAppReconciler) prepare(ctx context.Context, ra models.ReviewApp) 
 	}
 
 	// get ManifestsTemplate & template to manifestsStr
-	ra.GroupVersionKind()
 	mts, err := r.K8sRepository.GetManifestsTemplate(ctx, ra)
 	if err != nil {
 		return nil, ctrl.Result{}, err

@@ -179,7 +179,6 @@ func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator, f *util
 		},
 		Status: dreamkastv1alpha1.ReviewAppStatus{
 			Sync: dreamkastv1alpha1.SyncStatus{
-				Status: dreamkastv1alpha1.SyncStatusCodeInitialize,
 				SyncedPullRequest: dreamkastv1alpha1.ReviewAppStatusSyncedPullRequest{
 					Branch:           pr.Branch,
 					LatestCommitHash: pr.LatestCommitHash,
