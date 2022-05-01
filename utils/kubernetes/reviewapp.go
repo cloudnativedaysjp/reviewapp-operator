@@ -28,12 +28,15 @@ type PullRequest struct {
 }
 
 func NewReviewAppFromReviewAppManager(ram *dreamkastv1alpha1.ReviewAppManager, pr *PullRequest) *dreamkastv1alpha1.ReviewApp {
+	toObjName := func(base string) string {
+		return strings.ReplaceAll(strings.ToLower(base), "_", "-")
+	}
 	return &dreamkastv1alpha1.ReviewApp{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: fmt.Sprintf("%s-%s-%s-%d",
 				ram.Name,
-				strings.ToLower(pr.Organization),
-				strings.ToLower(pr.Repository),
+				toObjName(pr.Organization),
+				toObjName(pr.Repository),
 				pr.Number,
 			),
 			Namespace: ram.Namespace,
