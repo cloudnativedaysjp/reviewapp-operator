@@ -220,10 +220,13 @@ func (m ReviewAppManager) GenerateReviewApp(pr PullRequest, v Templator, f *util
 }
 
 func (m ReviewAppManager) ReviewAppName(pr PullRequest) string {
+	toObjName := func(base string) string {
+		return strings.ReplaceAll(strings.ToLower(base), "_", "-")
+	}
 	return fmt.Sprintf("%s-%s-%s-%d",
 		m.Name,
-		strings.ToLower(pr.Organization),
-		strings.ToLower(pr.Repository),
+		toObjName(pr.Organization),
+		toObjName(pr.Repository),
 		pr.Number,
 	)
 }
