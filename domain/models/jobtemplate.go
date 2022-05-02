@@ -38,6 +38,9 @@ func (m JobTemplate) GenerateJob(ra ReviewApp, pr PullRequest, v Templator) (*ba
 	} else {
 		template, err = m.StableStr()
 	}
+	if err != nil {
+		return nil, err
+	}
 	jobStr, err := v.Templating(template)
 	if err != nil {
 		return nil, err

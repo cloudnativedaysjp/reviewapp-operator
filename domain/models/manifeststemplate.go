@@ -52,6 +52,9 @@ func (m ManifestsTemplate) GenerateManifests(pr PullRequest, v Templator) (Manif
 	} else {
 		template, err = m.StableMap()
 	}
+	if err != nil {
+		return nil, err
+	}
 	manifests := make(map[string]string)
 	for key, val := range template {
 		manifests[key], err = v.Templating(val)
