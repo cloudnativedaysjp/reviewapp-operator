@@ -33,15 +33,14 @@ import (
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/metrics"
 	//+kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-
-	resyncPeriod = time.Second * 30
+	scheme       = runtime.NewScheme()
+	setupLog     = ctrl.Log.WithName("setup")
+	resyncPeriod = time.Hour
 )
 
 func init() {
@@ -98,6 +97,14 @@ func main() {
 		Recorder: mgr.GetEventRecorderFor("reviewapp-controler"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ReviewApp")
+		os.Exit(1)
+	}
+	if err = (&controllers.PullRequestReconciler{
+		Log:      ctrl.Log.WithName("controllers").WithName("PullRequest"),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("reviewapp-controler"),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "PullRequest")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

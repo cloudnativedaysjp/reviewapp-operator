@@ -7,18 +7,19 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/yaml"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
+	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 )
 
 const generateObjectsBasePath = "testutils/.objects/"
 
 func GenerateObjects(dirname string) (
-	ra models.ReviewApp,
-	at models.ApplicationTemplate,
-	mt models.ManifestsTemplate,
-	app models.Application,
-	manifests models.Manifests,
-	preStopJt models.JobTemplate,
+	ra dreamkastv1alpha1.ReviewApp,
+	pr dreamkastv1alpha1.PullRequest,
+	at dreamkastv1alpha1.ApplicationTemplate,
+	mt dreamkastv1alpha1.ManifestsTemplate,
+	app dreamkastv1alpha1.Application,
+	manifests dreamkastv1alpha1.Manifests,
+	preStopJt dreamkastv1alpha1.JobTemplate,
 	preStopJob batchv1.Job,
 ) {
 	{ // ReviewApp
@@ -26,6 +27,13 @@ func GenerateObjects(dirname string) (
 		raBytes, err := os.ReadFile(raFilePath)
 		if err == nil {
 			_ = yaml.Unmarshal(raBytes, &ra)
+		}
+	}
+	{ // PullRequest
+		prFilePath := filepath.Join(generateObjectsBasePath, dirname, "pr.yaml")
+		prBytes, err := os.ReadFile(prFilePath)
+		if err == nil {
+			_ = yaml.Unmarshal(prBytes, &pr)
 		}
 	}
 	{ // ApplicationTemplate
@@ -46,7 +54,7 @@ func GenerateObjects(dirname string) (
 		appFilePath := filepath.Join(generateObjectsBasePath, dirname, "app.yaml")
 		appBytes, err := os.ReadFile(appFilePath)
 		if err == nil {
-			app = models.Application(appBytes)
+			app = dreamkastv1alpha1.Application(appBytes)
 		}
 	}
 	{ // some manifests from ManifestsTemplate

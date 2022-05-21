@@ -48,4 +48,13 @@ resources:
   kind: JobTemplate
   path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cloudnativedays.jp
+  group: dreamkast
+  kind: PullRequest
+  path: github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

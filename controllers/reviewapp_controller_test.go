@@ -41,7 +41,6 @@ import (
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
 	"github.com/cloudnativedaysjp/reviewapp-operator/controllers/testutils"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
@@ -66,23 +65,19 @@ var _ = Describe("ReviewApp controller", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 		logger := glogr.NewWithOptions(glogr.Options{LogCaller: glogr.None})
-		k8sRepository, err := wire.NewKubernetesRepository(logger, k8sClient)
+		k8sRepository, err := wire.NewKubernetes(logger, k8sClient)
 		Expect(err).ToNot(HaveOccurred())
-		gitApiRepository, err := wire.NewGitHubAPIRepository(logger)
+		gitApiRepository, err := wire.NewGitHubApi(logger)
 		Expect(err).ToNot(HaveOccurred())
-		gitCommandRepository, err := wire.NewGitCommandRepository(logger, exec.New())
-		Expect(err).ToNot(HaveOccurred())
-		pullRequestService, err := wire.NewPullRequestService(logger)
-		Expect(err).ToNot(HaveOccurred())
+		gitCommandRepository, err := wire.NewGitLocalRepo(logger, exec.New())
 		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppReconciler{
-			Scheme:               scheme,
-			Log:                  logger,
-			Recorder:             recorder,
-			K8sRepository:        k8sRepository,
-			GitApiRepository:     gitApiRepository,
-			GitCommandRepository: gitCommandRepository,
-			PullRequestService:   pullRequestService,
+			Scheme:       scheme,
+			Log:          logger,
+			Recorder:     recorder,
+			K8s:          k8sRepository,
+			GitApi:       gitApiRepository,
+			GitLocalRepo: gitCommandRepository,
 		}
 		err = reconciler.SetupWithManager(mgr)
 		Expect(err).NotTo(HaveOccurred())
@@ -107,8 +102,8 @@ var _ = Describe("ReviewApp controller", func() {
 	//! [setup]
 
 	//! [test]
-	timeout := 120 * time.Second
-	interval := 10 * time.Second
+	defaultTimeout := 90 * time.Second
+	defaultInterval := 10 * time.Second
 	Context("step1. create ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
 			argoCDApp := newArgoCDApplication()
@@ -120,6 +115,16 @@ var _ = Describe("ReviewApp controller", func() {
 			mt := newManifestsTemplate("manifeststemplate-test-ra")
 			err = k8sClient.Create(ctx, mt)
 			Expect(err).NotTo(HaveOccurred())
+			pr := newPullRequest()
+			err = k8sClient.Create(ctx, pr)
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				currentPr := newPullRequest()
+				newPr := currentPr.DeepCopy()
+				currentPr.Status = dreamkastv1alpha1.PullRequestStatus{}
+				patch := client.MergeFrom(currentPr)
+				return k8sClient.Status().Patch(ctx, newPr, patch)
+			}, 10*time.Second, time.Second).Should(Succeed())
 			ra := newReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
 			err = k8sClient.Create(ctx, ra)
 			Expect(err).NotTo(HaveOccurred())
@@ -133,7 +138,7 @@ var _ = Describe("ReviewApp controller", func() {
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(msg).To(Equal("message"))
-			}, timeout, interval).Should(Succeed())
+			}, defaultTimeout, defaultInterval).Should(Succeed())
 		})
 		It("should update status", func() {
 			Eventually(func(g Gomega) {
@@ -145,10 +150,10 @@ var _ = Describe("ReviewApp controller", func() {
 				err = k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
-				g.Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
-				g.Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-				g.Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeEmpty())
-			}, timeout, interval).Should(Succeed())
+				g.Expect(ra.Status.ManifestsCache.ApplicationName).To(Equal("test-ra-2"))
+				g.Expect(ra.Status.ManifestsCache.ApplicationNamespace).To(Equal("argocd"))
+				g.Expect(ra.Status.PullRequestCache.LatestCommitHash).NotTo(BeEmpty())
+			}, defaultTimeout, defaultInterval).Should(Succeed())
 		})
 	})
 	It("should commit to infra-repo", func() {
@@ -164,20 +169,23 @@ var _ = Describe("ReviewApp controller", func() {
 		argocdApp := &argocd_application_v1alpha1.Application{}
 		err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(argocdApp.Annotations[models.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-		Expect(argocdApp.Annotations[models.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-		Expect(argocdApp.Annotations[models.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+		Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+		Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+		Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 	})
 	Context("step2. update ReviewApp", func() {
 		It("should succeed to create ReviewApp", func() {
-			patch := newPatchOfManifestsTemplate("manifeststemplate-test-ra")
-			err := k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			patchMt := newPatchOfManifestsTemplate("manifeststemplate-test-ra")
+			err := k8sClient.Patch(ctx, patchMt, client.Apply, &client.PatchOptions{
 				FieldManager: testReviewappControllerName,
 				Force:        pointer.Bool(true),
 			})
 			Expect(err).NotTo(HaveOccurred())
-			patch = newPatchOfReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
-			err = k8sClient.Patch(ctx, patch, client.Apply, &client.PatchOptions{
+			patchedPr, patch := newPatchOfPullRequestStatus()
+			err = k8sClient.Status().Patch(ctx, patchedPr, patch)
+			Expect(err).NotTo(HaveOccurred())
+			patchRa := newPatchOfReviewApp("test-ra-shotakitazawa-reviewapp-operator-demo-app-2")
+			err = k8sClient.Patch(ctx, patchRa, client.Apply, &client.PatchOptions{
 				FieldManager: testReviewappControllerName,
 				Force:        pointer.Bool(true),
 			})
@@ -195,21 +203,22 @@ var _ = Describe("ReviewApp controller", func() {
 				msg, err := ghClient.GetLatestMessage(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRA)
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(msg).To(Equal("updated"))
-			}, timeout, interval).Should(Succeed())
+			}, defaultTimeout, defaultInterval).Should(Succeed())
 		})
 		It("should update status", func() {
 			ra := &dreamkastv1alpha1.ReviewApp{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-shotakitazawa-reviewapp-operator-demo-app-2"}, ra)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ra.Status.Sync.Status).To(Equal(dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates))
-			Expect(ra.Status.Sync.ApplicationName).To(Equal("test-ra-2"))
-			Expect(ra.Status.Sync.ApplicationNamespace).To(Equal("argocd"))
-			Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeEmpty())
+			Expect(ra.Status.ManifestsCache.ApplicationName).To(Equal("test-ra-2"))
+			Expect(ra.Status.ManifestsCache.ApplicationNamespace).To(Equal("argocd"))
+			Expect(ra.Status.PullRequestCache.LatestCommitHash).NotTo(BeEmpty())
 		})
 		It("should commit to infra-repo", func() {
 			files, err := ghClient.GetUpdatedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(Equal([]string{
+				".apps/dev/test-ra-2.yaml",
 				"overlays/dev/test-ra-2/manifests.yaml",
 			}))
 		})
@@ -217,9 +226,9 @@ var _ = Describe("ReviewApp controller", func() {
 			argocdApp := &argocd_application_v1alpha1.Application{}
 			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ra-2"}, argocdApp)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(argocdApp.Annotations[models.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
-			Expect(argocdApp.Annotations[models.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
-			Expect(argocdApp.Annotations[models.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
+			Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppOrgNameForArgoCDApplication]).To(Equal(testGitAppOrganization))
+			Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppRepoNameForArgoCDApplication]).To(Equal(testGitAppRepository))
+			Expect(argocdApp.Annotations[dreamkastv1alpha1.AnnotationAppCommitHashForArgoCDApplication]).NotTo(BeEmpty())
 		})
 	})
 	Context("step3. delete ReviewApp", func() {
@@ -247,7 +256,7 @@ var _ = Describe("ReviewApp controller", func() {
 					return err
 				}
 				return fmt.Errorf("Application must not exist")
-			}, timeout, interval).Should(Succeed())
+			}, defaultTimeout, defaultInterval).Should(Succeed())
 		})
 		It("should commit to infra-repo", func() {
 			files, err := ghClient.GetDeletedFilenamesInLatestCommit(testGitInfraOrganization, testGitInfraRepository, testGitInfraBranch)
@@ -293,7 +302,7 @@ func newArgoCDApplication() *argocd_application_v1alpha1.Application {
 }
 
 func newApplicationTemplate(name string) *dreamkastv1alpha1.ApplicationTemplate {
-	app := `
+	app := dreamkastv1alpha1.Application(`
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -313,7 +322,7 @@ spec:
       prune: true
     syncOptions:
     - CreateNamespace=true
-`
+`)
 	return &dreamkastv1alpha1.ApplicationTemplate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -354,8 +363,8 @@ spec:
         commit: {{.AppRepo.LatestCommitHash}}
     spec:
       containers:
-        - name: demo
-          image: nginx
+        - name: nginx
+          image: nginx:{{.AppRepo.LatestCommitHash}}
 `
 	m := make(map[string]string)
 	m["kustomization.yaml"] = kustomizationYaml
@@ -373,14 +382,14 @@ spec:
 	}
 }
 
-func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
-	return &dreamkastv1alpha1.ReviewApp{
+func newPullRequest() *dreamkastv1alpha1.PullRequest {
+	return &dreamkastv1alpha1.PullRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      objectName,
+			Name:      "shotakitazawa-reviewapp-operator-demo-app-2",
 			Namespace: testNamespace,
 		},
-		Spec: dreamkastv1alpha1.ReviewAppSpec{
-			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
+		Spec: dreamkastv1alpha1.PullRequestSpec{
+			AppTarget: dreamkastv1alpha1.ReviewAppCommonSpecAppTarget{
 				Username:     testGitUsername,
 				Organization: testGitAppOrganization,
 				Repository:   testGitAppRepository,
@@ -391,42 +400,77 @@ func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
 					Key: "token",
 				},
 			},
-			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
-				Message:              "message",
-				SendMessageEveryTime: true,
-			},
-			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
-				Username:     testGitUsername,
-				Organization: testGitInfraOrganization,
-				Repository:   testGitInfraRepository,
-				Branch:       testGitInfraBranch,
-				GitSecretRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "git-creds",
+			Number: 2,
+		},
+		Status: dreamkastv1alpha1.PullRequestStatus{
+			HeadBranch:       "demo-2",
+			BaseBranch:       "master",
+			LatestCommitHash: "latest-commit",
+			Title:            "PullRequest2",
+			Labels:           []string{"ignore-reviewappmanager"},
+		},
+	}
+}
+
+func newReviewApp(objectName string) *dreamkastv1alpha1.ReviewApp {
+	return &dreamkastv1alpha1.ReviewApp{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      objectName,
+			Namespace: testNamespace,
+		},
+		Spec: dreamkastv1alpha1.ReviewAppSpec{
+			ReviewAppCommonSpec: dreamkastv1alpha1.ReviewAppCommonSpec{
+				AppTarget: dreamkastv1alpha1.ReviewAppCommonSpecAppTarget{
+					Username:     testGitUsername,
+					Organization: testGitAppOrganization,
+					Repository:   testGitAppRepository,
+					GitSecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "git-creds",
+						},
+						Key: "token",
 					},
-					Key: "token",
 				},
-			},
-			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
-				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
-					Templates: []dreamkastv1alpha1.NamespacedName{{
-						Namespace: testNamespace,
-						Name:      "manifeststemplate-test-ra",
-					}},
-					Dirpath: "overlays/dev/test-ra-2",
+				AppConfig: dreamkastv1alpha1.ReviewAppCommonSpecAppConfig{
+					Message:              "message",
+					SendMessageEveryTime: true,
 				},
-				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
-					Template: dreamkastv1alpha1.NamespacedName{
-						Namespace: testNamespace,
-						Name:      "applicationtemplate-test-ra",
+				InfraTarget: dreamkastv1alpha1.ReviewAppCommonSpecInfraTarget{
+					Username:     testGitUsername,
+					Organization: testGitInfraOrganization,
+					Repository:   testGitInfraRepository,
+					Branch:       testGitInfraBranch,
+					GitSecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "git-creds",
+						},
+						Key: "token",
 					},
-					Filepath: ".apps/dev/test-ra-2.yaml",
+				},
+				InfraConfig: dreamkastv1alpha1.ReviewAppCommonSpecInfraConfig{
+					Manifests: dreamkastv1alpha1.ReviewAppCommonSpecInfraManifests{
+						Templates: []dreamkastv1alpha1.NamespacedName{{
+							Namespace: testNamespace,
+							Name:      "manifeststemplate-test-ra",
+						}},
+						Dirpath: "overlays/dev/test-ra-2",
+					},
+					ArgoCDApp: dreamkastv1alpha1.ReviewAppCommonSpecInfraArgoCDApp{
+						Template: dreamkastv1alpha1.NamespacedName{
+							Namespace: testNamespace,
+							Name:      "applicationtemplate-test-ra",
+						},
+						Filepath: ".apps/dev/test-ra-2.yaml",
+					},
+				},
+				Variables: []string{
+					"AppRepositoryAlias=test-ra",
 				},
 			},
-			Variables: []string{
-				"AppRepositoryAlias=test-ra",
+			PullRequest: dreamkastv1alpha1.NamespacedName{
+				Namespace: testNamespace,
+				Name:      "shotakitazawa-reviewapp-operator-demo-app-2",
 			},
-			AppPrNum: testGitAppPrNumForRA,
 		},
 	}
 }
@@ -446,6 +490,8 @@ spec:
     metadata:
       labels:
         app: nginx
+      annotations:
+        commit: {{.AppRepo.LatestCommitHash}}
     spec:
       containers:
         - name: nginx
@@ -465,6 +511,13 @@ spec:
 		},
 	}
 	return patch
+}
+
+func newPatchOfPullRequestStatus() (*dreamkastv1alpha1.PullRequest, client.Patch) {
+	pr := newPullRequest()
+	newPr := pr.DeepCopy()
+	newPr.Status.LatestCommitHash = "updated"
+	return newPr, client.MergeFrom(pr)
 }
 
 func newPatchOfReviewApp(objectName string) *unstructured.Unstructured {

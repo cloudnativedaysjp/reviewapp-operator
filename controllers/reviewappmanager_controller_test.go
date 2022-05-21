@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
@@ -73,16 +72,16 @@ var _ = Describe("ReviewAppManager controller", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 		logger := glogr.NewWithOptions(glogr.Options{LogCaller: glogr.None})
-		k8sRepository, err := wire.NewKubernetesRepository(logger, k8sClient)
+		k8sRepository, err := wire.NewKubernetes(logger, k8sClient)
 		Expect(err).ToNot(HaveOccurred())
-		gitApiRepository, err := wire.NewGitHubAPIRepository(logger)
+		gitApiRepository, err := wire.NewGitHubApi(logger)
 		Expect(err).ToNot(HaveOccurred())
 		reconciler := ReviewAppManagerReconciler{
-			Scheme:           scheme,
-			Log:              logger,
-			Recorder:         recorder,
-			K8sRepository:    k8sRepository,
-			GitApiRepository: gitApiRepository,
+			Scheme:   scheme,
+			Log:      logger,
+			Recorder: recorder,
+			K8s:      k8sRepository,
+			GitApi:   gitApiRepository,
 		}
 		err = reconciler.SetupWithManager(mgr)
 		Expect(err).NotTo(HaveOccurred())
@@ -126,9 +125,8 @@ var _ = Describe("ReviewAppManager controller", func() {
 
 	//! [test]
 	It("should be created ReviewApp when PR is opened", func() {
-		// freeze time.Now()
-		now := time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
-		datetimeFactoryForRAM = utils.NewDatetimeMockFactory(now)
+		// TODO: freeze time.Now()
+		//now := time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC)
 
 		// Control external resources: open PR for test
 		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
@@ -156,15 +154,10 @@ var _ = Describe("ReviewAppManager controller", func() {
 * reviewapp-operator-demo-infra
 * test-ram
 * <no value>`))
-		Expect(ra.Status.Sync.SyncedPullRequest.Branch).To(Equal("demo-01"))
-		Expect(ra.Status.Sync.SyncedPullRequest.LatestCommitHash).NotTo(BeZero())
-		Expect(ra.Status.Sync.SyncedPullRequest.Title).To(Equal("test PR for github.com/cloudnativedaysjp/reviewapp-operator (ReviewAppManager)"))
-		Expect(ra.Status.Sync.SyncedPullRequest.Labels).To(BeEmpty())
-		Expect(ra.Status.Sync.SyncedPullRequest.SyncTimestamp).To(Equal("2006-01-02T15:04:05Z"))
 	})
 
 	// TODO
-	// It("should be updated ReviewApp when PR is opened", func() {
+	// It("should be updated ReviewApp when PR is updated", func() {
 	// })
 
 	It("should be deleted ReviewApp when PR is closed", func() {
@@ -196,7 +189,7 @@ var _ = Describe("ReviewAppManager controller", func() {
 		).Should(Succeed())
 	})
 
-	It("should be updated ReviewAppManager status", func() {
+	It("should be created PullRequest when PR is opened", func() {
 		// Control external resources: open PR for test
 		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
 		Expect(err).NotTo(HaveOccurred())
@@ -204,23 +197,21 @@ var _ = Describe("ReviewAppManager controller", func() {
 		_, err = createSomeResourceForReviewAppManagerTest(ctx)
 		Expect(err).NotTo(HaveOccurred())
 
-		updated := dreamkastv1alpha1.ReviewAppManager{}
-		Eventually(func() ([]dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests, error) {
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram"}, &updated)
+		pr := &dreamkastv1alpha1.PullRequest{}
+		Eventually(func() error {
+			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "shotakitazawa-reviewapp-operator-demo-app-1"}, pr)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			return updated.Status.SyncedPullRequests, nil
+			return nil
 		},
 			60*time.Second, // timeout
 			10*time.Second, // interval
-		).Should(ContainElement(
-			dreamkastv1alpha1.ReviewAppManagerStatusSyncedPullRequests{
-				Organization:  testGitAppOrganization,
-				Repository:    testGitAppRepository,
-				Number:        testGitAppPrNumForRAM,
-				ReviewAppName: fmt.Sprintf("test-ram-shotakitazawa-reviewapp-operator-demo-app-%d", testGitAppPrNumForRAM),
-			}))
+		).Should(Succeed())
+
+		Expect(pr.Spec.AppTarget.Organization).To(Equal(testGitAppOrganization))
+		Expect(pr.Spec.AppTarget.Repository).To(Equal(testGitAppRepository))
+		Expect(pr.Spec.AppTarget.Username).To(Equal(testGitUsername))
 	})
 	//! [test]
 })
@@ -248,19 +239,21 @@ func newReviewAppManager_RAM() *dreamkastv1alpha1.ReviewAppManager {
 			Namespace: testNamespace,
 		},
 		Spec: dreamkastv1alpha1.ReviewAppManagerSpec{
-			AppTarget: dreamkastv1alpha1.ReviewAppManagerSpecAppTarget{
-				Username:     testGitUsername,
-				Organization: testGitAppOrganization,
-				Repository:   testGitAppRepository,
-				GitSecretRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "git-creds",
+			ReviewAppCommonSpec: dreamkastv1alpha1.ReviewAppCommonSpec{
+				AppTarget: dreamkastv1alpha1.ReviewAppCommonSpecAppTarget{
+					Username:     testGitUsername,
+					Organization: testGitAppOrganization,
+					Repository:   testGitAppRepository,
+					GitSecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "git-creds",
+						},
+						Key: "token",
 					},
-					Key: "token",
+					IgnoreLabels: []string{"ignore-reviewappmanager"},
 				},
-			},
-			AppConfig: dreamkastv1alpha1.ReviewAppManagerSpecAppConfig{
-				Message: `
+				AppConfig: dreamkastv1alpha1.ReviewAppCommonSpecAppConfig{
+					Message: `
 * {{.AppRepo.Organization}}
 * {{.AppRepo.Repository}}
 * {{.AppRepo.PrNumber}}
@@ -268,37 +261,38 @@ func newReviewAppManager_RAM() *dreamkastv1alpha1.ReviewAppManager {
 * {{.InfraRepo.Repository}}
 * {{.Variables.AppRepositoryAlias}}
 * {{.Variables.dummy}}`,
-			},
-			InfraTarget: dreamkastv1alpha1.ReviewAppManagerSpecInfraTarget{
-				Username:     testGitUsername,
-				Organization: testGitInfraOrganization,
-				Repository:   testGitInfraRepository,
-				Branch:       testGitInfraBranch,
-				GitSecretRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "git-creds",
+				},
+				InfraTarget: dreamkastv1alpha1.ReviewAppCommonSpecInfraTarget{
+					Username:     testGitUsername,
+					Organization: testGitInfraOrganization,
+					Repository:   testGitInfraRepository,
+					Branch:       testGitInfraBranch,
+					GitSecretRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "git-creds",
+						},
+						Key: "token",
 					},
-					Key: "token",
 				},
-			},
-			InfraConfig: dreamkastv1alpha1.ReviewAppManagerSpecInfraConfig{
-				Manifests: dreamkastv1alpha1.ReviewAppManagerSpecInfraManifests{
-					Templates: []dreamkastv1alpha1.NamespacedName{{
-						Namespace: testNamespace,
-						Name:      "manifeststemplate-test-ram",
-					}},
-					Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
-				},
-				ArgoCDApp: dreamkastv1alpha1.ReviewAppManagerSpecInfraArgoCDApp{
-					Template: dreamkastv1alpha1.NamespacedName{
-						Namespace: testNamespace,
-						Name:      "applicationtemplate-test-ram",
+				InfraConfig: dreamkastv1alpha1.ReviewAppCommonSpecInfraConfig{
+					Manifests: dreamkastv1alpha1.ReviewAppCommonSpecInfraManifests{
+						Templates: []dreamkastv1alpha1.NamespacedName{{
+							Namespace: testNamespace,
+							Name:      "manifeststemplate-test-ram",
+						}},
+						Dirpath: "overlays/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}",
 					},
-					Filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml",
+					ArgoCDApp: dreamkastv1alpha1.ReviewAppCommonSpecInfraArgoCDApp{
+						Template: dreamkastv1alpha1.NamespacedName{
+							Namespace: testNamespace,
+							Name:      "applicationtemplate-test-ram",
+						},
+						Filepath: ".apps/dev/{{.Variables.AppRepositoryAlias}}-{{.AppRepo.PrNumber}}.yaml",
+					},
 				},
-			},
-			Variables: []string{
-				"AppRepositoryAlias=test-ram",
+				Variables: []string{
+					"AppRepositoryAlias=test-ram",
+				},
 			},
 		},
 	}

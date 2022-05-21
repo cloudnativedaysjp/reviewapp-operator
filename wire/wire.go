@@ -9,39 +9,28 @@ import (
 	"k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/kubernetes"
 )
 
-func NewGitHubAPIRepository(l logr.Logger) (*githubapi.GitHub, error) {
+func NewGitHubApi(l logr.Logger) (*githubapi.GitHub, error) {
 	wire.Build(
 		githubapi.NewGitHub,
 	)
 	return nil, nil
 }
 
-func NewGitCommandRepository(l logr.Logger, e exec.Interface) (*gitcommand.Git, error) {
+func NewGitLocalRepo(l logr.Logger, e exec.Interface) (*gitcommand.GitLocalRepo, error) {
 	wire.Build(
-		gitcommand.NewGit,
+		gitcommand.NewGitLocalRepo,
 	)
 	return nil, nil
 }
 
-func NewKubernetesRepository(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
+func NewKubernetes(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
 	wire.Build(
 		kubernetes.NewClient,
-	)
-	return nil, nil
-}
-
-func NewPullRequestService(l logr.Logger) (*services.PullRequestService, error) {
-	wire.Build(
-		githubapi.NewGitHub,
-		wire.Bind(new(repositories.GitAPI), new(*githubapi.GitHub)),
-		services.NewPullRequestService,
 	)
 	return nil, nil
 }
