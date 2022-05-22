@@ -7,8 +7,6 @@ import (
 	dreamkastv1alpha1_iface "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1/iface"
 	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,11 +40,4 @@ type KubernetesIface interface {
 	PatchPullRequestStatus(ctx context.Context, pr dreamkastv1alpha1.PullRequest) error
 	GetPullRequest(ctx context.Context, namespace, name string) (dreamkastv1alpha1.PullRequest, error)
 	DeletePullRequest(ctx context.Context, namespace, name string) error
-}
-
-func (c Client) apply(ctx context.Context, obj *unstructured.Unstructured) error {
-	return c.Patch(ctx, obj, client.Apply, &client.PatchOptions{
-		FieldManager: "reviewapp-operator",
-		Force:        pointer.Bool(true),
-	})
 }
