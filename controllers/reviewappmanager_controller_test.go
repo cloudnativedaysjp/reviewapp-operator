@@ -21,7 +21,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/glogr"
@@ -29,7 +28,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -159,35 +157,6 @@ var _ = Describe("ReviewAppManager controller", func() {
 	// TODO
 	// It("should be updated ReviewApp when PR is updated", func() {
 	// })
-
-	It("should be deleted ReviewApp when PR is closed", func() {
-		// Control external resources: open PR for test
-		err := ghClient.OpenPr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
-		Expect(err).NotTo(HaveOccurred())
-
-		_, err = createSomeResourceForReviewAppManagerTest(ctx)
-		Expect(err).NotTo(HaveOccurred())
-
-		// Control external resources: close PR for test
-		err = ghClient.ClosePr(testGitAppOrganization, testGitAppRepository, testGitAppPrNumForRAM)
-		Expect(err).NotTo(HaveOccurred())
-
-		// wait to run reconcile loop
-		ra := dreamkastv1alpha1.ReviewApp{}
-		Eventually(func() error {
-			err := k8sClient.Get(ctx, client.ObjectKey{Namespace: testNamespace, Name: "test-ram-shotakitazawa-reviewapp-operator-demo-app-1"}, &ra)
-			if err != nil {
-				if apierrors.IsNotFound(err) {
-					return nil
-				}
-				return err
-			}
-			return fmt.Errorf("ReviewApp must not exist")
-		},
-			60*time.Second, // timeout
-			10*time.Second, // interval
-		).Should(Succeed())
-	})
 
 	It("should be created PullRequest when PR is opened", func() {
 		// Control external resources: open PR for test
