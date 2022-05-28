@@ -17,16 +17,41 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/base64"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type ManifestsTemplateSpec struct {
 	// CandidateData is field that be given various resources' manifest.
-	CandidateData map[string]string `json:"candidate,omitempty"`
+	CandidateData Manifests `json:"candidate,omitempty"`
 
 	// StableData is field that be given various resources' manifest.
-	StableData map[string]string `json:"stable,omitempty"`
+	StableData Manifests `json:"stable,omitempty"`
+}
+
+type Manifests map[string]string
+type ManifestsBase64 map[string]string
+
+func (m Manifests) ToBase64() ManifestsBase64 {
+	manifestsBase64 := make(ManifestsBase64)
+	for k, v := range m {
+		manifestsBase64[k] = base64.StdEncoding.EncodeToString([]byte(v))
+	}
+	return manifestsBase64
+}
+
+func (m ManifestsBase64) Decode() (Manifests, error) {
+	manifests := make(Manifests)
+	for k, v := range m {
+		m, err := base64.StdEncoding.DecodeString(v)
+		if err != nil {
+			return nil, err
+		}
+		manifests[k] = string(m)
+	}
+	return manifests, nil
 }
 
 //+kubebuilder:object:root=true
@@ -46,6 +71,22 @@ func (ManifestsTemplate) GVK() schema.GroupVersionKind {
 		Version: GroupVersion.Version,
 		Kind:    "ManifestsTemplate",
 	}
+}
+
+func (m ManifestsTemplate) AppendOrUpdate(mt ManifestsTemplate) ManifestsTemplate {
+	if m.Spec.StableData == nil {
+		m.Spec.StableData = make(map[string]string)
+	}
+	for k, v := range mt.Spec.StableData {
+		m.Spec.StableData[k] = v
+	}
+	if m.Spec.CandidateData == nil {
+		m.Spec.CandidateData = make(map[string]string)
+	}
+	for k, v := range mt.Spec.CandidateData {
+		m.Spec.CandidateData[k] = v
+	}
+	return m
 }
 
 //+kubebuilder:object:root=true

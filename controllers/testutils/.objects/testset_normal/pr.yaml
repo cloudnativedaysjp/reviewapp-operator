@@ -1,0 +1,24 @@
+apiVersion: dreamkast.cloudnativedays.jp/v1alpha1
+kind: PullRequest
+metadata:
+  name: shotakitazawa-reviewapp-operator-demo-app-1
+  namespace: test-ns
+  annotations:
+    testcase: testset-normal
+spec:
+  appRepoTarget:
+    username: ShotaKitazawa
+    organization: ShotaKitazawa
+    repository: reviewapp-operator-demo-app
+    gitSecretRef:
+      name: git-creds
+      key: token
+    ignoreLabels: []
+    ignoreTitleExp: '^\[dreamkast-releasebot\]'
+  number: 1
+status:
+  headBranch: "test"
+  baseBranch: "master"
+  latestCommitHash: "testset_normal"
+  title: "TEST"
+  labels: []

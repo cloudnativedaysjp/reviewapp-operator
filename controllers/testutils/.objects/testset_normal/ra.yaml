@@ -18,7 +18,9 @@ spec:
   appRepoConfig:
     message: |
       **message**
-  appRepoPrNum: 1
+  pullRequest:
+    namespace: test-ns
+    name: shotakitazawa-reviewapp-operator-demo-app-1
   infraRepoTarget:
     username: ShotaKitazawa
     organization: ShotaKitazawa

@@ -17,67 +17,69 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+	"sort"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ReviewAppSpec defines the desired state of ReviewApp
 type ReviewAppSpec struct {
+	ReviewAppCommonSpec `json:",inline"`
 
-	// TODO
-	AppTarget ReviewAppManagerSpecAppTarget `json:"appRepoTarget"`
-
-	// TODO
-	AppConfig ReviewAppManagerSpecAppConfig `json:"appRepoConfig"`
-
-	// TODO
-	InfraTarget ReviewAppManagerSpecInfraTarget `json:"infraRepoTarget"`
-
-	// TODO
-	InfraConfig ReviewAppManagerSpecInfraConfig `json:"infraRepoConfig"`
-
-	// PreStopJob is specified JobTemplate that executed at previous of stopped ReviewApp
-	PreStopJob NamespacedName `json:"preStopJob,omitempty"`
-
-	// Variables is available to use input of Application & Manifest Template
-	Variables []string `json:"variables,omitempty"`
-
-	// AppPrNum is watched PR's number by this RA
-	AppPrNum int `json:"appRepoPrNum"`
+	// PullRequestName is object name of PullRequest resource
+	PullRequest NamespacedName `json:"pullRequest"`
 }
 
 // ReviewAppStatus defines the observed state of ReviewApp
 type ReviewAppStatus struct {
 
 	// TODO
-	Sync SyncStatus `json:"sync,omitempty"`
+	Sync ReviewAppStatusSync `json:"sync,omitempty"`
+
+	// TODO
+	PullRequestCache ReviewAppStatusPullRequestCache `json:"pullRequestCache,omitempty"`
 
 	// ManifestsCache is used in "confirm Templates Are Updated" for confirm templates updated
 	ManifestsCache ManifestsCache `json:"manifestsCache,omitempty"`
 }
 
-type SyncStatus struct {
+func (m ReviewAppStatus) HaveManifestsTemplateBeenUpdated(manifests Manifests) bool {
+	return !reflect.DeepEqual(manifests.ToBase64(), m.ManifestsCache.ManifestsBase64)
+}
+
+func (m ReviewAppStatus) HasApplicationTemplateBeenUpdated(application Application) bool {
+	return application.ToBase64() != m.ManifestsCache.ApplicationBase64
+}
+
+func (m ReviewAppStatus) HasPullRequestBeenUpdated(hash string) bool {
+	return m.PullRequestCache.LatestCommitHash != hash
+}
+
+func (m ReviewAppStatus) HasArgoCDApplicationBeenUpdated(hash string) bool {
+	return m.PullRequestCache.LatestCommitHash == hash
+}
+
+type ReviewAppStatusSync struct {
 
 	// Status is the sync state of the comparison
 	Status SyncStatusCode `json:"status,omitempty"`
-
-	// TODO
-	SyncedPullRequest ReviewAppStatusSyncedPullRequest `json:"syncedPullRequest,omitempty"`
-
-	// TODO
-	ApplicationName string `json:"applicationName,omitempty"`
-
-	// TODO
-	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
 
 	// AlreadySentMessage is used to decide sending message to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime is true.
 	AlreadySentMessage bool `json:"alreadySentMessage,omitempty"`
 }
 
-type ReviewAppStatusSyncedPullRequest struct {
+type ReviewAppStatusPullRequestCache struct {
 
 	// TODO
-	Branch string `json:"branch,omitempty"`
+	Number int `json:"number,omitempty"`
+
+	// TODO
+	BaseBranch string `json:"baseBranch,omitempty"`
+
+	// TODO
+	HeadBranch string `json:"headBranch,omitempty"`
 
 	// TODO
 	LatestCommitHash string `json:"latestCommitHash,omitempty"`
@@ -89,16 +91,57 @@ type ReviewAppStatusSyncedPullRequest struct {
 	Labels []string `json:"labels,omitempty"`
 
 	// TODO
-	SyncTimestamp string `json:"syncTimestamp,omitempty"`
+	SyncedTimestamp metav1.Time `json:"syncedTimestamp,omitempty"`
+}
+
+func (m *ReviewAppStatusPullRequestCache) IsEmpty() bool {
+	return m.Number == 0 || m.BaseBranch == "" ||
+		m.HeadBranch == "" || m.LatestCommitHash == ""
+}
+
+func (m *ReviewAppStatusPullRequestCache) UpdateCache(pr PullRequest) {
+	updated := false
+	copyString := func(dst, src *string) {
+		if *dst != *src {
+			updated = true
+			*dst = *src
+		}
+	}
+	copySlice := func(dst, src *[]string) {
+		if len(*dst) == len(*src) {
+			var dstSorted, srcSorted []string
+			copy(dstSorted, *dst)
+			copy(srcSorted, *src)
+			sort.SliceStable(dstSorted, func(i, j int) bool { return dstSorted[i] < dstSorted[j] })
+			sort.SliceStable(srcSorted, func(i, j int) bool { return srcSorted[i] < srcSorted[j] })
+			if !reflect.DeepEqual(dstSorted, srcSorted) {
+				updated = true
+				copy(*dst, *src)
+			}
+		}
+	}
+	copyString(&m.HeadBranch, &pr.Status.HeadBranch)
+	copyString(&m.LatestCommitHash, &pr.Status.LatestCommitHash)
+	copyString(&m.Title, &pr.Status.Title)
+	copySlice(&m.Labels, &pr.Status.Labels)
+	if updated {
+		m.SyncedTimestamp = metav1.Now()
+	}
 }
 
 type ManifestsCache struct {
 
+	// TODO
+	ApplicationName string `json:"applicationName,omitempty"`
+
+	// TODO
+	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
+
 	// Application is manifest of ArgoCD Application resource
-	Application string `json:"application,omitempty"`
+	ApplicationBase64 ApplicationBase64 `json:"application,omitempty"`
 
 	// Manifests is other manifests
-	Manifests map[string]string `json:"manifests,omitempty"`
+	ManifestsBase64 ManifestsBase64 `json:"manifests,omitempty"`
 }
 
 // SyncStatusCode is a type which represents possible comparison results
@@ -123,7 +166,7 @@ const (
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="app_organization",type="string",JSONPath=".spec.appRepoTarget.organization",description="Name of Application Repository's Organization"
 //+kubebuilder:printcolumn:name="app_repository",type="string",JSONPath=".spec.appRepoTarget.repository",description="Name of Application Repository"
-//+kubebuilder:printcolumn:name="app_pr_num",type="integer",JSONPath=".spec.appRepoPrNum",description="Number of Application Repository's PullRequest"
+//+kubebuilder:printcolumn:name="app_pr_num",type="integer",JSONPath=".status.pullRequestCache.number",description="Number of Application Repository's PullRequest"
 //+kubebuilder:printcolumn:name="infra_organization",type="string",JSONPath=".spec.infraRepoTarget.organization",description="Name of Infra Repository's Organization"
 //+kubebuilder:printcolumn:name="infra_repository",type="string",JSONPath=".spec.infraRepoTarget.repository",description="Name of Infra Repository"
 
@@ -142,6 +185,11 @@ func (ReviewApp) GVK() schema.GroupVersionKind {
 		Version: GroupVersion.Version,
 		Kind:    "ReviewApp",
 	}
+}
+
+func (m ReviewApp) HasMessageAlreadyBeenSent() bool {
+	return m.Spec.AppConfig.Message == "" ||
+		(!m.Spec.AppConfig.SendMessageEveryTime && m.Status.Sync.AlreadySentMessage)
 }
 
 //+kubebuilder:object:root=true

@@ -45,6 +45,32 @@ rules:
 - apiGroups:
   - dreamkast.cloudnativedays.jp
   resources:
+  - pullrequests
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - pullrequests/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
+  - pullrequests/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - dreamkast.cloudnativedays.jp
+  resources:
   - reviewappmanagers
   verbs:
   - create

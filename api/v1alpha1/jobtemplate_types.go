@@ -21,6 +21,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+const (
+	LabelReviewAppNameForJob = "dreamkast.cloudnativedays.jp/parent-reviewapp"
+)
+
 // JobTemplateSpec defines the desired state of JobTemplate
 type JobTemplateSpec struct {
 

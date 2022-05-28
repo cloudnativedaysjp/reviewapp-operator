@@ -21,32 +21,31 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
-	"golang.org/x/sync/singleflight"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/exec"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dreamkastv1alpha1 "github.com/cloudnativedaysjp/reviewapp-operator/api/v1alpha1"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/models"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/repositories"
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/errors"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils"
-	"github.com/cloudnativedaysjp/reviewapp-operator/utils/metrics"
+	myerrors "github.com/cloudnativedaysjp/reviewapp-operator/pkg/errors"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/metrics"
 	"github.com/cloudnativedaysjp/reviewapp-operator/wire"
 )
 
 const (
-	finalizer = "reviewapp.finalizers.cloudnativedays.jp"
-)
-
-var (
-	singleflightGroupForReviewApp singleflight.Group
-	datetimeFactoryForRA          = utils.NewDatetimeFactory()
+	raFinalizer = "reviewapp.finalizers.cloudnativedays.jp"
 )
 
 // ReviewAppReconciler reconciles a ReviewApp object
@@ -55,10 +54,9 @@ type ReviewAppReconciler struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
-	K8sRepository        repositories.KubernetesRepository
-	GitApiRepository     repositories.GitAPI
-	GitCommandRepository repositories.GitCommand
-	PullRequestService   services.PullRequestServiceIface
+	K8s          kubernetes.KubernetesIface
+	GitApi       githubapi.GitApiIface
+	GitLocalRepo gitcommand.GitLocalRepoIface
 }
 
 //+kubebuilder:rbac:groups=dreamkast.cloudnativedays.jp,resources=reviewapps,verbs=get;list;watch;create;update;patch;delete
@@ -68,39 +66,49 @@ type ReviewAppReconciler struct {
 //+kubebuilder:rbac:groups=argoproj.io,resources=applications,verbs=get;list;watch
 
 func (r *ReviewAppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	result, err, _ := singleflightGroupForReviewApp.Do(fmt.Sprintf("%s/%s", req.Namespace, req.Name), func() (interface{}, error) {
-		r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
-		ra, err := r.K8sRepository.GetReviewApp(ctx, req.Namespace, req.Name)
-		if err != nil && !myerrors.IsNotFound(err) {
-			return ctrl.Result{}, err
+	r.Log.Info(fmt.Sprintf("fetching ReviewApp resource: %s/%s", req.Namespace, req.Name))
+	ra, err := r.K8s.GetReviewApp(ctx, req.Namespace, req.Name)
+	if err != nil {
+		if myerrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
 		}
+		return ctrl.Result{}, err
+	}
 
-		dto, result, err := r.prepare(ctx, ra)
-		if err != nil {
-			if myerrors.IsNotFound(err) {
-				r.Log.Info(err.Error())
-				return result, nil
-			}
-			return result, err
+	dto, usingPrCache, result, err := r.prepare(ctx, ra)
+	if err != nil {
+		if myerrors.IsNotFound(err) {
+			r.Log.Info(err.Error())
+			return result, nil
 		}
+		return result, err
+	}
 
-		// Add Finalizers
-		if err := r.K8sRepository.AddFinalizersToReviewApp(ctx, ra, finalizer); err != nil {
-			return ctrl.Result{}, err
-		}
+	// Add Finalizers
+	if err := r.K8s.AddFinalizersToReviewApp(ctx, ra, raFinalizer); err != nil {
+		return ctrl.Result{}, err
+	}
 
-		// Handle deletion reconciliation loop.
-		if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
-			return r.reconcileDelete(ctx, *dto)
+	// Handle deletion reconciliation loop.
+	if !ra.ObjectMeta.DeletionTimestamp.IsZero() {
+		return r.reconcileDelete(ctx, *dto)
+	}
+
+	// if PR object is not found, delete RA object myself
+	if usingPrCache {
+		r.Log.Info(fmt.Sprintf("%v: delete my object myself", err))
+		if err := r.K8s.DeleteReviewApp(ctx, ra.Namespace, ra.Name); err != nil {
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 		}
-		return r.reconcile(ctx, *dto)
-	})
-	return result.(ctrl.Result), err
+		return ctrl.Result{}, nil
+	}
+
+	return r.reconcile(ctx, *dto)
 }
 
-func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (result ctrl.Result, err error) {
-	ra := dto.ReviewApp
-	raStatus := ra.GetStatus()
+func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseDTO) (ctrl.Result, error) {
+	ra := &dto.ReviewApp
+	res := &Result{}
 
 	// set metrics
 	metrics.UpVec.WithLabelValues(
@@ -112,44 +120,51 @@ func (r *ReviewAppReconciler) reconcile(ctx context.Context, dto ReviewAppPhaseD
 		ra.Spec.InfraTarget.Organization,
 	).Set(1)
 
-	// run/skip processes by ReviewApp state
-	errs := []error{}
-	phase := func(cond bool, phase func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error)) {
-		if cond {
-			raStatus, result, err = phase(ctx, dto)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			ra.Status = dreamkastv1alpha1.ReviewAppStatus(raStatus)
-			dto.ReviewApp = ra
+	// if s.sync.status is empty, set SyncStatusCodeInitialize
+	if reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}) {
+		dto.ReviewApp.Status.Sync.Status = dreamkastv1alpha1.SyncStatusCodeInitialize
+	}
+	// run/skip each phase by ReviewApp state
+	type phaseWithCond struct {
+		cond  bool
+		phase func(context.Context, ReviewAppPhaseDTO, *Result) (dreamkastv1alpha1.ReviewAppStatus, error)
+	}
+	var err error
+	for _, p := range []phaseWithCond{
+		{
+			cond: ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeInitialize ||
+				ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
+			phase: r.confirmUpdated,
+		},
+		{
+			cond:  ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
+			phase: r.deployReviewAppManifestsToInfraRepo,
+		},
+		{
+			cond:  ra.Status.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo,
+			phase: r.commentToAppRepoPullRequest,
+		},
+	} {
+		if !p.cond {
+			continue
+		}
+		ra.Status, err = p.phase(ctx, dto, res)
+		if err != nil {
+			break
 		}
 	}
-	// if s.sync.status is empty, set SyncStatusCodeInitialize
-	phase(reflect.DeepEqual(ra.Status, dreamkastv1alpha1.ReviewAppStatus{}),
-		func(ctx context.Context, dto ReviewAppPhaseDTO) (models.ReviewAppStatus, ctrl.Result, error) {
-			s := dto.ReviewApp.GetStatus()
-			s.Sync.Status = dreamkastv1alpha1.SyncStatusCodeInitialize
-			return s, ctrl.Result{}, nil
-		},
-	)
-	// each phase
-	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeInitialize ||
-		raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeWatchingAppRepoAndTemplates,
-		r.confirmUpdated)
-	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeNeedToUpdateInfraRepo,
-		r.deployReviewAppManifestsToInfraRepo)
-	phase(raStatus.Sync.Status == dreamkastv1alpha1.SyncStatusCodeUpdatedInfraRepo,
-		r.commentToAppRepoPullRequest)
 
-	// update status
-	if err := r.K8sRepository.PatchReviewAppStatus(ctx, ra); err != nil {
-		return ctrl.Result{}, err
+	// if status does not update, requeue Reconcile
+	if !res.StatusWasUpdated {
+		return res.Result, err
 	}
-
-	return ctrl.Result{}, kerrors.NewAggregate(errs)
+	if errStatus := r.K8s.PatchReviewAppStatus(ctx, *ra); errStatus != nil {
+		return res.Result, kerrors.NewAggregate(append([]error{}, err, errStatus))
+	}
+	return res.Result, err
 }
 
-func (r *ReviewAppReconciler) removeMetrics(ra models.ReviewApp) {
+func (r *ReviewAppReconciler) removeMetrics(ra dreamkastv1alpha1.ReviewApp) {
 	metrics.UpVec.DeleteLabelValues(
 		ra.Name,
 		ra.Namespace,
@@ -169,27 +184,73 @@ func (r *ReviewAppReconciler) removeMetrics(ra models.ReviewApp) {
 func (r *ReviewAppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	setupLog := ctrl.Log.WithName("setup")
 	var err error
-	r.K8sRepository, err = wire.NewKubernetesRepository(r.Log, mgr.GetClient())
+	r.K8s, err = wire.NewKubernetes(r.Log, mgr.GetClient())
 	if err != nil {
 		setupLog.Error(err, "unable to initialize", "wire.NewKubernetesRepository")
 		os.Exit(1)
 	}
-	r.GitApiRepository, err = wire.NewGitHubAPIRepository(r.Log)
+	r.GitApi, err = wire.NewGitHubApi(r.Log)
 	if err != nil {
 		setupLog.Error(err, "unable to initialize", "wire.NewGitHubAPIRepository")
 		os.Exit(1)
 	}
-	r.GitCommandRepository, err = wire.NewGitCommandRepository(r.Log, exec.New())
+	r.GitLocalRepo, err = wire.NewGitLocalRepo(r.Log, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to initialize", "wire.NewGitCommandRepository")
 		os.Exit(1)
 	}
-	r.PullRequestService, err = wire.NewPullRequestService(r.Log)
-	if err != nil {
-		setupLog.Error(err, "unable to initialize", "wire.NewPullRequestService")
-		os.Exit(1)
-	}
+	mapFunc := handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+		ras := dreamkastv1alpha1.ReviewAppList{}
+		_ = mgr.GetCache().List(context.Background(), &ras)
+		for _, ra := range ras.Items {
+			nn := dreamkastv1alpha1.NamespacedName{Name: object.GetName(), Namespace: object.GetNamespace()}
+			switch object.(type) {
+			case *dreamkastv1alpha1.ApplicationTemplate:
+				if nn == ra.Spec.InfraConfig.ArgoCDApp.Template {
+					return []reconcile.Request{{
+						NamespacedName: types.NamespacedName{
+							Name:      ra.Name,
+							Namespace: ra.Namespace,
+						},
+					}}
+				}
+			case *dreamkastv1alpha1.ManifestsTemplate:
+				for _, template := range ra.Spec.InfraConfig.Manifests.Templates {
+					if nn == template {
+						return []reconcile.Request{{
+							NamespacedName: types.NamespacedName{
+								Name:      ra.Name,
+								Namespace: ra.Namespace,
+							},
+						}}
+					}
+				}
+			case *dreamkastv1alpha1.PullRequest:
+				if nn == ra.Spec.PullRequest {
+					return []reconcile.Request{{
+						NamespacedName: types.NamespacedName{
+							Name:      ra.Name,
+							Namespace: ra.Namespace,
+						},
+					}}
+				}
+			}
+		}
+		return []reconcile.Request{}
+	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&dreamkastv1alpha1.ReviewApp{}).
+		Watches(
+			&source.Kind{Type: &dreamkastv1alpha1.ApplicationTemplate{}},
+			mapFunc,
+		).
+		Watches(
+			&source.Kind{Type: &dreamkastv1alpha1.ManifestsTemplate{}},
+			mapFunc,
+		).
+		Watches(
+			&source.Kind{Type: &dreamkastv1alpha1.PullRequest{}},
+			mapFunc,
+		).
 		Complete(r)
 }

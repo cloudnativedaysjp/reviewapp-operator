@@ -129,9 +129,6 @@ spec:
                             type: string
                           namespace:
                             type: string
-                        required:
-                        - name
-                        - namespace
                         type: object
                     type: object
                   manifests:
@@ -150,9 +147,6 @@ spec:
                               type: string
                             namespace:
                               type: string
-                          required:
-                          - name
-                          - namespace
                           type: object
                         type: array
                     type: object
@@ -205,9 +199,6 @@ spec:
                     type: string
                   namespace:
                     type: string
-                required:
-                - name
-                - namespace
                 type: object
               variables:
                 description: Variables is available to use input of Application &
@@ -221,33 +212,10 @@ spec:
             - infraRepoConfig
             - infraRepoTarget
             type: object
-          status:
-            description: ReviewAppManagerStatus defines the observed state of ReviewAppManager
-            properties:
-              syncedPullRequests:
-                description: TODO
-                items:
-                  properties:
-                    number:
-                      description: TODO
-                      type: integer
-                    organization:
-                      description: TODO
-                      type: string
-                    repository:
-                      description: TODO
-                      type: string
-                    reviewAppName:
-                      description: TODO
-                      type: string
-                  type: object
-                type: array
-            type: object
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}
 status:
   acceptedNames:
     kind: ""

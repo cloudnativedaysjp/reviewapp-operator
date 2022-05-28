@@ -28,7 +28,7 @@ spec:
       name: app_repository
       type: string
     - description: Number of Application Repository's PullRequest
-      jsonPath: .spec.appRepoPrNum
+      jsonPath: .status.pullRequestCache.number
       name: app_pr_num
       type: integer
     - description: Name of Infra Repository's Organization
@@ -72,9 +72,6 @@ spec:
                       to App Repository's PR only first time if flag is false.
                     type: boolean
                 type: object
-              appRepoPrNum:
-                description: AppPrNum is watched PR's number by this RA
-                type: integer
               appRepoTarget:
                 description: TODO
                 properties:
@@ -136,9 +133,6 @@ spec:
                             type: string
                           namespace:
                             type: string
-                        required:
-                        - name
-                        - namespace
                         type: object
                     type: object
                   manifests:
@@ -157,9 +151,6 @@ spec:
                               type: string
                             namespace:
                               type: string
-                          required:
-                          - name
-                          - namespace
                           type: object
                         type: array
                     type: object
@@ -212,9 +203,14 @@ spec:
                     type: string
                   namespace:
                     type: string
-                required:
-                - name
-                - namespace
+                type: object
+              pullRequest:
+                description: PullRequestName is object name of PullRequest resource
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
                 type: object
               variables:
                 description: Variables is available to use input of Application &
@@ -224,10 +220,10 @@ spec:
                 type: array
             required:
             - appRepoConfig
-            - appRepoPrNum
             - appRepoTarget
             - infraRepoConfig
             - infraRepoTarget
+            - pullRequest
             type: object
           status:
             description: ReviewAppStatus defines the observed state of ReviewApp
@@ -239,11 +235,45 @@ spec:
                   application:
                     description: Application is manifest of ArgoCD Application resource
                     type: string
+                  applicationName:
+                    description: TODO
+                    type: string
+                  applicationNamespace:
+                    description: TODO
+                    type: string
                   manifests:
                     additionalProperties:
                       type: string
                     description: Manifests is other manifests
                     type: object
+                type: object
+              pullRequestCache:
+                description: TODO
+                properties:
+                  baseBranch:
+                    description: TODO
+                    type: string
+                  headBranch:
+                    description: TODO
+                    type: string
+                  labels:
+                    description: TODO
+                    items:
+                      type: string
+                    type: array
+                  latestCommitHash:
+                    description: TODO
+                    type: string
+                  number:
+                    description: TODO
+                    type: integer
+                  syncedTimestamp:
+                    description: TODO
+                    format: date-time
+                    type: string
+                  title:
+                    description: TODO
+                    type: string
                 type: object
               sync:
                 description: TODO
@@ -253,36 +283,9 @@ spec:
                       to AppRepo's PR when Spec.AppConfig.SendMessageOnlyFirstTime
                       is true.
                     type: boolean
-                  applicationName:
-                    description: TODO
-                    type: string
-                  applicationNamespace:
-                    description: TODO
-                    type: string
                   status:
                     description: Status is the sync state of the comparison
                     type: string
-                  syncedPullRequest:
-                    description: TODO
-                    properties:
-                      branch:
-                        description: TODO
-                        type: string
-                      labels:
-                        description: TODO
-                        items:
-                          type: string
-                        type: array
-                      latestCommitHash:
-                        description: TODO
-                        type: string
-                      syncTimestamp:
-                        description: TODO
-                        type: string
-                      title:
-                        description: TODO
-                        type: string
-                    type: object
                 type: object
             type: object
         type: object

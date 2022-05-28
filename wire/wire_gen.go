@@ -7,10 +7,9 @@
 package wire
 
 import (
-	"github.com/cloudnativedaysjp/reviewapp-operator/domain/services"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/gitcommand"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/githubapi"
-	"github.com/cloudnativedaysjp/reviewapp-operator/gateways/kubernetes"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/gitcommand"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/githubapi"
+	"github.com/cloudnativedaysjp/reviewapp-operator/pkg/gateways/kubernetes"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,26 +17,20 @@ import (
 
 // Injectors from wire.go:
 
-func NewGitHubAPIRepository(l logr.Logger) (*githubapi.GitHub, error) {
+func NewGitHubApi(l logr.Logger) (*githubapi.GitHub, error) {
 	gitHub := githubapi.NewGitHub(l)
 	return gitHub, nil
 }
 
-func NewGitCommandRepository(l logr.Logger, e exec.Interface) (*gitcommand.Git, error) {
-	git, err := gitcommand.NewGit(l, e)
+func NewGitLocalRepo(l logr.Logger, e exec.Interface) (*gitcommand.GitLocalRepo, error) {
+	gitLocalRepo, err := gitcommand.NewGitLocalRepo(l, e)
 	if err != nil {
 		return nil, err
 	}
-	return git, nil
+	return gitLocalRepo, nil
 }
 
-func NewKubernetesRepository(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
+func NewKubernetes(l logr.Logger, e client.Client) (*kubernetes.Client, error) {
 	kubernetesClient := kubernetes.NewClient(l, e)
 	return kubernetesClient, nil
-}
-
-func NewPullRequestService(l logr.Logger) (*services.PullRequestService, error) {
-	gitHub := githubapi.NewGitHub(l)
-	pullRequestService := services.NewPullRequestService(gitHub)
-	return pullRequestService, nil
 }

@@ -1,0 +1,135 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: pullrequests.dreamkast.cloudnativedays.jp
+spec:
+  group: dreamkast.cloudnativedays.jp
+  names:
+    kind: PullRequest
+    listKind: PullRequestList
+    plural: pullrequests
+    shortNames:
+    - pr
+    singular: pullrequest
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: Name of Application Repository's Organization
+      jsonPath: .spec.appRepoTarget.organization
+      name: organization
+      type: string
+    - description: Name of Application Repository
+      jsonPath: .spec.appRepoTarget.repository
+      name: repository
+      type: string
+    - description: Number of Application Repository's PullRequest
+      jsonPath: .spec.number
+      name: number
+      type: integer
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PullRequest is the Schema for the pullrequests API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PullRequestSpec defines the desired state of PullRequest
+            properties:
+              appRepoTarget:
+                description: TODO
+                properties:
+                  gitSecretRef:
+                    description: GitSecretRef is specifying secret for accessing Git
+                      remote-repo
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                  ignoreLabels:
+                    description: IgnoreLabels is TODO
+                    items:
+                      type: string
+                    type: array
+                  ignoreTitleExp:
+                    description: IgnoreTitleExp is TODO
+                    type: string
+                  organization:
+                    description: TODO
+                    type: string
+                  repository:
+                    description: TODO
+                    type: string
+                  username:
+                    description: TODO
+                    type: string
+                required:
+                - organization
+                - repository
+                - username
+                type: object
+              number:
+                description: TODO
+                type: integer
+            required:
+            - appRepoTarget
+            type: object
+          status:
+            description: PullRequestStatus defines the observed state of PullRequest
+            properties:
+              baseBranch:
+                description: TODO
+                type: string
+              headBranch:
+                description: TODO
+                type: string
+              labels:
+                description: TODO
+                items:
+                  type: string
+                type: array
+              latestCommitHash:
+                description: TODO
+                type: string
+              title:
+                description: TODO
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

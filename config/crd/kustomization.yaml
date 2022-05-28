@@ -7,6 +7,7 @@ resources:
 - bases/dreamkast.cloudnativedays.jp_applicationtemplates.yaml
 - bases/dreamkast.cloudnativedays.jp_manifeststemplates.yaml
 - bases/dreamkast.cloudnativedays.jp_jobtemplates.yaml
+- bases/dreamkast.cloudnativedays.jp_pullrequests.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
@@ -17,6 +18,8 @@ patchesStrategicMerge:
 #- patches/webhook_in_applicationtemplates.yaml
 #- patches/webhook_in_manifeststemplates.yaml
 #- patches/webhook_in_jobtemplates.yaml
+#- patches/webhook_in_pullrequestcaches.yaml
+#- patches/webhook_in_pullrequests.yaml
 #+kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
@@ -26,6 +29,8 @@ patchesStrategicMerge:
 #- patches/cainjection_in_applicationtemplates.yaml
 #- patches/cainjection_in_manifeststemplates.yaml
 #- patches/cainjection_in_jobtemplates.yaml
+#- patches/cainjection_in_pullrequestcaches.yaml
+#- patches/cainjection_in_pullrequests.yaml
 #+kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.
